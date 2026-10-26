@@ -6,7 +6,7 @@ use std::{
     collections::{BTreeMap, BTreeSet},
     path::{Path, PathBuf},
     sync::Arc,
-    time::{Duration, Instant},
+    time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
 
 use eframe::egui::{
@@ -23,8 +23,8 @@ use crate::{
     app::{
         AppState,
         operation::{
-            MetadataSource, OperationController, OperationMode, OperationPhase,
-            StartOperationRequest, UpstreamCheck, start_operation,
+            CachedReleaseMetadata, MetadataSource, OperationController, OperationMode,
+            OperationPhase, StartOperationRequest, UpstreamCheck, start_operation,
         },
     },
     domain::{
@@ -296,6 +296,9 @@ pub struct BrowserHarborApp {
     startup_error: Option<String>,
     status_message: Option<String>,
     latest_versions: BTreeMap<(TargetId, ReleaseChannel, CpuBuild), UpstreamCheck>,
+    checked_releases: BTreeMap<(TargetId, ReleaseChannel, CpuBuild), CachedReleaseMetadata>,
+    auto_checked_keys: BTreeSet<(TargetId, ReleaseChannel, CpuBuild)>,
+    auto_check_enabled: bool,
     chrome_plus_latest: BTreeMap<TargetId, String>,
     chrome_plus_versions: BTreeMap<TargetId, Option<String>>,
     chrome_plus_ini_loaded: BTreeSet<TargetId>,
@@ -349,6 +352,9 @@ impl BrowserHarborApp {
             startup_error: None,
             status_message: None,
             latest_versions: BTreeMap::new(),
+            checked_releases: BTreeMap::new(),
+            auto_checked_keys: BTreeSet::new(),
+            auto_check_enabled: !cfg!(test),
             chrome_plus_latest: BTreeMap::new(),
             chrome_plus_versions: BTreeMap::new(),
             chrome_plus_ini_loaded: BTreeSet::new(),
@@ -553,6 +559,55 @@ impl BrowserHarborApp {
             .get(&(target, config.channel, config.cpu_build))
     }
 
+    fn cached_release(
+        &self,
+        target: TargetId,
+        config: &crate::domain::settings::TargetConfig,
+    ) -> Option<CachedReleaseMetadata> {
+        self.checked_releases
+            .get(&(target, config.channel, config.cpu_build))
+            .filter(|cached| {
+                cached.is_fresh()
+                    && cached.release.target == target
+                    && cached.release.channel == config.channel
+                    && cached.release.cpu_build == config.cpu_build
+            })
+            .cloned()
+    }
+
+    fn maybe_auto_check(
+        &mut self,
+        target: TargetId,
+        config: &crate::domain::settings::TargetConfig,
+    ) {
+        if !self.auto_check_enabled || self.startup_error.is_some() || self.operation.is_some() {
+            return;
+        }
+        let key = (target, config.channel, config.cpu_build);
+        if self.latest_versions.contains_key(&key) || !self.auto_checked_keys.insert(key) {
+            return;
+        }
+        self.start_operation(OperationMode::Check, false);
+    }
+
+    fn record_checked_release(
+        &mut self,
+        target: TargetId,
+        check: UpstreamCheck,
+        release: crate::domain::release::ReleaseDescriptor,
+    ) {
+        let key = (target, check.channel, check.cpu_build);
+        self.latest_versions.insert(key, check.clone());
+        self.checked_releases.insert(
+            key,
+            CachedReleaseMetadata {
+                check,
+                release,
+                observed_at: unix_timestamp(),
+            },
+        );
+    }
+
     fn request_install_action(&mut self) {
         let target = self.state.selected_target();
         self.refresh_local_version(target);
@@ -679,6 +734,9 @@ impl BrowserHarborApp {
             self.status_message = Some(error);
             return;
         }
+        let cached_release = (mode == OperationMode::Install)
+            .then(|| self.cached_release(target, &config))
+            .flatten();
         self.status_message = None;
         self.operation_phase = Some(OperationPhase::Preparing);
         self.operation = Some(start_operation(StartOperationRequest {
@@ -689,6 +747,7 @@ impl BrowserHarborApp {
             cache_dir: self.state.cache_dir(),
             current_version,
             replace_same_version,
+            cached_release,
         }));
     }
 
@@ -701,11 +760,8 @@ impl BrowserHarborApp {
                 self.operation = None;
             }
             match &event.phase {
-                OperationPhase::Checked { check } => {
-                    self.latest_versions.insert(
-                        (event.target, check.channel, check.cpu_build),
-                        check.clone(),
-                    );
+                OperationPhase::Checked { check, release } => {
+                    self.record_checked_release(event.target, check.clone(), release.clone());
                     let source = localized(match check.source {
                         MetadataSource::Official => "上游版本",
                         MetadataSource::SignedManifest => "签名发布清单",
@@ -720,11 +776,9 @@ impl BrowserHarborApp {
                 OperationPhase::SameVersion {
                     current_version,
                     upstream,
+                    release,
                 } => {
-                    self.latest_versions.insert(
-                        (event.target, upstream.channel, upstream.cpu_build),
-                        upstream.clone(),
-                    );
+                    self.record_checked_release(event.target, upstream.clone(), release.clone());
                     self.status_message = Some("本地版本与上游版本相同，等待确认替换".to_owned());
                     self.same_version_prompt = Some(SameVersionPrompt {
                         current_version: current_version.clone(),
@@ -739,14 +793,12 @@ impl BrowserHarborApp {
                         .get(&event.target)
                         .and_then(|config| config.chrome_plus_version.clone());
                     if let Some(config) = self.state.draft().targets.get(&event.target) {
+                        let key = (event.target, config.channel, config.cpu_build);
                         self.latest_versions.insert(
-                            (event.target, config.channel, config.cpu_build),
-                            UpstreamCheck::fresh(
-                                receipt.version.clone(),
-                                config.channel,
-                                config.cpu_build,
-                            ),
+                            key,
+                            UpstreamCheck::fresh(receipt.version.clone(), key.1, key.2),
                         );
+                        self.checked_releases.remove(&key);
                     }
                     self.chrome_plus_versions
                         .insert(event.target, receipt.chrome_plus_version.clone());
@@ -912,6 +964,7 @@ impl BrowserHarborApp {
         let target = self.state.selected_target();
         let spec = target.spec();
         let mut config = self.state.draft().targets[&target].clone();
+        self.maybe_auto_check(target, &config);
         let detected_version = self.detected_local_version(target).cloned();
         let displayed_version = self.display_local_version(target, &config);
         let local_probe_error = match self.local_versions.get(&target) {
@@ -945,6 +998,7 @@ impl BrowserHarborApp {
             VersionRelation::Same => "重新下载并替换",
             VersionRelation::UpstreamNewer => "下载并升级",
             VersionRelation::UpstreamOlder | VersionRelation::Different => "下载上游版本",
+            VersionRelation::Unknown if displayed_version.is_some() => "检查并安装/升级",
             VersionRelation::Unknown => "下载并安装",
         };
         let can_start = self.operation.is_none()
@@ -2966,10 +3020,11 @@ fn operation_status(phase: &OperationPhase) -> String {
         OperationPhase::Verifying => "正在校验下载文件…".to_owned(),
         OperationPhase::Extracting => "正在解压…".to_owned(),
         OperationPhase::Installing => "正在替换程序目录…".to_owned(),
-        OperationPhase::Checked { check } => format!("检查完成：{}", check.version),
+        OperationPhase::Checked { check, .. } => format!("检查完成：{}", check.version),
         OperationPhase::SameVersion {
             current_version,
             upstream,
+            ..
         } => format!(
             "本地版本 {current_version} 与上游 {} 相同，等待确认",
             upstream.version
@@ -2999,10 +3054,14 @@ fn operation_cancelable(phase: &OperationPhase) -> bool {
     )
 }
 
+fn unix_timestamp() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_or(0, |duration| duration.as_secs())
+}
+
 fn checked_age(checked_at: u64) -> String {
-    let now = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map_or(0, |duration| duration.as_secs());
+    let now = unix_timestamp();
     let seconds = now.saturating_sub(checked_at);
     match seconds {
         0..=10 => "刚刚".to_owned(),
@@ -3786,7 +3845,7 @@ mod tests {
         harness.run();
 
         harness.get_by_label("尚未检查上游版本");
-        harness.get_by_label("下载并安装");
+        harness.get_by_label("检查并安装/升级");
 
         harness.state_mut().state.update_draft(|settings| {
             settings
@@ -3826,7 +3885,7 @@ mod tests {
         harness.get_by_label("157.0.1（上次安装）");
         harness.get_by_label("157.0.1");
         harness.get_by_label("无法比较");
-        harness.get_by_label("下载并安装");
+        harness.get_by_label("检查并安装/升级");
     }
 
     #[test]

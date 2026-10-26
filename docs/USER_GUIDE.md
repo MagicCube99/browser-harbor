@@ -12,7 +12,7 @@ Browser Harbor is a portable single EXE. It does not require installation or adm
 
 ## First launch
 
-1. Download `BrowserHarbor-0.2.0-beta.2-x64.exe` from GitHub Releases.
+1. Download `BrowserHarbor-0.2.0-beta.3-x64.exe` from GitHub Releases.
 2. Run the EXE from a writable folder you control.
 3. Select a browser from the browser drop-down.
 4. Review the Browser Root and child paths.
@@ -54,6 +54,8 @@ The signed manifest is refreshed by a scheduled GitHub workflow when official br
 - **载入本地包**: uses an offline official package selected by the user.
 
 Same-version replacement remains visible and requires confirmation. Browser Harbor never hides the action merely because versions match.
+
+The browser page automatically checks the selected target/channel/build once. **检查更新** remains available for a manual refresh. An install started within ten minutes reuses the matching verified release descriptor instead of resolving the same metadata again. For an installed browser whose upstream has not been checked yet, the install button reads **检查并安装/升级**.
 
 ### Paths and data
 

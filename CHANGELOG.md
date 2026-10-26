@@ -2,6 +2,15 @@
 
 [简体中文](CHANGELOG.zh-CN.md) · English
 
+## v0.2.0-beta.3 — 2026-10-26
+
+### Changed
+
+- The browser page automatically checks the selected target/channel/build once per session.
+- Installed browsers with unknown upstream state show **Check and install/upgrade**.
+- Installations started within ten minutes reuse the matching verified release descriptor instead of resolving metadata again.
+- Manual **Check for updates** remains available for refresh.
+
 ## v0.2.0-beta.2 — 2026-10-26
 
 ### Changed

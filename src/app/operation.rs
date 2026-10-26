@@ -31,6 +31,7 @@ const SIGNED_METADATA_URL: &str = "https://raw.githubusercontent.com/MagicCube99
 const SIGNED_METADATA_SIGNATURE_URL: &str =
     "https://raw.githubusercontent.com/MagicCube99/browser-harbor/main/assets/trusted-metadata.sig";
 const TRUSTED_METADATA_CACHE_MAX_AGE_SECONDS: u64 = 24 * 60 * 60;
+pub const UPSTREAM_REUSE_SECONDS: u64 = 10 * 60;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum OperationPhase {
@@ -47,10 +48,12 @@ pub enum OperationPhase {
     Installing,
     Checked {
         check: UpstreamCheck,
+        release: ReleaseDescriptor,
     },
     SameVersion {
         current_version: String,
         upstream: UpstreamCheck,
+        release: ReleaseDescriptor,
     },
     Installed {
         receipt: InstallReceipt,
@@ -78,6 +81,19 @@ pub struct UpstreamCheck {
 pub enum MetadataSource {
     Official,
     SignedManifest,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CachedReleaseMetadata {
+    pub check: UpstreamCheck,
+    pub release: ReleaseDescriptor,
+    pub observed_at: u64,
+}
+
+impl CachedReleaseMetadata {
+    pub fn is_fresh(&self) -> bool {
+        unix_now().saturating_sub(self.observed_at) <= UPSTREAM_REUSE_SECONDS
+    }
 }
 
 impl UpstreamCheck {
@@ -119,6 +135,7 @@ pub struct StartOperationRequest {
     pub cache_dir: PathBuf,
     pub current_version: Option<String>,
     pub replace_same_version: bool,
+    pub cached_release: Option<CachedReleaseMetadata>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -151,21 +168,23 @@ pub fn start_operation(request: StartOperationRequest) -> OperationController {
         let target = request.target;
         let result = runtime.block_on(run_operation(request, sender.clone(), worker_cancellation));
         match result {
-            Ok(OperationResult::Checked(check)) => {
+            Ok(OperationResult::Checked { check, release }) => {
                 let _ = sender.send(OperationEvent::new(
                     target,
-                    OperationPhase::Checked { check },
+                    OperationPhase::Checked { check, release },
                 ));
             }
             Ok(OperationResult::SameVersion {
                 current_version,
                 upstream,
+                release,
             }) => {
                 let _ = sender.send(OperationEvent::new(
                     target,
                     OperationPhase::SameVersion {
                         current_version,
                         upstream,
+                        release,
                     },
                 ));
             }
@@ -235,78 +254,90 @@ async fn run_operation(
     let provider = ProviderResolver::new(http.clone());
     let mut used_signed_metadata = false;
     let mut metadata_checked_at = None;
-    let descriptor = match provider
-        .resolve(
-            target,
-            request.target_config.channel,
-            request.target_config.cpu_build,
-        )
-        .await
-    {
-        Ok(descriptor) if descriptor.artifact.integrity.is_some() => descriptor,
-        Ok(_) => {
-            let metadata = load_trusted_metadata(&http, &request.network, &request.cache_dir)
-                .await
-                .map_err(|error| {
-                    format!("官方元数据缺少可信摘要，签名发布清单也不可用：{error}")
-                })?;
-            if metadata.is_expired() {
-                emit(OperationPhase::Notice(
-                    "签名发布清单已过期，但使用它完成本次安装".to_owned(),
-                ));
-            }
-            let descriptor = metadata
-                .release(
-                    target,
-                    request.target_config.channel,
-                    request.target_config.cpu_build,
-                )
-                .cloned()
-                .ok_or_else(|| {
-                    format!(
-                        "签名发布清单没有 {}/{:?}/{:?} 的完整记录",
-                        target.display_name(),
+    let descriptor = if let Some(cached) = request.cached_release.clone().filter(|cached| {
+        cached.is_fresh()
+            && cached.release.target == target
+            && cached.release.channel == request.target_config.channel
+            && cached.release.cpu_build == request.target_config.cpu_build
+            && cached.release.artifact.integrity.is_some()
+    }) {
+        used_signed_metadata = cached.check.source == MetadataSource::SignedManifest;
+        metadata_checked_at = Some(cached.check.checked_at);
+        cached.release
+    } else {
+        match provider
+            .resolve(
+                target,
+                request.target_config.channel,
+                request.target_config.cpu_build,
+            )
+            .await
+        {
+            Ok(descriptor) if descriptor.artifact.integrity.is_some() => descriptor,
+            Ok(_) => {
+                let metadata = load_trusted_metadata(&http, &request.network, &request.cache_dir)
+                    .await
+                    .map_err(|error| {
+                        format!("官方元数据缺少可信摘要，签名发布清单也不可用：{error}")
+                    })?;
+                if metadata.is_expired() {
+                    emit(OperationPhase::Notice(
+                        "签名发布清单已过期，但使用它完成本次安装".to_owned(),
+                    ));
+                }
+                let descriptor = metadata
+                    .release(
+                        target,
                         request.target_config.channel,
-                        request.target_config.cpu_build
+                        request.target_config.cpu_build,
                     )
-                })?;
-            used_signed_metadata = true;
-            metadata_checked_at = Some(metadata.generated_at);
-            descriptor
-        }
-        Err(error) => {
-            let metadata = load_trusted_metadata(&http, &request.network, &request.cache_dir)
-                .await
-                .map_err(|signed_error| {
-                    format!("官方元数据不可用：{error}；签名发布清单也不可用：{signed_error}")
-                })?;
-            if metadata.is_expired() {
-                emit(OperationPhase::Notice(
-                    "官方元数据不可用；签名发布清单已过期，但使用它完成本次安装".to_owned(),
-                ));
-            } else {
-                emit(OperationPhase::Notice(
-                    "官方元数据不可用，使用签名发布清单".to_owned(),
-                ));
+                    .cloned()
+                    .ok_or_else(|| {
+                        format!(
+                            "签名发布清单没有 {}/{:?}/{:?} 的完整记录",
+                            target.display_name(),
+                            request.target_config.channel,
+                            request.target_config.cpu_build
+                        )
+                    })?;
+                used_signed_metadata = true;
+                metadata_checked_at = Some(metadata.generated_at);
+                descriptor
             }
-            let descriptor = metadata
-                .release(
-                    target,
-                    request.target_config.channel,
-                    request.target_config.cpu_build,
-                )
-                .cloned()
-                .ok_or_else(|| {
-                    format!(
-                        "签名发布清单没有 {}/{:?}/{:?} 的完整记录",
-                        target.display_name(),
+            Err(error) => {
+                let metadata = load_trusted_metadata(&http, &request.network, &request.cache_dir)
+                    .await
+                    .map_err(|signed_error| {
+                        format!("官方元数据不可用：{error}；签名发布清单也不可用：{signed_error}")
+                    })?;
+                if metadata.is_expired() {
+                    emit(OperationPhase::Notice(
+                        "官方元数据不可用；签名发布清单已过期，但使用它完成本次安装".to_owned(),
+                    ));
+                } else {
+                    emit(OperationPhase::Notice(
+                        "官方元数据不可用，使用签名发布清单".to_owned(),
+                    ));
+                }
+                let descriptor = metadata
+                    .release(
+                        target,
                         request.target_config.channel,
-                        request.target_config.cpu_build
+                        request.target_config.cpu_build,
                     )
-                })?;
-            used_signed_metadata = true;
-            metadata_checked_at = Some(metadata.generated_at);
-            descriptor
+                    .cloned()
+                    .ok_or_else(|| {
+                        format!(
+                            "签名发布清单没有 {}/{:?}/{:?} 的完整记录",
+                            target.display_name(),
+                            request.target_config.channel,
+                            request.target_config.cpu_build
+                        )
+                    })?;
+                used_signed_metadata = true;
+                metadata_checked_at = Some(metadata.generated_at);
+                descriptor
+            }
         }
     };
     if cancellation.load(Ordering::Relaxed) {
@@ -324,7 +355,10 @@ async fn run_operation(
         checked_at: metadata_checked_at.unwrap_or_else(unix_now),
     };
     if request.mode == OperationMode::Check {
-        return Ok(OperationResult::Checked(check));
+        return Ok(OperationResult::Checked {
+            check,
+            release: descriptor,
+        });
     }
     if let Some(current_version) = request.current_version.as_deref()
         && requires_replacement_confirmation(
@@ -336,6 +370,7 @@ async fn run_operation(
         return Ok(OperationResult::SameVersion {
             current_version: current_version.to_owned(),
             upstream: check,
+            release: descriptor,
         });
     }
 
@@ -484,10 +519,14 @@ async fn fetch_trusted_metadata(
 }
 
 enum OperationResult {
-    Checked(UpstreamCheck),
+    Checked {
+        check: UpstreamCheck,
+        release: ReleaseDescriptor,
+    },
     SameVersion {
         current_version: String,
         upstream: UpstreamCheck,
+        release: ReleaseDescriptor,
     },
     Installed(InstallReceipt),
     ChromePlusChecked {
@@ -662,7 +701,36 @@ impl OperationPhase {
 
 #[cfg(test)]
 mod tests {
-    use super::{MetadataSource, OperationPhase, requires_replacement_confirmation};
+    use super::{
+        CachedReleaseMetadata, MetadataSource, OperationPhase, UPSTREAM_REUSE_SECONDS,
+        requires_replacement_confirmation, unix_now,
+    };
+    use crate::domain::release::{
+        ArchiveFormat, Artifact, CpuBuild, Integrity, ProgramPlacement, ProviderKind,
+        ReleaseChannel, ReleaseDescriptor,
+    };
+
+    fn descriptor() -> ReleaseDescriptor {
+        ReleaseDescriptor {
+            target: crate::domain::target::TargetId::Brave,
+            version: "1.0.0".to_owned(),
+            channel: ReleaseChannel::Stable,
+            cpu_build: CpuBuild::X64,
+            provider: ProviderKind::GitHubRelease,
+            artifact: Artifact {
+                file_name: "brave.zip".to_owned(),
+                format: ArchiveFormat::Zip,
+                size: Some(1),
+                integrity: Some(Integrity::Sha256("0".repeat(64))),
+                urls: vec!["https://example.com/brave.zip".to_owned()],
+                signature_url: None,
+            },
+            placement: ProgramPlacement::NativePackage,
+            inner_archive: None,
+            source: "fixture".to_owned(),
+            published_at: None,
+        }
+    }
 
     #[test]
     fn only_final_operation_phases_are_terminal() {
@@ -693,6 +761,7 @@ mod tests {
                     source: MetadataSource::Official,
                     checked_at: 0,
                 },
+                release: descriptor(),
             }
             .is_terminal()
         );
@@ -715,5 +784,25 @@ mod tests {
         assert!(!requires_replacement_confirmation(
             false, "155.0.1", "156.0.1"
         ));
+    }
+
+    #[test]
+    fn cached_release_metadata_is_reused_only_for_ten_minutes() {
+        let cached = CachedReleaseMetadata {
+            check: super::UpstreamCheck::fresh(
+                "1.0.0".to_owned(),
+                ReleaseChannel::Stable,
+                CpuBuild::X64,
+            ),
+            release: descriptor(),
+            observed_at: unix_now(),
+        };
+        assert!(cached.is_fresh());
+
+        let stale = CachedReleaseMetadata {
+            observed_at: unix_now().saturating_sub(UPSTREAM_REUSE_SECONDS + 1),
+            ..cached
+        };
+        assert!(!stale.is_fresh());
     }
 }

@@ -115,6 +115,7 @@ fn exact_translation(text: &str) -> Option<&'static str> {
         "检查更新" => "Check for updates",
         "下载并安装" => "Download and install",
         "下载并升级" => "Download and upgrade",
+        "检查并安装/升级" => "Check and install/upgrade",
         "下载上游版本" => "Download upstream",
         "重新下载并替换" => "Download again and replace",
         "载入本地包" => "Load local package",
