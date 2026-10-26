@@ -12,6 +12,7 @@ jobs:
   build:
     name: Build Windows x64 release
     runs-on: windows-2025
+    timeout-minutes: 35
     steps:
       - name: Check out source
         uses: actions/checkout@v5
@@ -24,14 +25,17 @@ jobs:
 
       - name: Run quality gate
         shell: pwsh
+        timeout-minutes: 20
         run: powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\check.ps1
 
       - name: Package release assets
         shell: pwsh
+        timeout-minutes: 5
         run: .\scripts\package-release.ps1 -Tag $env:GITHUB_REF_NAME
 
       - name: Upload packaged assets
         uses: actions/upload-artifact@v4
+        timeout-minutes: 5
         with:
           name: browser-harbor-release
           path: dist/*
@@ -41,6 +45,7 @@ jobs:
     name: Publish GitHub Release
     needs: build
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: write
     steps:

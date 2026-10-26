@@ -6,7 +6,7 @@
 
 <p align="center">
   <b>Portable browser downloader and manager for Windows</b><br>
-  Download, verify, install, update, and configure supported browsers without installing a browser manager.
+  Download, verify, install, update, and configure 14 browser targets.
 </p>
 
 <p align="center">
@@ -22,83 +22,56 @@
   <a href="CHANGELOG.md">Changelog</a>
 </p>
 
-Browser Harbor is a compact, portable Windows utility for 14 Chromium- and Firefox-family browser targets. It downloads from declared upstream sources, verifies artifacts, builds portable layouts, preserves user data, repairs runtime paths, and keeps the browser program, data, profiles, and cache separate.
+Browser Harbor is a small native Windows utility that downloads browser packages, verifies them, builds portable layouts, and preserves user data during updates. It manages program and data directories separately, so profiles remain under your control.
 
-It does not launch browsers, register itself as a browser, manage browser processes, create taskbar pins, or read browser history.
+It does not launch browsers, register a default browser, create taskbar pins, manage browser processes, or read browser history.
 
 ## Download
 
-Download `BrowserHarbor-0.2.0-x64.exe` from the [v0.2.0 release](https://github.com/MagicCube99/browser-harbor/releases/tag/v0.2.0).
+Download `BrowserHarbor-0.2.1-x64.exe` from [GitHub Releases](https://github.com/MagicCube99/browser-harbor/releases/latest).
 
 Run the EXE from any writable folder. No installer, administrator rights, background service, or WebView2 runtime is required.
 
 Requirements: Windows 10 22H2 or Windows 11, x64.
 
-`v0.1.0` remains available as the frozen compatibility build. The `v0.2.x` Verified Edition uses signed release metadata; it does not change the existing browser-artifact mirror download path.
+The EXE is sufficient for normal use. The separately attached manifest, signature, and public key are optional materials for independent verification.
 
-## Release policy
+## Features
 
-- From `v0.2` onward, each release publishes one Verified Edition EXE.
-- There is no separate unsigned or "no verification" distribution line.
-- Browser, Chrome++, Libportable, and local-package installation always require trusted integrity values.
-- If an official-API-only metadata mode is added later, it will be a runtime option within the same version line, not a second product version.
-- `v0.1.0` is an archived historical compatibility release, not an alternative maintained edition.
-
-## Highlights
-
-- One native EXE for 14 browser targets.
-- Ed25519-verified release metadata, required artifact SHA-256/SHA-512, and LibreWolf OpenPGP verification.
-- Controlled extraction, staged installation, atomic replacement, and rollback.
-- Separate Browser Root, program, data, profile, and optional cache paths.
-- Full Chrome++ integration and required Libportable integration where applicable.
-- Read-only configuration checks, runtime INI repair, and browser identity validation.
-- Automatic Edge version-directory resolution and single-instance protection.
-- Immediate autosave, follow-system light/dark appearance, and a fixed compact window.
-- Chinese and English interface switching, persisted across restarts.
+- Download, verify, install, update, and relocate supported portable browsers.
+- Keep browser program, data, profile, and optional cache directories separate.
+- Full Chrome++ integration for supported Chromium targets and required Libportable integration for official Firefox and Zen.
+- Read-only configuration checks and safe path repair.
+- Automatic shortcut creation in each Browser Root.
+- Immediate autosave, system/light/dark appearance, and Chinese/English UI.
 
 ## Supported browsers
 
-| Family | Targets |
+| Family | Browsers |
 |---|---|
 | Chromium | Brave, Catsxp, Chrome, Edge, Helium, Thorium, Turbo, Ungoogled Chromium |
 | Firefox | Firefox, Floorp, Iceweasel, LibreWolf, SkyKakapo, Zen |
 
-Brave, Helium, and Ungoogled Chromium retain an experimental Chrome++ compatibility label. Iceweasel provides ESR and Release channels; Thorium provides SSE3, SSE4, AVX, AVX2, and AVX512 builds.
+Iceweasel provides ESR and Release channels. Thorium provides SSE3, SSE4, AVX, AVX2, and AVX512 builds.
 
-## Safety
+## Current limitations
 
-- Downloaded browser installers are never executed as setup programs.
-- Official APIs and the project-signed manifest establish identity; mirrors and accelerators carry bytes only.
-- The embedded signed manifest covers all 19 channel/CPU combinations and Chrome++/Libportable, so a blocked metadata endpoint does not remove the offline bootstrap path.
-- A scheduled metadata workflow refreshes and signs upstream changes without publishing a new EXE.
-- Program replacements preserve user data and runtime configuration according to target rules.
-- The EXE is not Authenticode-signed yet, so Windows SmartScreen may show a warning.
+- Brave, Helium, and Ungoogled Chromium retain an experimental Chrome++ compatibility label.
+- The EXE is not Authenticode-signed, so Windows SmartScreen may show a warning.
+- Existing arbitrary browser directories are not imported automatically; select the target and use “Check configuration” or “Relocate…” explicitly.
+- Default-browser registration, taskbar integration, browser launching, process supervision, and history access are intentionally out of scope.
 
-See [SECURITY.md](SECURITY.md), [PRIVACY.md](PRIVACY.md), and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+## Verify a download
+
+Compare the EXE with the SHA-256 in its release notes. Browser packages and runtime components are checked before installation; mirrors only transport bytes and cannot change the expected version, hash, signature, or layout.
 
 ## Documentation
 
 - [User guide](docs/USER_GUIDE.md) / [中文用户指南](docs/USER_GUIDE.zh-CN.md)
 - [Changelog](CHANGELOG.md) / [中文更新记录](CHANGELOG.zh-CN.md)
-- [Architecture](docs/ARCHITECTURE.md)
+- [Security](SECURITY.md) / [Privacy](PRIVACY.md)
+- [Third-party notices](THIRD_PARTY_NOTICES.md)
 - [Contributing](CONTRIBUTING.md)
-
-## Build from source
-
-Prerequisites: Rust 1.99.1 and Visual Studio Build Tools with the C++ desktop workload.
-
-```powershell
-cargo fmt --all -- --check
-cargo clippy --workspace --all-targets --all-features -- -D warnings
-cargo test --workspace --all-targets
-cargo build --release
-```
-
-Or run the complete Windows quality gate:
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\check.ps1
-```
 
 ## License
 

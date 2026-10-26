@@ -13,9 +13,7 @@ $documents = @(
     "PRIVACY.zh-CN.md",
     "CONTRIBUTING.md",
     "CONTRIBUTING.zh-CN.md",
-    "GLOSSARY.md",
     "THIRD_PARTY_NOTICES.md",
-    "docs\ARCHITECTURE.md",
     "docs\USER_GUIDE.md",
     "docs\USER_GUIDE.zh-CN.md"
 ) + (Get-ChildItem -LiteralPath (Join-Path $repoRoot "docs\releases") -Filter "*.md" | ForEach-Object FullName)

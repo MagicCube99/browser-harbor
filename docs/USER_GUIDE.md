@@ -5,20 +5,21 @@
 ## Requirements
 
 - Windows 10 22H2 or Windows 11, x64.
-- A writable directory for Browser Harbor and each browser's Browser Root.
-- Network access to browser vendors, GitHub, and the selected runtime sources.
+- A writable folder for the Browser Harbor EXE.
+- A writable Browser Root for each installed browser.
+- Network access to the selected browser vendor or verified download source.
 
 Browser Harbor is a portable single EXE. It does not require installation or administrator rights.
 
 ## First launch
 
-1. Download `BrowserHarbor-0.2.0-x64.exe` from GitHub Releases.
-2. Run the EXE from a writable folder you control.
-3. Select a browser from the browser drop-down.
-4. Review the Browser Root and child paths.
-5. Use “检查配置” to inspect an existing installation before updating it.
+1. Download `BrowserHarbor-0.2.1-x64.exe` from GitHub Releases.
+2. Run it from a writable folder.
+3. Select a browser.
+4. Review the program, data, profile, and cache paths.
+5. Use **Check configuration** if you are connecting an existing portable installation.
 
-Settings are saved immediately after each effective edit. There is no Save or Cancel button.
+Settings save immediately after each valid edit. There is no Save or Cancel button.
 
 The manager configuration is stored at:
 
@@ -26,40 +27,24 @@ The manager configuration is stored at:
 %LOCALAPPDATA%\browser-harbor\manager.json
 ```
 
-Use the `中` / `EN` control in the footer to switch the interface language. The choice is saved immediately.
+Use the `中` / `EN` control in the footer to switch languages. The choice is saved immediately.
 
-## Verified release metadata
+## Download and update
 
-The Verified Edition accepts release identity from either:
+Open the browser page and choose one of these actions:
 
-1. the vendor's official metadata API; or
-2. a release manifest signed with Browser Harbor's embedded Ed25519 public key.
+- **Check for updates**: refresh upstream release information.
+- **Download and install/upgrade**: download, verify, and install the selected target.
+- **Download again and replace**: replace the current program when the upstream version is the same.
+- **Load local package**: use an official package you already downloaded.
 
-The signed manifest may be fetched through domestic mirrors because its signature is verified locally. If live metadata is unavailable, the application uses the last verified cached manifest or the signed manifest embedded in the EXE. Browser packages still use the normal mirror downloader and are accepted only when their SHA-256/SHA-512 matches the verified descriptor.
+Browser Harbor checks the browser version and download integrity before changing the installation. Same-version replacement remains available but requires confirmation.
 
-The version cell and tooltip identify signed-manifest results explicitly. Signatures do not expire; the application refreshes the signed manifest at most once per day and can use the previous verified copy when all metadata endpoints are unavailable.
+The browser page checks the selected target, channel, and build once per session. A manual check is still available. An installation started within ten minutes can reuse the verified upstream result.
 
-The signed manifest is refreshed by a scheduled GitHub workflow when official browser versions or integrity values change. This metadata update does not publish or require a new EXE.
+## Directories
 
-## Browser pages
-
-### Browser
-
-- **Browser**: selects one of the 14 supported targets.
-- **Channel**: available only when a target has multiple channels.
-- **Build**: available for targets such as Thorium.
-- **Current/upstream version**: read from the real browser and release metadata.
-- **检查更新**: starts a background upstream metadata check.
-- **下载安装/升级/重新下载并替换**: starts the verified installation workflow.
-- **载入本地包**: uses an offline official package selected by the user.
-
-Same-version replacement remains visible and requires confirmation. Browser Harbor never hides the action merely because versions match.
-
-The browser page automatically checks the selected target/channel/build once. **检查更新** remains available for a manual refresh. An install started within ten minutes reuses the matching verified release descriptor instead of resolving the same metadata again. For an installed browser whose upstream has not been checked yet, the install button reads **检查并安装/升级**.
-
-### Paths and data
-
-Each target owns these paths:
+Each Browser Target has its own:
 
 - Browser Root
 - Program directory
@@ -67,103 +52,73 @@ Each target owns these paths:
 - Profile directory
 - Optional cache directory
 
-Changing Browser Root regenerates the standard child paths. You can override individual directories when the runtime supports it.
+Changing Browser Root recalculates the standard child directories. Individual directories can be overridden when the browser runtime supports it.
 
-Directory fields accept `.\...` input, but saves resolve it against the EXE directory and store the absolute path in `manager.json`. Browser runtime files separately follow the same-volume-relative / cross-volume-absolute rule.
+Input such as `.\Helium` is resolved from the Browser Harbor EXE folder. `manager.json` stores resolved absolute paths. Browser runtime files use relative paths when program and data are on the same volume.
 
-### Configuration check
+## Check and repair
 
-“检查配置” is read-only. It checks:
+**Check configuration** is read-only. It checks:
 
-- root, program, data, profile, and cache paths;
-- the real x64 browser executable;
+- required directories and the real x64 browser executable;
+- browser identity when detectable;
 - local version availability;
 - required portable runtime files;
 - Edge `version.dll` import status;
-- Chrome++, Libportable, Iceweasel, and SkyKakapo path configuration.
+- Chrome++, Libportable, Iceweasel, and SkyKakapo path settings.
 
-Statuses are **not installed**, **healthy**, **warning**, and **error**.
+If Chrome++ contains stale absolute paths, diagnostics can repair them after confirmation. The browser must be closed and the current INI is backed up first.
 
-If `chrome++.ini` still contains absolute paths, diagnostics offers **Repair Chrome++ Paths**. After confirmation it verifies that the browser is closed, backs up the INI, and updates only `data_dir` and `cache_dir` while preserving all other options, comments, and unknown keys. The backup is `chrome++.ini.path-repair.bak`; collisions use `.2`, `.3`, and so on.
+### Relocate a moved browser
 
-### Relocating a moved browser
+1. Open **Check configuration**.
+2. Choose **Relocate…**.
+3. Select the new Browser Root.
+4. Review the paths and any identity warning.
+5. Choose **Apply**.
 
-1. Open “检查配置”.
-2. Choose “重新定位…”.
-3. Select the browser's new Browser Root.
-4. Review the paths that will be applied.
-5. Click “应用”.
-
-Paths inside the old Browser Root are remapped. User-selected paths outside the old root are preserved. Relocation updates `manager.json`; it does not rewrite browser INI files.
+Paths inside the old Browser Root are remapped. Explicit paths outside it are preserved. Relocation updates only the manager configuration; it does not rewrite browser INI files.
 
 ## Chrome++
 
-Chrome++ is supported for Brave, Chrome, Edge, Helium, Thorium, and Ungoogled Chromium.
+Chrome++ is available for Brave, Chrome, Edge, Helium, Thorium, and Ungoogled Chromium. The Chrome++ page shows the installed version, the integrated source/license link, and the complete public configuration set.
 
-- The Runtime is downloaded from the official Chrome++ release.
-- Edge additionally uses the matching Chrome++ setdll helper to add the `version.dll` import.
-- The configuration page exposes the full public Chrome++ 1.18.2 INI option set.
-- Edits are written atomically to `chrome++.ini`.
-- Restoring defaults creates a backup first.
-- Brave, Helium, and Ungoogled Chromium remain experimental.
+Edge uses the matching `setdll` helper to add the `version.dll` import. Brave, Helium, and Ungoogled Chromium remain experimental.
 
 ## Firefox-family runtimes
 
 - Official Firefox and Zen require Libportable.
-- Libportable injection failure is an installation failure.
 - Iceweasel uses its package portable runtime.
 - SkyKakapo uses its bundled `tmemutil` runtime.
 - Floorp and LibreWolf keep their vendor portable layouts.
 
 ## Global settings
 
-Open global settings from the bottom bar to configure:
+The footer settings page controls built-in and custom download accelerators, proxy and timeout behavior, appearance, and download-cache cleanup.
 
-- Built-in download accelerators.
-- Additional custom HTTPS accelerator prefixes.
-- A user proxy or the system proxy for final direct-GitHub fallback.
-
-Accelerators only change transport. They cannot change version, size, hash, signature, or layout.
-
-“清理下载缓存” removes only rebuildable `.artifact` and `.part` files. It does not remove browser data, profiles, or release metadata.
-
-## Portable paths and moving directories
-
-Browser Harbor prefers relocatable runtime paths when the runtime supports them:
-
-- Chrome++: `%app%\..\...`
-- Libportable and Iceweasel: paths relative to the final program directory
-- SkyKakapo: `PortableDataPath=..\Profiles`
-
-Cross-volume custom paths fall back to absolute paths and are reported as less portable.
-
-These browser runtime settings do not depend on the manager EXE's volume. Even when the EXE is on `C:` and the browser is on `D:`, runtime files still use a relative expression whenever the browser program and data can be related on the same volume; the manager stores that Browser Root as an absolute path.
+Accelerators only change transport. **Clear download cache** removes only reproducible installation files and never removes browser profiles or installed programs.
 
 ## Troubleshooting
 
 ### The browser is not detected
 
-Run “检查配置”. Confirm the program directory contains the expected x64 executable and that the selected target is correct.
+Run **Check configuration**. Verify the target, Browser Root, program directory, and x64 browser executable.
 
 ### A browser was moved
 
-Use “重新定位” and select its new root. Do not edit unrelated browser targets.
+Use **Relocate…** and select its new Browser Root. If the program identity cannot be confirmed, verify the directory again before applying.
 
 ### Chrome++ does not load
 
-Check that `version.dll` and `chrome++.ini` are beside the browser executable. Edge additionally requires the import-table check shown in diagnostics.
-
-### Firefox does not use the portable data directory
-
-Confirm Libportable files exist and `portable.ini` contains the expected relative `PortableDataPath`.
+Confirm that `version.dll` and `chrome++.ini` are beside the browser executable. Edge also requires the import-table check shown in diagnostics.
 
 ### Windows warns about the EXE
 
-The executable is not code-signed. Obtain it only from GitHub Releases and compare its SHA-256 with the value in the release notes.
+The executable is not Authenticode-signed. Obtain it only from GitHub Releases and compare its SHA-256 with the release notes.
 
 ## Uninstall
 
-Delete the Browser Harbor EXE and `%LOCALAPPDATA%\browser-harbor\manager.json`. Browser installations and their user data remain in the Browser Roots you selected.
+Delete the Browser Harbor EXE and `%LOCALAPPDATA%\browser-harbor\manager.json`. Browser programs and user data remain in their Browser Roots. You can also remove `%TEMP%\browser-harbor\cache` and shortcuts created in Browser Roots.
 
 ## Related documents
 

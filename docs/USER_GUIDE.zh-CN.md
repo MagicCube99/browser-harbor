@@ -5,18 +5,19 @@
 ## 运行要求
 
 - Windows 10 22H2 或 Windows 11 x64。
-- Browser Harbor 目录及每个 Browser Root 需要可写。
-- 能访问浏览器厂商、GitHub 和所选运行时来源。
+- Browser Harbor EXE 所在目录可写。
+- 每个已安装浏览器都有可写的 Browser Root。
+- 能访问所选浏览器厂商或经验证的下载来源。
 
 Browser Harbor 是单 EXE 便携程序，不需要安装，也不需要管理员权限。
 
 ## 首次启动
 
-1. 从 GitHub Releases 下载 `BrowserHarbor-0.2.0-x64.exe`。
-2. 把 EXE 放到可写目录后直接运行。
-3. 从浏览器下拉框选择目标。
-4. 检查 Browser Root 及其下级路径。
-5. 更新已有安装前先点击“检查配置”。
+1. 从 GitHub Releases 下载 `BrowserHarbor-0.2.1-x64.exe`。
+2. 放到可写目录后直接运行。
+3. 选择浏览器。
+4. 检查程序、数据、Profile 和缓存目录。
+5. 若要连接已有的便携安装，请先运行“检查配置”。
 
 每次有效编辑都会立即保存，没有“保存”或“取消”按钮。
 
@@ -26,40 +27,24 @@ Browser Harbor 是单 EXE 便携程序，不需要安装，也不需要管理员
 %LOCALAPPDATA%\browser-harbor\manager.json
 ```
 
-使用底栏的 `中` / `EN` 控件切换界面语言，选择会立即保存。
+使用底栏的 `中` / `EN` 控件切换语言，选择会立即保存。
 
-## 签名发布元数据
+## 下载与更新
 
-验证版只接受以下两种发布身份：
+打开浏览器页后可以使用：
 
-1. 厂商官方元数据 API；
-2. 使用 Browser Harbor 内嵌 Ed25519 公钥验证通过的发布清单。
+- **检查更新**：刷新上游发布信息。
+- **下载并安装/升级**：下载、校验并安装当前目标。
+- **重新下载并替换**：上游版本相同时重新替换当前程序。
+- **载入本地包**：使用已下载的官方安装包。
 
-签名清单可以通过国内镜像传输，因为应用会在本地验证其签名。实时元数据不可用时，程序会依次使用上次验证通过的缓存清单或 EXE 内置签名清单。浏览器大文件仍按原有镜像方式下载，只有 SHA-256/SHA-512 与已验证清单一致后才会进入解压和安装。
+Browser Harbor 会在修改安装前检查浏览器版本和下载完整性。同版本替换仍然可用，但需要确认。
 
-版本单元格和悬停说明会明确显示结果来自“签名发布清单”。签名没有有效期；客户端最多每天刷新一次，全部元数据站点不可用时可继续使用上一份已验证副本。
+进入浏览器页后，程序会对当前目标、渠道和构建自动检查一次；也可以手动刷新。十分钟内开始安装时会复用已验证的上游结果。
 
-官方浏览器版本或摘要变化时，定时 GitHub 工作流会自动刷新并签署清单；该更新不需要发布或下载新的 EXE。
+## 目录
 
-## 浏览器页
-
-### 浏览器
-
-- **浏览器**：选择 14 个受支持目标之一。
-- **渠道**：仅目标存在多产品线时显示。
-- **构建**：例如 Thorium 的 SSE3/SSE4/AVX/AVX2/AVX512。
-- **当前/上游版本**：分别来自真实浏览器文件与发布元数据。
-- **检查更新**：后台检查上游元数据。
-- **下载安装/升级/重新下载并替换**：执行经过校验的安装事务。
-- **载入本地包**：使用用户选择的离线官方安装包。
-
-即使版本相同，替换入口也不会隐藏；执行前会要求确认。
-
-进入浏览器页后，程序会自动检查当前目标/渠道/构建一次。**检查更新** 仍可用于手工刷新。十分钟内开始安装时会复用参数匹配且已验证的发布描述，不再重复解析同一元数据。对于已安装但尚未检查上游的浏览器，安装按钮显示 **检查并安装/升级**。
-
-### 路径与数据
-
-每个目标独立保存：
+每个 Browser Target 独立保存：
 
 - Browser Root
 - 程序目录
@@ -67,103 +52,73 @@ Browser Harbor 是单 EXE 便携程序，不需要安装，也不需要管理员
 - Profile 目录
 - 可选缓存目录
 
-修改 Browser Root 会按目标真实布局重算子目录。运行时支持时，可单独覆盖 Data、Profile 或缓存路径。
+修改 Browser Root 会重新计算标准子目录。运行时支持时，可以单独覆盖某个目录。
 
-目录输入框接受 `.\...` 相对路径，但保存时会按 EXE 目录解析，并把绝对路径写入 `manager.json`。浏览器自己的运行时配置仍遵循“同盘相对、跨盘绝对”。
+`.\Helium` 这样的输入按 Browser Harbor EXE 所在目录解析；`manager.json` 保存解析后的绝对路径。浏览器运行时的程序与数据位于同一磁盘时，会优先使用相对路径。
 
-### 检查配置
+## 检查与修复
 
 “检查配置”完全只读，检查：
 
-- 根目录、程序、Data、Profile 和缓存路径；
-- 真实 x64 浏览器 EXE；
+- 必需目录和真实 x64 浏览器可执行文件；
+- 可识别时的浏览器身份；
 - 本地版本是否可读取；
 - 必需便携运行时文件；
 - Edge 的 `version.dll` 导入状态；
 - Chrome++、Libportable、Iceweasel 和 SkyKakapo 的路径配置。
 
-状态分为 **未安装**、**正常**、**有警告** 和 **有错误**。
+Chrome++ 仍保存旧绝对路径时，可以在确认后修复。修复前会要求关闭浏览器并备份当前 INI。
 
-如果 Chrome++ 的 `chrome++.ini` 仍保存绝对路径，诊断中会出现“修复 Chrome++ 路径”按钮。确认后程序会先检查浏览器未运行、备份原 INI，再只更新 `data_dir` 和 `cache_dir`；其他 Chrome++ 参数、注释与未知键保持不变。备份名为 `chrome++.ini.path-repair.bak`，重名时依次使用 `.2`、`.3`。
-
-### 搬移目录后重新定位
+### 浏览器目录移动后重新定位
 
 1. 打开“检查配置”。
 2. 点击“重新定位…”。
-3. 选择浏览器移动后的 Browser Root。
-4. 检查即将写入的路径。
+3. 选择新的 Browser Root。
+4. 检查即将应用的路径和身份提示。
 5. 点击“应用”。
 
-旧 Browser Root 内的路径会按相对位置迁移，旧根目录外的自定义路径保持不变。重新定位只更新 `manager.json`，不会自动改写浏览器 INI。
+旧 Browser Root 内的路径会按相对位置迁移，旧根目录外的自定义路径保持不变。重新定位只更新管理器配置，不会自动改写浏览器 INI。
 
 ## Chrome++
 
-支持 Brave、Chrome、Edge、Helium、Thorium、Ungoogled Chromium。
+Chrome++ 支持 Brave、Chrome、Edge、Helium、Thorium 和 Ungoogled Chromium。Chrome++ 页面显示已安装版本、源码/GPL 许可证入口和全部公开配置。
 
-- 运行时从 Chrome++ 官方 Release 下载。
-- Edge 额外使用同版本 setdll 添加 `version.dll` 导入。
-- 配置页开放 Chrome++ 1.18.2 的全部公开 INI 选项。
-- 编辑会原子写入 `chrome++.ini`。
-- 恢复默认配置前会自动备份。
-- Brave、Helium、Ungoogled Chromium 仍为实验性兼容。
+Edge 会使用同版本 `setdll` 添加 `version.dll` 导入。Brave、Helium 和 Ungoogled Chromium 仍为实验性兼容。
 
 ## Firefox 系运行时
 
 - 官方 Firefox 和 Zen 强制使用 Libportable。
-- Libportable 注入失败即安装失败。
 - Iceweasel 使用包内便携运行时。
 - SkyKakapo 使用自带 `tmemutil` 运行时。
 - Floorp 和 LibreWolf 保持厂商便携布局。
 
 ## 全局设置
 
-点击底栏的设置图标后，可以配置：
+底栏设置页控制内置和自定义下载加速站、代理与超时、外观以及下载缓存清理。
 
-- 内置下载加速站。
-- 用户添加的 HTTPS 自定义加速前缀。
-- 最终原始 GitHub 回退时使用用户代理或系统代理。
-
-加速站只改变传输路径，不能改变版本、大小、哈希、签名或布局。
-
-“清理下载缓存”只删除可重建的 `.artifact` 和 `.part`，不会删除浏览器数据、Profile 或发布元数据。
-
-## 便携路径与目录移动
-
-运行时支持时，Browser Harbor 使用可搬迁路径：
-
-- Chrome++：`%app%\..\...`
-- Libportable 与 Iceweasel：相对最终程序目录
-- SkyKakapo：`PortableDataPath=..\Profiles`
-
-跨磁盘自定义路径会回退绝对路径，并在诊断中提示可搬迁性风险。
-
-这些浏览器运行时配置与 EXE 自身所在磁盘无关。即使管理器 EXE 在 `C:`、浏览器在 `D:`，只要浏览器程序和数据位于同一磁盘且能建立相对关系，运行时配置仍会使用相对表达式；管理器中对应的 Browser Root 则按实际情况保存为绝对路径。
+加速站只改变传输路径。“清理下载缓存”只删除可重新下载的安装文件，不会删除浏览器 Profile 或已安装程序。
 
 ## 常见问题
 
 ### 找不到浏览器
 
-运行“检查配置”，确认程序目录中存在正确的 x64 可执行文件，并确认所选目标没有选错。
+运行“检查配置”，确认目标、Browser Root、程序目录和 x64 浏览器 EXE。
 
 ### 浏览器目录被移动
 
-使用“重新定位”选择新根目录。不要修改其他无关目标。
+使用“重新定位…”选择新的 Browser Root。如果无法确认程序身份，请再次核对目录后再应用。
 
 ### Chrome++ 没有生效
 
-确认 EXE 同目录存在 `version.dll` 和 `chrome++.ini`；Edge 还需通过诊断中的导入表检查。
-
-### Firefox 没有使用便携数据目录
-
-确认 Libportable 文件存在，且 `portable.ini` 中的相对 `PortableDataPath` 正确。
+确认浏览器 EXE 同目录存在 `version.dll` 和 `chrome++.ini`。Edge 还需要通过诊断中的导入表检查。
 
 ### Windows 对 EXE 发出警告
 
-EXE 尚未做代码签名。请只从 GitHub Releases 获取，并与发布说明中的 SHA-256 核对。
+EXE 尚未做 Authenticode 代码签名。请只从 GitHub Releases 获取，并与发布说明中的 SHA-256 核对。
 
 ## 卸载
 
-删除 Browser Harbor EXE 与 `%LOCALAPPDATA%\browser-harbor\manager.json` 即可。浏览器及其用户数据仍保留在用户选择的 Browser Root 中。
+删除 Browser Harbor EXE 和 `%LOCALAPPDATA%\browser-harbor\manager.json`。浏览器及其用户数据仍保留在各自的 Browser Root 中。也可以删除 `%TEMP%\browser-harbor\cache` 和 Browser Root 中的快捷方式。
 
 ## 相关文档
 

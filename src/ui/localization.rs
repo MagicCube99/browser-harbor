@@ -171,6 +171,7 @@ fn exact_translation(text: &str) -> Option<&'static str> {
         "配置文件" => "Configuration file",
         "模式" => "Mode",
         "状态" => "Status",
+        "Chrome++ 源码与 GPL-3.0 许可证" => "Chrome++ source and GPL-3.0 license",
         "版本" => "Version",
         "已安装" => "Installed",
         "尚未安装" => "Not installed",
@@ -241,6 +242,9 @@ fn exact_translation(text: &str) -> Option<&'static str> {
         "程序目录未配置" => "Program directory is not configured",
         "检查结果：正常" => "Result: Healthy",
         "请确认重新定位后的路径" => "Confirm the relocated paths",
+        "无法确认该程序属于当前浏览器；应用前请确认目录选择正确。" => {
+            "Cannot confirm that this program belongs to the current browser; verify the selected directory before applying."
+        }
         "请先关闭浏览器；其他便携参数和注释会保留。" => {
             "Close the browser first; other portable settings and comments are preserved."
         }

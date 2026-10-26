@@ -10,7 +10,7 @@ use browser_harbor::{
         storage,
         windows::{
             single_instance::{SingleInstance, focus_window, show_error},
-            window_position::centered_window_position,
+            window_position::{centered_window_position, visible_window_position},
         },
     },
     ui::{self, BrowserHarborApp},
@@ -51,6 +51,7 @@ fn main() -> eframe::Result {
     let initial_theme = settings.theme;
     let initial_position = settings
         .window_position
+        .map(|position| visible_window_position(position, [560, 420]))
         .unwrap_or_else(|| centered_window_position([560.0, 420.0]));
     let tool_root = executable
         .parent()

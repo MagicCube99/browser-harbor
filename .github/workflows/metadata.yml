@@ -16,6 +16,7 @@ jobs:
   refresh:
     name: Refresh signed browser metadata
     runs-on: windows-2025
+    timeout-minutes: 20
     steps:
       - name: Check out source
         uses: actions/checkout@v5

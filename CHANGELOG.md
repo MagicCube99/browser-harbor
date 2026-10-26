@@ -2,90 +2,35 @@
 
 [简体中文](CHANGELOG.zh-CN.md) · English
 
+## v0.2.1 — 2026-10-26
+
+### Fixed
+
+- Browser relocation now rejects a known different browser even when both use the same `chrome.exe` filename. Unknown custom programs require an explicit identity warning during confirmation.
+- A saved window position is clamped to the current virtual desktop, preventing the application from opening entirely off-screen after a display change.
+
+### Added
+
+- The Chrome++ page now links to its upstream source and GPL-3.0 license.
+
+### Documentation
+
+- Public documentation now focuses on installation, operation, verification, and troubleshooting.
+
 ## v0.2.0 — 2026-10-26
 
-First stable Verified Edition.
-
-### Added
-
-- Ed25519-signed release metadata with a public key embedded in the executable.
-- Automatic signed-metadata refresh through GitHub Actions without requiring a new EXE or Release.
-- One-session upstream checks and ten-minute verified release-descriptor reuse.
-
-### Security
-
-- Browser, Chrome++, Libportable, and local-package installation always require trusted integrity values.
-- Accelerators may transport metadata and artifacts but cannot establish release identity.
-
-### Compatibility
-
-- `v0.1.0` remains frozen as the historical compatibility release.
-- `manager.json` remains schema v10; trusted metadata is cached separately.
-
-## v0.2.0-beta.3 — 2026-10-26
-
-### Changed
-
-- The browser page automatically checks the selected target/channel/build once per session.
-- Installed browsers with unknown upstream state show **Check and install/upgrade**.
-- Installations started within ten minutes reuse the matching verified release descriptor instead of resolving metadata again.
-- Manual **Check for updates** remains available for refresh.
-
-## v0.2.0-beta.2 — 2026-10-26
-
-### Changed
-
-- Signed release metadata no longer has an operational expiry.
-- The client refreshes a valid signed manifest at most once per day instead of reusing it until an expiry date.
-- The metadata workflow updates and signs the manifest only when upstream release information changes.
-
-## v0.2.0-beta.1 — 2026-10-26
-
-Verified Edition beta.
-
-### Added
-
-- Ed25519-signed release metadata with a public key embedded in the executable.
-- A signed bootstrap manifest covering all 19 destination/channel/CPU combinations plus Chrome++ and Libportable.
-- Signed-manifest refresh through verified mirrors, trusted cache fallback, and explicit metadata-source display.
-- A maintenance tool for key generation, manifest signing, and verification.
-
-### Security
-
-- Official GitHub metadata no longer uses third-party accelerators.
-- Browser, Chrome++, and Libportable installation now requires a non-empty integrity value.
-- Local packages are subject to the same trusted digest verification.
-- Removed Bush2021 metadata fallback from the normal Chrome/Edge resolution path.
-
-### Compatibility
-
-- `v0.1.0` remains frozen as the unsigned-metadata compatibility release.
-- `manager.json` remains schema v10; trusted metadata is cached separately.
+- First stable release with verified downloads.
+- Signed release metadata, automatic upstream checks, and verified-result reuse.
+- Required integrity verification for browsers, Chrome++, Libportable, and local packages.
+- Chinese and English user interface.
 
 ## v0.1.0 — 2026-10-26
 
-First stable release of Browser Harbor.
+- Initial public release with 14 browser targets, portable layouts, Chrome++ and Libportable integration, configuration checks, and immediate autosave.
 
-### Added
+## Current limitations
 
-- One portable Windows x64 EXE for 14 Chromium- and Firefox-family browser targets.
-- Verified downloads, controlled archive extraction, staged installation, atomic replacement, and rollback.
-- Separate Browser Root, program, data, profile, and optional cache paths.
-- Full Chrome++ integration and required Libportable integration for supported targets.
-- Read-only configuration checks, safe runtime path repair, relocation preview, and browser identity validation.
-- Immediate autosave, system/light/dark appearance, fixed compact UI, saved window position, and single-instance protection.
-- Chinese and English interface switching with persisted language preference.
-- Automatic Edge version-directory resolution.
-- Chinese and English user, security, privacy, contribution, and release documentation.
-
-### Supported targets
-
-- Chromium: Brave, Catsxp, Chrome, Edge, Helium, Thorium, Turbo, Ungoogled Chromium.
-- Firefox: Firefox, Floorp, Iceweasel, LibreWolf, SkyKakapo, Zen.
-
-### Known limitations
-
-- Brave, Helium, and Ungoogled Chromium retain experimental Chrome++ compatibility labels.
+- Brave, Helium, and Ungoogled Chromium retain an experimental Chrome++ compatibility label.
 - The executable is not Authenticode-signed.
-- Browser Root relocation requires the explicit runtime INI repair action and is not automatic.
-- Existing-directory browser detection and import are not implemented.
+- Existing arbitrary browser directories are not imported automatically.
+- Default-browser registration, taskbar integration, browser launching, process supervision, and history access are intentionally out of scope.

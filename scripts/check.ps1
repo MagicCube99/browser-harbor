@@ -3,21 +3,27 @@ $ErrorActionPreference = "Stop"
 
 Push-Location (Join-Path $PSScriptRoot "..")
 try {
+    Write-Host "==> Verify release documentation"
     & powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\check-docs.ps1
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+    Write-Host "==> Check Rust formatting"
     & cargo fmt --all -- --check
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+    Write-Host "==> Run Clippy"
     & cargo clippy --workspace --all-targets --all-features -- -D warnings
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+    Write-Host "==> Run tests"
     & cargo test --workspace --all-targets
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+    Write-Host "==> Verify trusted release metadata"
     & cargo run --quiet --bin metadata -- verify --manifest .\assets\trusted-metadata.json --signature .\assets\trusted-metadata.sig --public-key .\assets\metadata-public-key.hex
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+    Write-Host "==> Build release and verify executable policy"
     & cargo build --release
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 

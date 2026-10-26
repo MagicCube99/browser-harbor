@@ -29,3 +29,16 @@ Thumbs.db
 !.env.example
 metadata-private-key.hex
 *.private-key
+
+# Local AI and maintainer-only material
+/.internal/
+/AGENTS.md
+/AI_LOG.md
+/.brooks-lint-history.json
+/DESIGN.md
+/GLOSSARY.md
+/docs/ARCHITECTURE.md
+/docs/RELEASING.md
+/docs/adr/
+/docs/research/
+/docs/superpowers/

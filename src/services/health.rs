@@ -88,6 +88,14 @@ pub enum RelocationError {
     ExecutableNotFound(PathBuf),
     #[error("selected browser executable is not x64: {0}")]
     InvalidExecutable(PathBuf),
+    #[error(
+        "selected browser executable belongs to {actual:?}, expected {expected:?}: {product_name}"
+    )]
+    IdentityMismatch {
+        expected: TargetId,
+        actual: TargetId,
+        product_name: String,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -350,7 +358,25 @@ pub fn relocate(
     if !is_pe_x64(&executable).unwrap_or(false) {
         return Err(RelocationError::InvalidExecutable(executable));
     }
+    validate_relocation_identity(target, &inspect_program_identity(target, program))?;
     Ok(relocated)
+}
+
+fn validate_relocation_identity(
+    target: TargetId,
+    identity: &ProgramIdentity,
+) -> Result<(), RelocationError> {
+    match identity {
+        ProgramIdentity::Mismatch {
+            actual,
+            product_name,
+        } => Err(RelocationError::IdentityMismatch {
+            expected: target,
+            actual: *actual,
+            product_name: product_name.clone(),
+        }),
+        _ => Ok(()),
+    }
 }
 
 pub fn repair_chromeplus_paths(
@@ -872,8 +898,8 @@ mod tests {
     use tempfile::tempdir;
 
     use super::{
-        HealthState, identify_product, inspect, relocate, repair_chromeplus_paths,
-        repair_portable_paths,
+        HealthState, ProgramIdentity, identify_product, inspect, relocate, repair_chromeplus_paths,
+        repair_portable_paths, validate_relocation_identity,
     };
     use crate::domain::{settings::TargetConfig, target::TargetId};
 
@@ -1114,6 +1140,16 @@ mod tests {
         config.derive_paths_from_root(TargetId::Chrome);
 
         assert!(relocate(TargetId::Chrome, &config, &new_root).is_err());
+    }
+
+    #[test]
+    fn relocation_rejects_a_known_browser_identity_mismatch() {
+        let identity = ProgramIdentity::Mismatch {
+            actual: TargetId::Helium,
+            product_name: "Helium".to_owned(),
+        };
+
+        assert!(validate_relocation_identity(TargetId::Chrome, &identity).is_err());
     }
 
     #[test]

@@ -48,6 +48,7 @@ pub const APP_TITLE: &str = "Browser Harbor";
 pub const BODY_FONT_SIZE: f32 = 12.5;
 const FIELD_LABEL_WIDTH: f32 = 116.0;
 const RELEASES_URL: &str = "https://github.com/MagicCube99/browser-harbor/releases";
+const CHROME_PLUS_SOURCE_URL: &str = "https://github.com/Bush2021/chrome_plus";
 
 #[derive(Clone, Copy)]
 struct ThemePalette {
@@ -340,6 +341,7 @@ struct HealthDialog {
     target: TargetId,
     report: HealthReport,
     pending_relocation: Option<crate::domain::settings::TargetConfig>,
+    relocation_warning: Option<String>,
     confirming_repair: bool,
 }
 
@@ -438,6 +440,7 @@ impl BrowserHarborApp {
             target,
             report: inspect(target, &resolved),
             pending_relocation: None,
+            relocation_warning: None,
             confirming_repair: false,
         });
     }
@@ -502,8 +505,17 @@ impl BrowserHarborApp {
         };
         match relocate(target, &resolved, &new_root) {
             Ok(config) => {
+                let identity = config
+                    .browser_directory
+                    .as_deref()
+                    .map_or(ProgramIdentity::NoExecutable, |program| {
+                        inspect_program_identity(target, program)
+                    });
+                let warning = (!matches!(identity, ProgramIdentity::Match { .. }))
+                    .then(|| "无法确认该程序属于当前浏览器；应用前请确认目录选择正确。".to_owned());
                 if let Some(dialog) = &mut self.health_dialog {
                     dialog.pending_relocation = Some(config);
+                    dialog.relocation_warning = warning;
                 }
                 self.status_message = Some("请确认重新定位后的路径".to_owned());
             }
@@ -1600,6 +1612,14 @@ impl BrowserHarborApp {
                     });
                 });
                 ui.horizontal(|ui| {
+                    metadata_label(ui, "来源", 72.0);
+                    ui.hyperlink_to(
+                        localized("Chrome++ 源码与 GPL-3.0 许可证"),
+                        CHROME_PLUS_SOURCE_URL,
+                    )
+                    .on_hover_text(CHROME_PLUS_SOURCE_URL);
+                });
+                ui.horizontal(|ui| {
                     metadata_label(ui, "版本", 72.0);
                     ui.localized_label(installed_version.as_deref().unwrap_or("尚未检测"));
                     ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
@@ -2129,6 +2149,11 @@ impl BrowserHarborApp {
                             );
                         }
                     }
+                    if let Some(warning) = &dialog.relocation_warning {
+                        ui.localized_label(
+                            RichText::new(warning).size(11.0).color(palette.warning),
+                        );
+                    }
                     ui.horizontal(|ui| {
                         if ui.localized_button("取消重新定位").clicked() {
                             cancel_relocation = true;
@@ -2158,6 +2183,7 @@ impl BrowserHarborApp {
         }
         if cancel_relocation && let Some(dialog) = &mut self.health_dialog {
             dialog.pending_relocation = None;
+            dialog.relocation_warning = None;
         }
         if request_repair && let Some(dialog) = &mut self.health_dialog {
             dialog.confirming_repair = true;
@@ -3979,6 +4005,7 @@ mod tests {
         harness.get_by_label("按键映射");
         harness.get_by_label("Chrome++ 集成");
         harness.get_by_label("配置文件");
+        harness.get_by_label("Chrome++ 源码与 GPL-3.0 许可证");
         let mode_row = harness.get_by_label("模式").rect();
         let status_row = harness.get_by_label("状态").rect();
         let version_row = harness.get_by_label("版本").rect();
@@ -4486,6 +4513,14 @@ mod tests {
         assert_eq!(
             harness.state().state().saved().targets[&TargetId::Chrome].browser_root,
             Some(old_root)
+        );
+        assert!(
+            harness
+                .state()
+                .health_dialog
+                .as_ref()
+                .and_then(|dialog| dialog.relocation_warning.as_deref())
+                .is_some()
         );
 
         harness.state_mut().apply_staged_relocation();
