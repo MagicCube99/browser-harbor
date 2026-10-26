@@ -19,6 +19,7 @@ use crate::domain::{
 
 pub const METADATA_FILE: &str = "trusted-metadata.json";
 pub const SIGNATURE_FILE: &str = "trusted-metadata.sig";
+pub const NO_EXPIRY: u64 = 253_402_300_799;
 const SUPPORTED_SCHEMA_VERSION: u32 = 1;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]

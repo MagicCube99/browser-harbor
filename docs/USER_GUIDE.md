@@ -12,7 +12,7 @@ Browser Harbor is a portable single EXE. It does not require installation or adm
 
 ## First launch
 
-1. Download `BrowserHarbor-0.2.0-beta.1-x64.exe` from GitHub Releases.
+1. Download `BrowserHarbor-0.2.0-beta.2-x64.exe` from GitHub Releases.
 2. Run the EXE from a writable folder you control.
 3. Select a browser from the browser drop-down.
 4. Review the Browser Root and child paths.
@@ -37,7 +37,7 @@ The Verified Edition accepts release identity from either:
 
 The signed manifest may be fetched through domestic mirrors because its signature is verified locally. If live metadata is unavailable, the application uses the last verified cached manifest or the signed manifest embedded in the EXE. Browser packages still use the normal mirror downloader and are accepted only when their SHA-256/SHA-512 matches the verified descriptor.
 
-The version cell and tooltip identify signed-manifest results explicitly. An expired signed manifest is used only with a visible warning.
+The version cell and tooltip identify signed-manifest results explicitly. Signatures do not expire; the application refreshes the signed manifest at most once per day and can use the previous verified copy when all metadata endpoints are unavailable.
 
 The signed manifest is refreshed by a scheduled GitHub workflow when official browser versions or integrity values change. This metadata update does not publish or require a new EXE.
 

@@ -28,7 +28,7 @@ It does not launch browsers, register itself as a browser, manage browser proces
 
 ## Download
 
-Download `BrowserHarbor-0.2.0-beta.1-x64.exe` from the [v0.2.0-beta.1 release](https://github.com/MagicCube99/browser-harbor/releases/tag/v0.2.0-beta.1).
+Download `BrowserHarbor-0.2.0-beta.2-x64.exe` from the [v0.2.0-beta.2 release](https://github.com/MagicCube99/browser-harbor/releases/tag/v0.2.0-beta.2).
 
 Run the EXE from any writable folder. No installer, administrator rights, background service, or WebView2 runtime is required.
 

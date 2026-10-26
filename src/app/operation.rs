@@ -23,13 +23,14 @@ use crate::{
         download::Downloader,
         http::{HttpClient, signed_manifest_candidates},
         install::{InstallReceipt, InstallRequest, InstallService, RuntimeArchive},
-        trusted_metadata::{TrustedMetadata, verify_with_public_key},
+        trusted_metadata::{METADATA_FILE, TrustedMetadata, verify_with_public_key},
     },
 };
 
 const SIGNED_METADATA_URL: &str = "https://raw.githubusercontent.com/MagicCube99/browser-harbor/main/assets/trusted-metadata.json";
 const SIGNED_METADATA_SIGNATURE_URL: &str =
     "https://raw.githubusercontent.com/MagicCube99/browser-harbor/main/assets/trusted-metadata.sig";
+const TRUSTED_METADATA_CACHE_MAX_AGE_SECONDS: u64 = 24 * 60 * 60;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum OperationPhase {
@@ -418,7 +419,10 @@ async fn load_trusted_metadata(
     cache_dir: &std::path::Path,
 ) -> Result<TrustedMetadata, Box<dyn std::error::Error + Send + Sync>> {
     let cached = TrustedMetadata::load_cached(cache_dir).ok().flatten();
-    if let Some(metadata) = cached.as_ref().filter(|metadata| !metadata.is_expired()) {
+    if let Some(metadata) = cached
+        .as_ref()
+        .filter(|_| cached_metadata_is_recent(cache_dir))
+    {
         return Ok(metadata.clone());
     }
     match fetch_trusted_metadata(http, network, cache_dir).await {
@@ -436,6 +440,17 @@ async fn load_trusted_metadata(
             }
         }
     }
+}
+
+fn cached_metadata_is_recent(cache_dir: &std::path::Path) -> bool {
+    let Ok(modified) =
+        std::fs::metadata(cache_dir.join(METADATA_FILE)).and_then(|metadata| metadata.modified())
+    else {
+        return false;
+    };
+    std::time::SystemTime::now()
+        .duration_since(modified)
+        .is_ok_and(|age| age.as_secs() < TRUSTED_METADATA_CACHE_MAX_AGE_SECONDS)
 }
 
 async fn fetch_trusted_metadata(

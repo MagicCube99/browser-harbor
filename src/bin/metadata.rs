@@ -19,7 +19,7 @@ use browser_harbor::{
     services::{
         download::Downloader,
         http::HttpClient,
-        trusted_metadata::{TrustedMetadata, verify_with_public_key},
+        trusted_metadata::{NO_EXPIRY, TrustedMetadata, verify_with_public_key},
     },
 };
 use ed25519_dalek::{Signer, SigningKey};
@@ -237,14 +237,14 @@ async fn refresh(
         || baseline.chrome_plus.as_ref() != Some(&chrome_plus)
         || baseline.libportable.as_ref() != Some(&libportable);
     let now = unix_now();
-    let refresh_time = content_changed || baseline.expires_at.saturating_sub(now) < 30 * 86_400;
-    let generated_at = if refresh_time {
+    let refresh_time = content_changed || baseline.expires_at != NO_EXPIRY;
+    let generated_at = if content_changed {
         now
     } else {
         baseline.generated_at
     };
     let expires_at = if refresh_time {
-        now + 90 * 86_400
+        NO_EXPIRY
     } else {
         baseline.expires_at
     };

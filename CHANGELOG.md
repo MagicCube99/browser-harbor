@@ -2,6 +2,14 @@
 
 [简体中文](CHANGELOG.zh-CN.md) · English
 
+## v0.2.0-beta.2 — 2026-10-26
+
+### Changed
+
+- Signed release metadata no longer has an operational expiry.
+- The client refreshes a valid signed manifest at most once per day instead of reusing it until an expiry date.
+- The metadata workflow updates and signs the manifest only when upstream release information changes.
+
 ## v0.2.0-beta.1 — 2026-10-26
 
 Verified Edition beta.

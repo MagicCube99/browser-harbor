@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "generatedAt": 1793005890,
-  "expiresAt": 1800781890,
+  "generatedAt": 1793006494,
+  "expiresAt": 253402300799,
   "releases": [
     {
       "target": "brave",
@@ -97,7 +97,7 @@
           "value": "c958a06548b3189587cac9d2c57e0f1a1169da02d93e141b73d0f1773a1d07d4"
         },
         "urls": [
-          "https://msedge.sb.tlu.dl.delivery.mp.microsoft.com/filestreamingservice/files/94de2e23-bb48-4455-be4e-c03858dc93d8?P1=1793610685&P2=404&P3=2&P4=OvxGQGC3V3eoytl6frQCsVjwuUzcrt0S1H55oEGiIKUG42TWLT58mMqV%2btIejrp1J5551h8dGJFlGwnJenq86Q%3d%3d"
+          "https://msedge.sb.tlu.dl.delivery.mp.microsoft.com/filestreamingservice/files/94de2e23-bb48-4455-be4e-c03858dc93d8?P1=1793611283&P2=404&P3=2&P4=cPn%2fxPvXt%2bXyQXSavcXuZ9Eam0jp%2fR87yBHRZ%2fTS%2bp5eFeeizxEUyLvErB%2fyHBAwFUb37UkYc52Of7aUil0%2fFQ%3d%3d"
         ],
         "signatureUrl": null
       },
