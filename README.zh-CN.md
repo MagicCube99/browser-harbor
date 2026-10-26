@@ -24,6 +24,13 @@
   <a href="CHANGELOG.zh-CN.md">更新记录</a>
 </p>
 
+<p align="center">
+  <img src="assets/screenshots/browser-zh.png" width="49%" alt="浏览器程序与路径配置">
+  <img src="assets/screenshots/chromeplus-zh.png" width="49%" alt="Chrome++ 集成与配置">
+</p>
+
+<p align="center"><sub>浏览器配置 · Chrome++ 配置</sub></p>
+
 ---
 
 ## 为什么需要它

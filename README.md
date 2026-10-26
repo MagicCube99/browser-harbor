@@ -24,6 +24,13 @@
   <a href="CHANGELOG.md">Changelog</a>
 </p>
 
+<p align="center">
+  <img src="assets/screenshots/browser-en.png" width="49%" alt="Browser setup and path configuration">
+  <img src="assets/screenshots/chromeplus-en.png" width="49%" alt="Chrome++ integration and configuration">
+</p>
+
+<p align="center"><sub>Browser setup · Chrome++ configuration</sub></p>
+
 ---
 
 ## 😵‍💫 Why does this exist?
