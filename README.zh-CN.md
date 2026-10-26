@@ -28,16 +28,18 @@ Browser Harbor 是一个精简的原生 Windows 工具，支持 14 个 Chromium 
 
 ## 下载
 
-从 [GitHub Releases](https://github.com/MagicCube99/browser-harbor/releases/latest) 下载最新的 `BrowserHarbor-0.1.0-x64.exe`。
+从 [v0.2.0-beta.1 Release](https://github.com/MagicCube99/browser-harbor/releases/tag/v0.2.0-beta.1) 下载 `BrowserHarbor-0.2.0-beta.1-x64.exe`。
 
 把 EXE 放到任意可写目录后直接运行。无需安装、管理员权限、后台服务或 WebView2。
 
 运行要求：Windows 10 22H2 或 Windows 11 x64。
 
+`v0.1.0` 保留为冻结的兼容版；`v0.2.x` 是验证版，增加签名发布清单，但不改变浏览器大文件原有的镜像下载路径。
+
 ## 功能亮点
 
 - 一个原生 EXE 管理 14 个浏览器目标。
-- 校验大小、SHA-256/SHA-512；LibreWolf 额外验证官方 OpenPGP 签名。
+- 使用 Ed25519 验证发布清单，强制校验制品 SHA-256/SHA-512；LibreWolf 额外验证官方 OpenPGP 签名。
 - 受控解压、暂存安装、原子替换和失败回滚。
 - 独立保存 Browser Root、程序、数据、Profile 和可选缓存路径。
 - 适用于目标时提供完整 Chrome++，官方 Firefox 与 Zen 强制 Libportable。
@@ -58,7 +60,8 @@ Brave、Helium、Ungoogled Chromium 仍带有实验性 Chrome++ 兼容标记。I
 ## 安全边界
 
 - 不直接执行下载的浏览器安装器。
-- 镜像和加速站只能改变传输，不能改变制品身份。
+- 官方 API 或项目签名清单确定发布身份；镜像和加速站只负责传输字节。
+- EXE 内置签名清单覆盖全部 19 个渠道/CPU 组合和 Chrome++、Libportable，元数据站点不可用时仍可启动安装。
 - 程序替换按目标规则保留用户数据和运行时配置。
 - EXE 尚未做 Authenticode 代码签名，Windows SmartScreen 可能提示警告。
 

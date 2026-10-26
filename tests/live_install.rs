@@ -57,7 +57,9 @@ async fn installs_zen_with_required_libportable_runtime() {
         libportable_runtime: Some(RuntimeArchive {
             archive_path: runtime_artifact,
             version: libportable.version,
+            artifact: libportable.artifact,
             setdll_archive: None,
+            setdll_artifact: None,
         }),
     })
     .unwrap();
@@ -119,7 +121,9 @@ async fn installs_chrome_with_full_chrome_plus_runtime() {
         chrome_plus_runtime: Some(RuntimeArchive {
             archive_path: runtime_artifact,
             version: chrome_plus.version,
+            artifact: chrome_plus.artifact,
             setdll_archive: None,
+            setdll_artifact: None,
         }),
         libportable_runtime: None,
     })
@@ -185,7 +189,9 @@ async fn installs_edge_from_official_setup_with_chrome_plus() {
         chrome_plus_runtime: Some(RuntimeArchive {
             archive_path: runtime_artifact,
             version: chrome_plus.version,
+            artifact: chrome_plus.artifact.clone(),
             setdll_archive: Some(setdll_artifact),
+            setdll_artifact: Some(chrome_plus.setdll_artifact),
         }),
         libportable_runtime: None,
     })
@@ -380,7 +386,9 @@ async fn installs_brave_with_full_chromeplus() {
         chrome_plus_runtime: Some(RuntimeArchive {
             archive_path: runtime_artifact,
             version: chrome_plus.version,
+            artifact: chrome_plus.artifact,
             setdll_archive: None,
+            setdll_artifact: None,
         }),
         libportable_runtime: None,
     })
@@ -495,7 +503,9 @@ async fn installs_remaining_generic_targets() {
                     Some(RuntimeArchive {
                         archive_path: path,
                         version: release.version,
+                        artifact: release.artifact,
                         setdll_archive: None,
+                        setdll_artifact: None,
                     }),
                 )
             }
@@ -509,7 +519,9 @@ async fn installs_remaining_generic_targets() {
                     Some(RuntimeArchive {
                         archive_path: path,
                         version: release.version,
+                        artifact: release.artifact,
                         setdll_archive: None,
+                        setdll_artifact: None,
                     }),
                     None,
                 )

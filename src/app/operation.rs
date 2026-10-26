@@ -21,11 +21,15 @@ use crate::{
     runtime::{self},
     services::{
         download::Downloader,
-        http::HttpClient,
+        http::{HttpClient, signed_manifest_candidates},
         install::{InstallReceipt, InstallRequest, InstallService, RuntimeArchive},
-        release_cache::ReleaseCache,
+        trusted_metadata::{TrustedMetadata, verify_with_public_key},
     },
 };
+
+const SIGNED_METADATA_URL: &str = "https://raw.githubusercontent.com/MagicCube99/browser-harbor/main/assets/trusted-metadata.json";
+const SIGNED_METADATA_SIGNATURE_URL: &str =
+    "https://raw.githubusercontent.com/MagicCube99/browser-harbor/main/assets/trusted-metadata.sig";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum OperationPhase {
@@ -65,8 +69,14 @@ pub struct UpstreamCheck {
     pub version: String,
     pub channel: ReleaseChannel,
     pub cpu_build: CpuBuild,
-    pub cached: bool,
+    pub source: MetadataSource,
     pub checked_at: u64,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MetadataSource {
+    Official,
+    SignedManifest,
 }
 
 impl UpstreamCheck {
@@ -75,7 +85,7 @@ impl UpstreamCheck {
             version,
             channel,
             cpu_build,
-            cached: false,
+            source: MetadataSource::Official,
             checked_at: unix_now(),
         }
     }
@@ -206,17 +216,24 @@ async fn run_operation(
     emit(OperationPhase::Resolving);
     let http = HttpClient::new(&request.network)?;
     if request.mode == OperationMode::ChromePlusCheck {
-        let release = runtime::chromeplus::resolve_latest(&http).await?;
+        let latest_version = match runtime::chromeplus::resolve_latest(&http).await {
+            Ok(release) => release.version,
+            Err(_) => {
+                load_trusted_metadata(&http, &request.network, &request.cache_dir)
+                    .await?
+                    .chrome_plus
+                    .ok_or("签名发布清单没有 Chrome++ 记录")?
+                    .version
+            }
+        };
         return Ok(OperationResult::ChromePlusChecked {
             current_version: request.target_config.chrome_plus_version,
-            latest_version: release.version,
+            latest_version,
         });
     }
     let provider = ProviderResolver::new(http.clone());
-    let cache_path = request.cache_dir.join("releases.json");
-    let mut cache = ReleaseCache::load(cache_path).ok();
-    let mut used_cache = false;
-    let mut cache_checked_at = None;
+    let mut used_signed_metadata = false;
+    let mut metadata_checked_at = None;
     let descriptor = match provider
         .resolve(
             target,
@@ -225,35 +242,72 @@ async fn run_operation(
         )
         .await
     {
-        Ok(descriptor) => descriptor,
-        Err(error) => {
-            if let Some((cached, checked_at)) = cache.as_ref().and_then(|cache| {
-                cache.get_any_with_checked_at(
+        Ok(descriptor) if descriptor.artifact.integrity.is_some() => descriptor,
+        Ok(_) => {
+            let metadata = load_trusted_metadata(&http, &request.network, &request.cache_dir)
+                .await
+                .map_err(|error| {
+                    format!("官方元数据缺少可信摘要，签名发布清单也不可用：{error}")
+                })?;
+            if metadata.is_expired() {
+                emit(OperationPhase::Notice(
+                    "签名发布清单已过期，但使用它完成本次安装".to_owned(),
+                ));
+            }
+            let descriptor = metadata
+                .release(
                     target,
                     request.target_config.channel,
                     request.target_config.cpu_build,
                 )
-            }) {
-                used_cache = true;
-                cache_checked_at = Some(checked_at);
+                .cloned()
+                .ok_or_else(|| {
+                    format!(
+                        "签名发布清单没有 {}/{:?}/{:?} 的完整记录",
+                        target.display_name(),
+                        request.target_config.channel,
+                        request.target_config.cpu_build
+                    )
+                })?;
+            used_signed_metadata = true;
+            metadata_checked_at = Some(metadata.generated_at);
+            descriptor
+        }
+        Err(error) => {
+            let metadata = load_trusted_metadata(&http, &request.network, &request.cache_dir)
+                .await
+                .map_err(|signed_error| {
+                    format!("官方元数据不可用：{error}；签名发布清单也不可用：{signed_error}")
+                })?;
+            if metadata.is_expired() {
                 emit(OperationPhase::Notice(
-                    "实时元数据不可用，使用上次成功的发布记录".to_owned(),
+                    "官方元数据不可用；签名发布清单已过期，但使用它完成本次安装".to_owned(),
                 ));
-                cached.clone()
             } else {
-                return Err(Box::new(error));
+                emit(OperationPhase::Notice(
+                    "官方元数据不可用，使用签名发布清单".to_owned(),
+                ));
             }
+            let descriptor = metadata
+                .release(
+                    target,
+                    request.target_config.channel,
+                    request.target_config.cpu_build,
+                )
+                .cloned()
+                .ok_or_else(|| {
+                    format!(
+                        "签名发布清单没有 {}/{:?}/{:?} 的完整记录",
+                        target.display_name(),
+                        request.target_config.channel,
+                        request.target_config.cpu_build
+                    )
+                })?;
+            used_signed_metadata = true;
+            metadata_checked_at = Some(metadata.generated_at);
+            descriptor
         }
     };
-    if descriptor
-        .artifact
-        .urls
-        .iter()
-        .all(|url| !contains_transient_query(url))
-        && let Some(cache) = &mut cache
-    {
-        cache.store(descriptor.clone())?;
-    }
     if cancellation.load(Ordering::Relaxed) {
         return Err(Box::new(crate::services::ServiceError::Cancelled));
     }
@@ -261,8 +315,12 @@ async fn run_operation(
         version: descriptor.version.clone(),
         channel: descriptor.channel,
         cpu_build: descriptor.cpu_build,
-        cached: used_cache,
-        checked_at: cache_checked_at.unwrap_or_else(unix_now),
+        source: if used_signed_metadata {
+            MetadataSource::SignedManifest
+        } else {
+            MetadataSource::Official
+        },
+        checked_at: metadata_checked_at.unwrap_or_else(unix_now),
     };
     if request.mode == OperationMode::Check {
         return Ok(OperationResult::Checked(check));
@@ -354,6 +412,62 @@ fn unix_now() -> u64 {
         .map_or(0, |duration| duration.as_secs())
 }
 
+async fn load_trusted_metadata(
+    http: &HttpClient,
+    network: &NetworkSettings,
+    cache_dir: &std::path::Path,
+) -> Result<TrustedMetadata, Box<dyn std::error::Error + Send + Sync>> {
+    let cached = TrustedMetadata::load_cached(cache_dir).ok().flatten();
+    if let Some(metadata) = cached.as_ref().filter(|metadata| !metadata.is_expired()) {
+        return Ok(metadata.clone());
+    }
+    match fetch_trusted_metadata(http, network, cache_dir).await {
+        Ok(metadata) => Ok(metadata),
+        Err(error) => {
+            if let Some(cached) = cached {
+                return Ok(cached);
+            }
+            match TrustedMetadata::load_embedded() {
+                Ok(metadata) => Ok(metadata),
+                Err(embedded_error) => Err(format!(
+                    "live signed metadata failed: {error}; embedded metadata failed: {embedded_error}"
+                )
+                .into()),
+            }
+        }
+    }
+}
+
+async fn fetch_trusted_metadata(
+    http: &HttpClient,
+    network: &NetworkSettings,
+    cache_dir: &std::path::Path,
+) -> Result<TrustedMetadata, Box<dyn std::error::Error + Send + Sync>> {
+    let metadata_urls = signed_manifest_candidates(SIGNED_METADATA_URL, network)?;
+    let signature_urls = signed_manifest_candidates(SIGNED_METADATA_SIGNATURE_URL, network)?;
+    let mut last_error = None;
+    for (metadata_url, signature_url) in metadata_urls.iter().zip(&signature_urls) {
+        let result = async {
+            let metadata = http.get_bytes(metadata_url).await?;
+            let signature = http.get_bytes(signature_url).await?;
+            let signature = std::str::from_utf8(&signature)?;
+            let parsed = verify_with_public_key(
+                &metadata,
+                signature,
+                include_str!("../../assets/metadata-public-key.hex"),
+            )?;
+            parsed.store(&metadata, signature, cache_dir)?;
+            Ok::<_, Box<dyn std::error::Error + Send + Sync>>(parsed)
+        }
+        .await;
+        match result {
+            Ok(metadata) => return Ok(metadata),
+            Err(error) => last_error = Some(error),
+        }
+    }
+    Err(last_error.unwrap_or_else(|| "no signed metadata candidate succeeded".into()))
+}
+
 enum OperationResult {
     Checked(UpstreamCheck),
     SameVersion {
@@ -404,7 +518,18 @@ async fn prepare_runtime_archives(
 
     match request.target.spec().runtime {
         RuntimeKind::ChromePlusFull | RuntimeKind::ChromePlusDataOnly => {
-            let release = runtime::chromeplus::resolve_latest(http).await?;
+            let release = match runtime::chromeplus::resolve_latest(http).await {
+                Ok(release)
+                    if release.artifact.integrity.is_some()
+                        && release.setdll_artifact.integrity.is_some() =>
+                {
+                    release
+                }
+                Ok(_) | Err(_) => load_trusted_metadata(http, &request.network, &request.cache_dir)
+                    .await?
+                    .chrome_plus
+                    .ok_or("签名发布清单没有 Chrome++ 完整记录")?,
+            };
             let descriptor = ReleaseDescriptor {
                 target: request.target,
                 version: release.version.clone(),
@@ -450,13 +575,21 @@ async fn prepare_runtime_archives(
                 Some(RuntimeArchive {
                     archive_path: path,
                     version: release.version,
+                    artifact: release.artifact,
                     setdll_archive,
+                    setdll_artifact: release.setdll_artifact.into(),
                 }),
                 None,
             ))
         }
         RuntimeKind::Libportable => {
-            let release = runtime::libportable::resolve_latest(http).await?;
+            let release = match runtime::libportable::resolve_latest(http).await {
+                Ok(release) if release.artifact.integrity.is_some() => release,
+                Ok(_) | Err(_) => load_trusted_metadata(http, &request.network, &request.cache_dir)
+                    .await?
+                    .libportable
+                    .ok_or("签名发布清单没有 Libportable 记录")?,
+            };
             let descriptor = ReleaseDescriptor {
                 target: request.target,
                 version: release.version.clone(),
@@ -482,21 +615,14 @@ async fn prepare_runtime_archives(
                 Some(RuntimeArchive {
                     archive_path: path,
                     version: release.version,
+                    artifact: release.artifact,
                     setdll_archive: None,
+                    setdll_artifact: None,
                 }),
             ))
         }
         _ => Ok((None, None)),
     }
-}
-
-fn contains_transient_query(url: &str) -> bool {
-    let lower = url.to_ascii_lowercase();
-    lower.contains("p1=")
-        || lower.contains("auth_key=")
-        || lower.contains("token=")
-        || lower.contains("signature=")
-        || lower.contains("sig=")
 }
 
 impl OperationEvent {
@@ -521,7 +647,7 @@ impl OperationPhase {
 
 #[cfg(test)]
 mod tests {
-    use super::{OperationPhase, requires_replacement_confirmation};
+    use super::{MetadataSource, OperationPhase, requires_replacement_confirmation};
 
     #[test]
     fn only_final_operation_phases_are_terminal() {
@@ -549,7 +675,7 @@ mod tests {
                     version: "1.0.0".to_owned(),
                     channel: crate::domain::release::ReleaseChannel::Stable,
                     cpu_build: crate::domain::release::CpuBuild::X64,
-                    cached: false,
+                    source: MetadataSource::Official,
                     checked_at: 0,
                 },
             }

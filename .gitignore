@@ -27,3 +27,5 @@ Thumbs.db
 .env
 .env.*
 !.env.example
+metadata-private-key.hex
+*.private-key

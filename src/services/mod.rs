@@ -5,7 +5,7 @@ pub mod download;
 pub mod health;
 pub mod http;
 pub mod install;
-pub mod release_cache;
+pub mod trusted_metadata;
 pub mod version_probe;
 
 use std::path::PathBuf;

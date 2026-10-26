@@ -24,7 +24,9 @@ If private reporting is unavailable, open a minimal issue asking the maintainer 
 ## Trust boundaries
 
 - Release metadata, redirects, archive names, file sizes, hashes, signatures, and archive paths are untrusted.
-- Mirrors and accelerators may alter transport only. They must not alter the artifact identity.
+- Official APIs and the Ed25519-verified manifest establish release identity.
+- Mirrors and accelerators may carry the signed manifest and artifact bytes only. They must not provide unsigned release identity.
+- Browser, Chrome++, Libportable, and local-package installation paths require a non-empty trusted digest.
 - Browser installers are not executed.
 - Chrome++, Libportable, browser packages, and launchers are downloaded from declared sources.
 - Local packages must match trusted release information.
@@ -32,9 +34,9 @@ If private reporting is unavailable, open a minimal issue asking the maintainer 
 
 ## Release verification
 
-Only obtain binaries from GitHub Releases. Compare the downloaded EXE with the SHA-256 shown in the corresponding release notes.
+Only obtain binaries from GitHub Releases. Compare the downloaded EXE with the SHA-256 shown in the corresponding release notes. Release assets also include `trusted-metadata.json`, `trusted-metadata.sig`, and `metadata-public-key.hex`.
 
-The current executable is not Authenticode-signed. A valid SHA-256 proves the downloaded bytes match the published release; it does not provide identity or reputation like a code-signing certificate.
+The executable is not Authenticode-signed. The Ed25519 signature authenticates release metadata, not the EXE itself. A valid EXE SHA-256 proves the downloaded bytes match the published release; it does not provide identity or reputation like a code-signing certificate.
 
 ## Third-party vulnerabilities
 

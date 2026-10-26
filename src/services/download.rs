@@ -452,7 +452,7 @@ mod tests {
         let directory = tempdir().unwrap();
         std::fs::write(directory.path().join("browser.artifact"), b"browser").unwrap();
         std::fs::write(directory.path().join("partial.zip.part"), b"partial").unwrap();
-        std::fs::write(directory.path().join("releases.json"), b"metadata").unwrap();
+        std::fs::write(directory.path().join("trusted-metadata.json"), b"metadata").unwrap();
         std::fs::write(directory.path().join("notes.txt"), b"keep").unwrap();
 
         assert_eq!(
@@ -469,7 +469,7 @@ mod tests {
                 bytes: 14,
             }
         );
-        assert!(directory.path().join("releases.json").is_file());
+        assert!(directory.path().join("trusted-metadata.json").is_file());
         assert!(directory.path().join("notes.txt").is_file());
         assert_eq!(
             download_cache_usage(directory.path()).unwrap(),

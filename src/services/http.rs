@@ -207,11 +207,40 @@ pub(crate) fn url_uses_accelerator(url: &Url, direct_hosts: &HashSet<String>) ->
 pub struct UrlRouter;
 
 pub fn github_api_candidates(url: &str) -> Vec<String> {
-    BUILTIN_ACCELERATORS
-        .iter()
-        .map(|prefix| format!("{prefix}{url}"))
-        .chain([url.to_owned()])
-        .collect()
+    vec![url.to_owned()]
+}
+
+pub fn signed_manifest_candidates(
+    url: &str,
+    settings: &NetworkSettings,
+) -> Result<Vec<String>, ServiceError> {
+    let original = Url::parse(url).map_err(|_| ServiceError::InvalidUrl)?;
+    if !matches!(
+        original.host_str(),
+        Some("github.com" | "raw.githubusercontent.com")
+    ) {
+        return Err(ServiceError::InvalidUrl);
+    }
+    let mut candidates = Vec::new();
+    if settings.accelerators_enabled {
+        for accelerator in settings
+            .accelerators
+            .iter()
+            .filter(|accelerator| accelerator.enabled)
+            .filter(|accelerator| accelerator.validate().is_ok())
+        {
+            if let Ok(candidate) = accelerated_url(&accelerator.prefix, &original) {
+                candidates.push(candidate.to_string());
+            }
+        }
+        for prefix in BUILTIN_ACCELERATORS {
+            if let Ok(candidate) = accelerated_url(prefix, &original) {
+                candidates.push(candidate.to_string());
+            }
+        }
+    }
+    candidates.push(url.to_owned());
+    Ok(candidates)
 }
 
 impl UrlRouter {
@@ -294,7 +323,10 @@ fn ensure_success(response: Response, url: &Url) -> Result<Response, ServiceErro
 
 #[cfg(test)]
 mod tests {
-    use super::{UrlRouter, accelerator_hosts, github_api_candidates, url_uses_accelerator};
+    use super::{
+        UrlRouter, accelerator_hosts, github_api_candidates, signed_manifest_candidates,
+        url_uses_accelerator,
+    };
     use crate::domain::{
         release::{ArchiveFormat, Artifact, Integrity},
         settings::{Accelerator, NetworkSettings},
@@ -371,19 +403,24 @@ mod tests {
     }
 
     #[test]
-    fn github_metadata_tries_accelerators_before_direct() {
+    fn github_metadata_uses_the_official_api_url_only() {
         let url = "https://api.github.com/repos/owner/repo/releases/latest";
         let candidates = github_api_candidates(url);
 
+        assert_eq!(candidates, [url.to_owned()]);
+    }
+
+    #[test]
+    fn disabled_acceleration_keeps_signed_manifest_on_the_official_url() {
+        let settings = NetworkSettings {
+            accelerators_enabled: false,
+            ..NetworkSettings::default()
+        };
+        let url = "https://github.com/owner/repo/releases/latest/download/trusted-metadata.json";
+
         assert_eq!(
-            candidates,
-            [
-                format!("https://ghfast.top/{url}"),
-                format!("https://gh-proxy.com/{url}"),
-                format!("https://ghproxy.net/{url}"),
-                format!("https://github.akams.cn/{url}"),
-                url.to_owned(),
-            ]
+            signed_manifest_candidates(url, &settings).unwrap(),
+            vec![url.to_owned()]
         );
     }
 

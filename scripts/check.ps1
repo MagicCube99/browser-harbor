@@ -15,6 +15,9 @@ try {
     & cargo test --workspace --all-targets
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+    & cargo run --quiet --bin metadata -- verify --manifest .\assets\trusted-metadata.json --signature .\assets\trusted-metadata.sig --public-key .\assets\metadata-public-key.hex
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
     & cargo build --release
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 

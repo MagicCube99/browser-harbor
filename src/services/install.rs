@@ -28,7 +28,9 @@ use crate::{
 pub struct RuntimeArchive {
     pub archive_path: PathBuf,
     pub version: String,
+    pub artifact: crate::domain::release::Artifact,
     pub setdll_archive: Option<PathBuf>,
+    pub setdll_artifact: Option<crate::domain::release::Artifact>,
 }
 
 #[derive(Debug, Clone)]
@@ -79,6 +81,8 @@ pub enum InstallError {
     Rollback(#[source] std::io::Error),
     #[error("artifact verification failed")]
     Artifact(#[source] ServiceError),
+    #[error("installable artifact has no integrity value")]
+    ArtifactIntegrityMissing,
     #[error("archive extraction failed")]
     Archive(#[from] ArchiveError),
     #[error("runtime preparation failed")]
@@ -115,6 +119,9 @@ fn resolve_cache_directory(
 
 impl InstallService {
     pub fn install(request: InstallRequest) -> Result<InstallReceipt, InstallError> {
+        if request.release.artifact.integrity.is_none() {
+            return Err(InstallError::ArtifactIntegrityMissing);
+        }
         verify_artifact(&request.browser_artifact, &request.release.artifact)
             .map_err(InstallError::Artifact)?;
         if !request.browser_root.is_absolute() {
@@ -645,6 +652,7 @@ fn prepare_runtime(
                 .chrome_plus_runtime
                 .as_ref()
                 .ok_or(InstallError::RuntimeMissing("Chrome++"))?;
+            verify_runtime_artifact(&runtime.archive_path, &runtime.artifact)?;
             let runtime_root = work.join("chromeplus");
             ArchiveService::extract(
                 &runtime.archive_path,
@@ -656,6 +664,11 @@ fn prepare_runtime(
                     .setdll_archive
                     .as_ref()
                     .ok_or(InstallError::RuntimeMissing("Chrome++ setdll"))?;
+                let artifact = runtime
+                    .setdll_artifact
+                    .as_ref()
+                    .ok_or(InstallError::ArtifactIntegrityMissing)?;
+                verify_runtime_artifact(archive, artifact)?;
                 let root = work.join("chromeplus-setdll");
                 ArchiveService::extract(
                     archive,
@@ -690,6 +703,7 @@ fn prepare_runtime(
                 .libportable_runtime
                 .as_ref()
                 .ok_or(InstallError::RuntimeMissing("Libportable"))?;
+            verify_runtime_artifact(&runtime.archive_path, &runtime.artifact)?;
             let runtime_root = work.join("libportable");
             ArchiveService::extract(
                 &runtime.archive_path,
@@ -710,6 +724,16 @@ fn prepare_runtime(
         }
         _ => Ok(None),
     }
+}
+
+fn verify_runtime_artifact(
+    path: &Path,
+    artifact: &crate::domain::release::Artifact,
+) -> Result<(), InstallError> {
+    if artifact.integrity.is_none() {
+        return Err(InstallError::ArtifactIntegrityMissing);
+    }
+    verify_artifact(path, artifact).map_err(InstallError::Artifact)
 }
 
 fn placement_paths(
@@ -1090,6 +1114,7 @@ mod tests {
         io::Write,
     };
 
+    use sha2::{Digest, Sha256};
     use tempfile::tempdir;
     use zip::{ZipWriter, write::SimpleFileOptions};
 
@@ -1135,6 +1160,7 @@ mod tests {
     }
 
     fn release(version: &str, artifact: &std::path::Path) -> ReleaseDescriptor {
+        let digest = hex::encode(Sha256::digest(fs::read(artifact).unwrap()));
         ReleaseDescriptor {
             target: TargetId::Iceweasel,
             version: version.to_owned(),
@@ -1145,7 +1171,7 @@ mod tests {
                 file_name: "iceweasel.zip".to_owned(),
                 format: ArchiveFormat::Zip,
                 size: Some(fs::metadata(artifact).unwrap().len()),
-                integrity: None,
+                integrity: Some(crate::domain::release::Integrity::Sha256(digest)),
                 urls: vec!["https://example.com/iceweasel.zip".to_owned()],
                 signature_url: None,
             },
@@ -1219,6 +1245,27 @@ mod tests {
             fs::read(root.join("Profiles/user-profile")).unwrap(),
             b"keep me"
         );
+    }
+
+    #[test]
+    fn installation_rejects_artifact_without_integrity() {
+        let directory = tempdir().unwrap();
+        let first = directory.path().join("first.zip");
+        browser_zip(&first, "1.0");
+        let mut descriptor = release("1.0", &first);
+        descriptor.artifact.integrity = None;
+
+        let error = InstallService::install(request(
+            descriptor,
+            &first,
+            &directory.path().join("Browser"),
+        ))
+        .unwrap_err();
+
+        assert!(matches!(
+            error,
+            super::InstallError::ArtifactIntegrityMissing
+        ));
     }
 
     #[test]

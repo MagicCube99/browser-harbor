@@ -28,16 +28,18 @@ It does not launch browsers, register itself as a browser, manage browser proces
 
 ## Download
 
-Download the latest `BrowserHarbor-0.1.0-x64.exe` from [GitHub Releases](https://github.com/MagicCube99/browser-harbor/releases/latest).
+Download `BrowserHarbor-0.2.0-beta.1-x64.exe` from the [v0.2.0-beta.1 release](https://github.com/MagicCube99/browser-harbor/releases/tag/v0.2.0-beta.1).
 
 Run the EXE from any writable folder. No installer, administrator rights, background service, or WebView2 runtime is required.
 
 Requirements: Windows 10 22H2 or Windows 11, x64.
 
+`v0.1.0` remains available as the frozen compatibility build. The `v0.2.x` Verified Edition uses signed release metadata; it does not change the existing browser-artifact mirror download path.
+
 ## Highlights
 
 - One native EXE for 14 browser targets.
-- Size, SHA-256/SHA-512, and LibreWolf OpenPGP verification.
+- Ed25519-verified release metadata, required artifact SHA-256/SHA-512, and LibreWolf OpenPGP verification.
 - Controlled extraction, staged installation, atomic replacement, and rollback.
 - Separate Browser Root, program, data, profile, and optional cache paths.
 - Full Chrome++ integration and required Libportable integration where applicable.
@@ -58,7 +60,8 @@ Brave, Helium, and Ungoogled Chromium retain an experimental Chrome++ compatibil
 ## Safety
 
 - Downloaded browser installers are never executed as setup programs.
-- Mirrors and accelerators can change transport only, never artifact identity.
+- Official APIs and the project-signed manifest establish identity; mirrors and accelerators carry bytes only.
+- The embedded signed manifest covers all 19 channel/CPU combinations and Chrome++/Libportable, so a blocked metadata endpoint does not remove the offline bootstrap path.
 - Program replacements preserve user data and runtime configuration according to target rules.
 - The EXE is not Authenticode-signed yet, so Windows SmartScreen may show a warning.
 

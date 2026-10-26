@@ -85,7 +85,8 @@ impl Default for ChromePlusConfig {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ChromePlusRelease {
     pub version: String,
     pub artifact: Artifact,
@@ -99,7 +100,8 @@ pub struct ChromePlusInstallation {
     pub ini_path: PathBuf,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct LibportableRelease {
     pub version: String,
     pub artifact: Artifact,

@@ -2,6 +2,29 @@
 
 [简体中文](CHANGELOG.zh-CN.md) · English
 
+## v0.2.0-beta.1 — 2026-10-26
+
+Verified Edition beta.
+
+### Added
+
+- Ed25519-signed release metadata with a public key embedded in the executable.
+- A signed bootstrap manifest covering all 19 destination/channel/CPU combinations plus Chrome++ and Libportable.
+- Signed-manifest refresh through verified mirrors, trusted cache fallback, and explicit metadata-source display.
+- A maintenance tool for key generation, manifest signing, and verification.
+
+### Security
+
+- Official GitHub metadata no longer uses third-party accelerators.
+- Browser, Chrome++, and Libportable installation now requires a non-empty integrity value.
+- Local packages are subject to the same trusted digest verification.
+- Removed Bush2021 metadata fallback from the normal Chrome/Edge resolution path.
+
+### Compatibility
+
+- `v0.1.0` remains frozen as the unsigned-metadata compatibility release.
+- `manager.json` remains schema v10; trusted metadata is cached separately.
+
 ## v0.1.0 — 2026-10-26
 
 First stable release of Browser Harbor.

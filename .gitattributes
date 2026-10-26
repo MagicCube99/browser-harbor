@@ -6,11 +6,14 @@
 *.exe binary
 *.ico binary
 *.png binary
+/assets/trusted-metadata.json -text
+/assets/trusted-metadata.sig -text
 
 # Maintainer-only material stays in the repository but is excluded from
 # GitHub-generated source archives attached to releases.
 /AGENTS.md export-ignore
 /AI_LOG.md export-ignore
+/.brooks-lint-history.json export-ignore
 /docs/RELEASING.md export-ignore
 /docs/research export-ignore
 /docs/research/** export-ignore

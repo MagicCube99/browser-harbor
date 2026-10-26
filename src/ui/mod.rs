@@ -23,8 +23,8 @@ use crate::{
     app::{
         AppState,
         operation::{
-            OperationController, OperationMode, OperationPhase, StartOperationRequest,
-            UpstreamCheck, start_operation,
+            MetadataSource, OperationController, OperationMode, OperationPhase,
+            StartOperationRequest, UpstreamCheck, start_operation,
         },
     },
     domain::{
@@ -706,10 +706,9 @@ impl BrowserHarborApp {
                         (event.target, check.channel, check.cpu_build),
                         check.clone(),
                     );
-                    let source = localized(if check.cached {
-                        "缓存上游版本"
-                    } else {
-                        "上游版本"
+                    let source = localized(match check.source {
+                        MetadataSource::Official => "上游版本",
+                        MetadataSource::SignedManifest => "签名发布清单",
                     });
                     self.status_message = Some(format!(
                         "{} {source}：{}（{}）",
@@ -1082,10 +1081,9 @@ impl BrowserHarborApp {
                 if let Some(age) = latest_checked.as_deref() {
                     response.localized_hover(format!(
                         "{}检查时间：{age}",
-                        if upstream.as_ref().is_some_and(|check| check.cached) {
-                            "缓存结果；"
-                        } else {
-                            ""
+                        match upstream.as_ref().map(|check| check.source) {
+                            Some(MetadataSource::SignedManifest) => "签名发布清单；",
+                            Some(MetadataSource::Official) | None => "",
                         }
                     ));
                 }
@@ -2168,10 +2166,9 @@ impl BrowserHarborApp {
                         ui.localized_label("当前版本");
                         ui.localized_label(&prompt.current_version);
                         ui.end_row();
-                        ui.localized_label(if prompt.upstream.cached {
-                            "缓存上游版本"
-                        } else {
-                            "上游版本"
+                        ui.localized_label(match prompt.upstream.source {
+                            MetadataSource::Official => "上游版本",
+                            MetadataSource::SignedManifest => "签名发布清单",
                         });
                         ui.localized_label(format!(
                             "{}（{}）",
@@ -3255,7 +3252,10 @@ mod tests {
         set_language,
     };
     use crate::{
-        app::{AppState, operation::UpstreamCheck},
+        app::{
+            AppState,
+            operation::{MetadataSource, UpstreamCheck},
+        },
         config::ConfigStore,
         domain::{
             release::{CpuBuild, ReleaseChannel},
@@ -3317,7 +3317,7 @@ mod tests {
                 version: upstream_version.to_owned(),
                 channel: ReleaseChannel::Stable,
                 cpu_build: CpuBuild::X64,
-                cached: false,
+                source: MetadataSource::Official,
                 checked_at: 0,
             },
         );
@@ -3779,7 +3779,7 @@ mod tests {
                 version: "158.0.1".to_owned(),
                 channel: ReleaseChannel::Release,
                 cpu_build: CpuBuild::X64,
-                cached: false,
+                source: MetadataSource::Official,
                 checked_at: 0,
             },
         );
@@ -3817,7 +3817,7 @@ mod tests {
                 version: "157.0.1".to_owned(),
                 channel: ReleaseChannel::Stable,
                 cpu_build: CpuBuild::X64,
-                cached: false,
+                source: MetadataSource::Official,
                 checked_at: 0,
             },
         );

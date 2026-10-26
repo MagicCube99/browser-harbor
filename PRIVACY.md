@@ -2,7 +2,7 @@
 
 [简体中文](PRIVACY.zh-CN.md) · English
 
-Browser Harbor is a local Windows utility. It has no telemetry, analytics, account system, advertising SDK, or remote configuration service.
+Browser Harbor is a local Windows utility. It has no telemetry, analytics, account system, advertising SDK, or remote user-configuration service.
 
 ## Local data
 
@@ -19,16 +19,17 @@ Browser Harbor does not collect browser history, cookies, credentials, or profil
 Network access is used to:
 
 - query browser, Chrome++, and Libportable release metadata;
+- refresh the Ed25519-signed Browser Harbor release manifest through direct or accelerated transport;
 - download browser packages and signed runtimes;
 - reach GitHub and official vendor endpoints through selected transport routes.
 
 Requests necessarily expose normal network metadata to those service providers, such as IP address, TLS connection data, requested URL, and user-agent. Browser Harbor does not add a persistent installation identifier to those requests.
 
-System or user proxy settings may be used for final direct-GitHub fallback. Configured accelerators are contacted directly when enabled.
+Official metadata uses direct or user-proxy transport only. The signed manifest is cached under the rebuildable download cache and may be fetched through configured accelerators when enabled.
 
 ## Logs and diagnostics
 
-Browser Harbor does not create a persistent application log. The configuration checker displays local paths and errors in the UI. Remove personal paths before posting diagnostics publicly.
+Browser Harbor does not create a persistent application log. The configuration checker displays local paths and errors in the UI. Remove personal paths before posting diagnostics publicly. Cached signed metadata contains release information only, not browser user data.
 
 ## Data deletion
 

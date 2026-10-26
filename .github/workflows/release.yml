@@ -34,7 +34,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: browser-harbor-release
-          path: dist/*.exe
+          path: dist/*
           if-no-files-found: error
 
   publish:
@@ -62,21 +62,25 @@ jobs:
           tag="$GITHUB_REF_NAME"
           version="${tag#v}"
           asset="dist/BrowserHarbor-${version}-x64.exe"
+          metadata="dist/trusted-metadata.json"
+          signature="dist/trusted-metadata.sig"
+          public_key="dist/metadata-public-key.hex"
           notes="docs/releases/$tag.md"
           if [[ ! -f "$notes" ]]; then
             notes="CHANGELOG.md"
           fi
           sha256="$(sha256sum "$asset" | awk '{print $1}')"
+          metadata_sha256="$(sha256sum "$metadata" | awk '{print $1}')"
           combined_notes="release-notes-with-checksum.md"
           {
             cat "$notes"
-            printf '\n## 校验 · Verify\n\n`SHA-256: %s`\n' "$sha256"
+            printf '\n## 校验 · Verify\n\nEXE SHA-256: `%s`\n\nMetadata SHA-256: `%s`\n' "$sha256" "$metadata_sha256"
           } > "$combined_notes"
           prerelease=()
           if [[ "$tag" == *-* ]]; then
             prerelease+=(--prerelease)
           fi
-          gh release create "$tag" "$asset" \
+          gh release create "$tag" "$asset" "$metadata" "$signature" "$public_key" \
             --title "Browser Harbor $version" \
             --notes-file "$combined_notes" \
             "${prerelease[@]}"

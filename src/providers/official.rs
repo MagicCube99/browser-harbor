@@ -32,17 +32,10 @@ pub async fn resolve_chrome(
     if channel != ReleaseChannel::Stable || cpu_build != CpuBuild::X64 {
         return Err(ProviderError::UnsupportedSelection);
     }
-    let live = async {
-        let xml = http
-            .post_xml(CHROME_UPDATE_URL, chrome_omaha_request())
-            .await?;
-        parse_chrome_omaha(&xml)
-    }
-    .await;
-    let parsed = match live {
-        Ok(parsed) => parsed,
-        Err(_) => resolve_chrome_from_bush(http).await?,
-    };
+    let xml = http
+        .post_xml(CHROME_UPDATE_URL, chrome_omaha_request())
+        .await?;
+    let parsed = parse_chrome_omaha(&xml)?;
     Ok(ReleaseDescriptor {
         target: TargetId::Chrome,
         version: parsed.version,
@@ -99,15 +92,8 @@ pub async fn resolve_edge(
     let parsed = match cdp {
         Ok(parsed) => parsed,
         Err(_) => {
-            let enterprise = async {
-                let value = http.get_json::<Value>(EDGE_UPDATE_URL).await?;
-                parse_edge_enterprise(&value)
-            }
-            .await;
-            match enterprise {
-                Ok(parsed) => parsed,
-                Err(_) => resolve_edge_from_bush(http).await?,
-            }
+            let value = http.get_json::<Value>(EDGE_UPDATE_URL).await?;
+            parse_edge_enterprise(&value)?
         }
     };
     Ok(ReleaseDescriptor {
@@ -276,38 +262,6 @@ fn parse_chrome_omaha(xml: &str) -> Result<ChromeArtifact, ProviderError> {
     })
 }
 
-async fn resolve_chrome_from_bush(http: &HttpClient) -> Result<ChromeArtifact, ProviderError> {
-    let value = fetch_bush_json(http, "chrome_installer").await?;
-    let item = value
-        .get("win_stable_x64")
-        .ok_or(ProviderError::NoCompatibleAsset)?;
-    let version = string_field(item, "version")?;
-    let size = item
-        .get("size")
-        .and_then(Value::as_u64)
-        .ok_or(ProviderError::NoCompatibleAsset)?;
-    let sha256 = string_field(item, "sha256")?;
-    let urls = item
-        .get("urls")
-        .and_then(Value::as_array)
-        .into_iter()
-        .flatten()
-        .filter_map(Value::as_str)
-        .filter_map(|url| official_https(url, is_google_download))
-        .collect::<Vec<_>>();
-    let package_name = urls
-        .first()
-        .and_then(|url| file_name_from_url(url).ok())
-        .ok_or(ProviderError::NoCompatibleAsset)?;
-    Ok(ChromeArtifact {
-        version,
-        file_name: package_name,
-        size,
-        sha256,
-        urls,
-    })
-}
-
 #[derive(Debug)]
 struct EdgeArtifact {
     version: String,
@@ -398,48 +352,6 @@ fn parse_edge_enterprise(value: &Value) -> Result<EdgeArtifact, ProviderError> {
         source: EDGE_UPDATE_URL.to_owned(),
         inner_archive: None,
     })
-}
-
-async fn resolve_edge_from_bush(http: &HttpClient) -> Result<EdgeArtifact, ProviderError> {
-    let value = fetch_bush_json(http, "edge_installer").await?;
-    let item = value
-        .get("msedge-stable-win-x64")
-        .ok_or(ProviderError::NoCompatibleAsset)?;
-    let url = official_https(&string_field(item, "url")?, is_microsoft_download)
-        .ok_or(ProviderError::NoCompatibleAsset)?;
-    Ok(EdgeArtifact {
-        version: string_field(item, "version")?,
-        file_name: string_field(item, "file_name")?,
-        size: item["size_in_bytes"]
-            .as_u64()
-            .ok_or(ProviderError::NoCompatibleAsset)?,
-        sha256: string_field(item, "Sha256")?.to_ascii_lowercase(),
-        url,
-        published_at: None,
-        format: ArchiveFormat::SevenZip,
-        source: "Bush2021/edge_installer".to_owned(),
-        inner_archive: Some("MSEDGE.7Z".to_owned()),
-    })
-}
-
-async fn fetch_bush_json(http: &HttpClient, repository: &str) -> Result<Value, ProviderError> {
-    let path = format!("Bush2021/{repository}/main/data.json");
-    let candidates = [
-        format!("https://ghfast.top/https://raw.githubusercontent.com/{path}"),
-        format!("https://gh-proxy.com/https://raw.githubusercontent.com/{path}"),
-        format!("https://cdn.jsdelivr.net/gh/Bush2021/{repository}@main/data.json"),
-        format!("https://raw.githubusercontent.com/{path}"),
-    ];
-    let mut last = None;
-    for url in candidates {
-        match http.get_json::<Value>(&url).await {
-            Ok(value) => return Ok(value),
-            Err(error) => last = Some(error),
-        }
-    }
-    Err(last
-        .map(ProviderError::Service)
-        .unwrap_or(ProviderError::NoCompatibleAsset))
 }
 
 fn parse_sha256sums(text: &str, file_name: &str) -> Option<String> {

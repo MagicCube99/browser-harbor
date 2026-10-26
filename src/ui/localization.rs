@@ -329,6 +329,17 @@ fn exact_translation(text: &str) -> Option<&'static str> {
         "已取消同版本替换" => "Same-version replacement cancelled",
         "缓存结果；" => "Cached result; ",
         "缓存上游版本" => "Cached upstream version",
+        "签名发布清单" => "Signed release manifest",
+        "签名发布清单；" => "Signed release manifest; ",
+        "官方元数据不可用，使用签名发布清单" => {
+            "Official metadata unavailable; using the signed release manifest"
+        }
+        "签名发布清单已过期，但使用它完成本次安装" => {
+            "The signed release manifest has expired; using it for this installation"
+        }
+        "官方元数据不可用；签名发布清单已过期，但使用它完成本次安装" => {
+            "Official metadata is unavailable and the signed release manifest has expired; using it for this installation"
+        }
         "刚刚" => "just now",
         "不足 1 分钟前" => "less than a minute ago",
         "完整模式：以下选项对应 Chrome++ 1.18.2 的全部公开配置。" => {
@@ -437,6 +448,12 @@ fn dynamic_translation(text: &str) -> String {
         ("Chrome++ 发现上游版本：", "Chrome++ upstream version: "),
         ("Chrome++ 最新版本：", "Latest Chrome++: "),
         ("Chrome++ 检查完成：", "Chrome++ check complete: "),
+        (
+            "官方元数据缺少可信摘要，签名发布清单也不可用：",
+            "Official metadata has no trusted digest and the signed manifest is unavailable: ",
+        ),
+        ("官方元数据不可用：", "Official metadata unavailable: "),
+        ("签名发布清单没有 ", "Signed release manifest has no "),
         ("无法检查配置：", "Cannot check configuration: "),
         ("无法修复 Chrome++ 路径：", "Cannot repair Chrome++ paths: "),
         (
@@ -527,6 +544,11 @@ mod tests {
         assert_eq!(translate("当前浏览器：Firefox"), "Current browser: Firefox");
         assert_eq!(translate("159.0（上次安装）"), "159.0 (last install)");
         assert_eq!(localized("检查更新"), "Check for updates");
+        assert_eq!(translate("签名发布清单"), "Signed release manifest");
+        assert_eq!(
+            translate("官方元数据不可用，使用签名发布清单"),
+            "Official metadata unavailable; using the signed release manifest"
+        );
 
         set_language(Language::Chinese);
     }
