@@ -353,6 +353,18 @@ async fn ensure_release_integrity(
     downloader: &Downloader,
     network: &NetworkSettings,
 ) -> Result<ReleaseDescriptor, Box<dyn std::error::Error>> {
+    if descriptor
+        .artifact
+        .urls
+        .iter()
+        .any(|url| contains_transient_query(url))
+    {
+        return Err(format!(
+            "{} release uses a transient download URL",
+            descriptor.target.display_name()
+        )
+        .into());
+    }
     if descriptor.artifact.integrity.is_some() {
         return Ok(descriptor);
     }
@@ -370,6 +382,15 @@ async fn ensure_release_integrity(
         .await?;
     descriptor.artifact.integrity = Some(Integrity::Sha256(sha256_file(&path)?));
     Ok(descriptor)
+}
+
+fn contains_transient_query(url: &str) -> bool {
+    let lower = url.to_ascii_lowercase();
+    lower.contains("p1=")
+        || lower.contains("auth_key=")
+        || lower.contains("token=")
+        || lower.contains("signature=")
+        || lower.contains("sig=")
 }
 
 async fn ensure_chrome_plus_integrity(

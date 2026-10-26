@@ -65,35 +65,35 @@ pub async fn resolve_edge(
     if channel != ReleaseChannel::Stable || cpu_build != CpuBuild::X64 {
         return Err(ProviderError::UnsupportedSelection);
     }
-    let cdp = async {
-        let update = http
-            .post_json::<Value>(
-                EDGE_CDP_UPDATE_URL,
-                &serde_json::json!({
-                    "targetingAttributes": {
-                        "IsInternalUser": true,
-                        "Updater": "MicrosoftEdgeUpdate",
-                        "UpdaterVersion": "1.3.183.29"
-                    }
-                }),
-            )
-            .await?;
-        let version = update["ContentId"]["Version"]
-            .as_str()
-            .ok_or(ProviderError::NoCompatibleAsset)?
-            .to_owned();
-        let download_url = EDGE_CDP_DOWNLOAD_URL.replace("{version}", &version);
-        let items = http
-            .post_json::<Vec<Value>>(&download_url, &serde_json::json!({}))
-            .await?;
-        parse_edge_cdp(&version, &items)
+    let enterprise = async {
+        let value = http.get_json::<Value>(EDGE_UPDATE_URL).await?;
+        parse_edge_enterprise(&value)
     }
     .await;
-    let parsed = match cdp {
+    let parsed = match enterprise {
         Ok(parsed) => parsed,
         Err(_) => {
-            let value = http.get_json::<Value>(EDGE_UPDATE_URL).await?;
-            parse_edge_enterprise(&value)?
+            let update = http
+                .post_json::<Value>(
+                    EDGE_CDP_UPDATE_URL,
+                    &serde_json::json!({
+                        "targetingAttributes": {
+                            "IsInternalUser": true,
+                            "Updater": "MicrosoftEdgeUpdate",
+                            "UpdaterVersion": "1.3.183.29"
+                        }
+                    }),
+                )
+                .await?;
+            let version = update["ContentId"]["Version"]
+                .as_str()
+                .ok_or(ProviderError::NoCompatibleAsset)?
+                .to_owned();
+            let download_url = EDGE_CDP_DOWNLOAD_URL.replace("{version}", &version);
+            let items = http
+                .post_json::<Vec<Value>>(&download_url, &serde_json::json!({}))
+                .await?;
+            parse_edge_cdp(&version, &items)?
         }
     };
     Ok(ReleaseDescriptor {

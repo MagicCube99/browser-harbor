@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": 1793006494,
+  "generatedAt": 1793006981,
   "expiresAt": 253402300799,
   "releases": [
     {
@@ -89,22 +89,22 @@
       "cpuBuild": "x64",
       "provider": "edge_enterprise",
       "artifact": {
-        "fileName": "MicrosoftEdge_X64_156.0.4314.42.exe",
-        "format": "sevenzip",
-        "size": 208330576,
+        "fileName": "MicrosoftEdgeEnterpriseX64.msi",
+        "format": "msi",
+        "size": 215257088,
         "integrity": {
           "algorithm": "sha256",
-          "value": "c958a06548b3189587cac9d2c57e0f1a1169da02d93e141b73d0f1773a1d07d4"
+          "value": "324d226c5ade08c2776645cfc2a7b12af9c08214abf18c6499410cd8ed92d1b3"
         },
         "urls": [
-          "https://msedge.sb.tlu.dl.delivery.mp.microsoft.com/filestreamingservice/files/94de2e23-bb48-4455-be4e-c03858dc93d8?P1=1793611283&P2=404&P3=2&P4=cPn%2fxPvXt%2bXyQXSavcXuZ9Eam0jp%2fR87yBHRZ%2fTS%2bp5eFeeizxEUyLvErB%2fyHBAwFUb37UkYc52Of7aUil0%2fFQ%3d%3d"
+          "https://msedge.sf.dl.delivery.mp.microsoft.com/filestreamingservice/files/62209208-6eb6-4f5e-bff5-feb45cfe41d3/MicrosoftEdgeEnterpriseX64.msi"
         ],
         "signatureUrl": null
       },
       "placement": "edge_versioned",
-      "innerArchive": "MSEDGE.7Z",
-      "source": "https://msedge.api.cdp.microsoft.com/api/v2/contents/Browser/namespaces/Default/names/msedge-stable-win-x64/versions/latest?action=select",
-      "publishedAt": null
+      "innerArchive": null,
+      "source": "https://edgeupdates.microsoft.com/api/products?view=enterprise",
+      "publishedAt": "2026-10-22T19:30:00"
     },
     {
       "target": "firefox",
