@@ -25,6 +25,7 @@ pub struct HttpClient {
     direct: Client,
     fallback: Client,
     direct_hosts: Arc<HashSet<String>>,
+    github_token: Option<String>,
 }
 
 impl HttpClient {
@@ -34,6 +35,9 @@ impl HttpClient {
             direct,
             fallback,
             direct_hosts: Arc::new(accelerator_hosts(settings)),
+            github_token: std::env::var("GITHUB_TOKEN")
+                .ok()
+                .filter(|token| !token.trim().is_empty()),
         })
     }
 
@@ -83,10 +87,16 @@ impl HttpClient {
 
     pub async fn get_bytes(&self, url: &str) -> Result<Vec<u8>, ServiceError> {
         let parsed = Url::parse(url).map_err(|_| ServiceError::InvalidUrl)?;
-        let response = self
+        let mut request = self
             .client_for(&parsed)
             .get(parsed.clone())
-            .header(reqwest::header::ACCEPT, "application/json, text/plain, */*")
+            .header(reqwest::header::ACCEPT, "application/json, text/plain, */*");
+        if parsed.host_str() == Some("api.github.com")
+            && let Some(token) = &self.github_token
+        {
+            request = request.bearer_auth(token);
+        }
+        let response = request
             .send()
             .await
             .map_err(|error| ServiceError::Network(error.without_url()))?;

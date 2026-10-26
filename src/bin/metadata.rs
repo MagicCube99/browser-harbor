@@ -202,7 +202,13 @@ async fn refresh(
         let spec = target.spec();
         for channel in spec.channels {
             for cpu_build in spec.cpu_builds {
-                let descriptor = provider.resolve(target, *channel, *cpu_build).await?;
+                println!(
+                    "Refreshing {} / {} / {}",
+                    target.display_name(),
+                    channel.display_name(),
+                    cpu_build.display_name()
+                );
+                let descriptor = resolve_target(&provider, target, *channel, *cpu_build).await?;
                 releases.push(
                     ensure_release_integrity(descriptor, &baseline, &downloader, &network).await?,
                 );
@@ -210,15 +216,17 @@ async fn refresh(
         }
     }
 
+    println!("Refreshing Chrome++");
     let chrome_plus = ensure_chrome_plus_integrity(
-        runtime::chromeplus::resolve_latest(&http).await?,
+        resolve_chrome_plus(&http).await?,
         &baseline,
         &downloader,
         &network,
     )
     .await?;
+    println!("Refreshing Libportable");
     let libportable = ensure_libportable_integrity(
-        runtime::libportable::resolve_latest(&http).await?,
+        resolve_libportable(&http).await?,
         &baseline,
         &downloader,
         &network,
@@ -251,6 +259,92 @@ async fn refresh(
     let bytes = serde_json::to_vec_pretty(&metadata)?;
     fs::write(output_path, [bytes.as_slice(), b"\n"].concat())?;
     Ok(())
+}
+
+async fn resolve_target(
+    provider: &ProviderResolver,
+    target: TargetId,
+    channel: browser_harbor::domain::release::ReleaseChannel,
+    cpu_build: browser_harbor::domain::release::CpuBuild,
+) -> Result<ReleaseDescriptor, Box<dyn std::error::Error>> {
+    let mut last_error = None;
+    for attempt in 1..=2 {
+        match provider.resolve(target, channel, cpu_build).await {
+            Ok(descriptor) => return Ok(descriptor),
+            Err(error) => {
+                eprintln!(
+                    "{} {} {} attempt {attempt} failed: {error}",
+                    target.display_name(),
+                    channel.display_name(),
+                    cpu_build.display_name()
+                );
+                last_error = Some(error);
+                if attempt < 2 {
+                    tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+                }
+            }
+        }
+    }
+    Err(format!(
+        "{} {} {} failed: {}",
+        target.display_name(),
+        channel.display_name(),
+        cpu_build.display_name(),
+        last_error
+            .map(|error| error.to_string())
+            .unwrap_or_else(|| "unknown error".to_owned())
+    )
+    .into())
+}
+
+async fn resolve_chrome_plus(
+    http: &HttpClient,
+) -> Result<ChromePlusRelease, Box<dyn std::error::Error>> {
+    let mut last_error = None;
+    for attempt in 1..=2 {
+        match runtime::chromeplus::resolve_latest(http).await {
+            Ok(release) => return Ok(release),
+            Err(error) => {
+                eprintln!("Chrome++ attempt {attempt} failed: {error}");
+                last_error = Some(error);
+                if attempt < 2 {
+                    tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+                }
+            }
+        }
+    }
+    Err(format!(
+        "Chrome++ refresh failed: {}",
+        last_error
+            .map(|error| error.to_string())
+            .unwrap_or_else(|| "unknown error".to_owned())
+    )
+    .into())
+}
+
+async fn resolve_libportable(
+    http: &HttpClient,
+) -> Result<LibportableRelease, Box<dyn std::error::Error>> {
+    let mut last_error = None;
+    for attempt in 1..=2 {
+        match runtime::libportable::resolve_latest(http).await {
+            Ok(release) => return Ok(release),
+            Err(error) => {
+                eprintln!("Libportable attempt {attempt} failed: {error}");
+                last_error = Some(error);
+                if attempt < 2 {
+                    tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+                }
+            }
+        }
+    }
+    Err(format!(
+        "Libportable refresh failed: {}",
+        last_error
+            .map(|error| error.to_string())
+            .unwrap_or_else(|| "unknown error".to_owned())
+    )
+    .into())
 }
 
 async fn ensure_release_integrity(

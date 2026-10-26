@@ -18,7 +18,7 @@ jobs:
     runs-on: windows-2025
     steps:
       - name: Check out source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
@@ -30,6 +30,8 @@ jobs:
 
       - name: Refresh official metadata
         shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           cargo run --quiet --bin metadata -- refresh `
             --baseline .\assets\trusted-metadata.json `
