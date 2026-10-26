@@ -1,0 +1,29 @@
+# Rust build outputs
+/target/
+*.pdb
+
+# Local runtime data
+manager.json
+*.log
+downloads/
+cache/
+
+# Local release artifacts and downloaded browser packages
+/dist/
+*.7z
+*.zip
+*.msi
+*.cab
+*.exe
+
+# Tool and editor state
+.superpowers/
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store
+
+# Local secrets and environment overrides
+.env
+.env.*
+!.env.example

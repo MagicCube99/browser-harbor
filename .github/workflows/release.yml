@@ -1,0 +1,82 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build Windows x64 release
+    runs-on: windows-2025
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Install pinned Rust toolchain
+        shell: pwsh
+        run: |
+          rustup toolchain install 1.99.1 --profile minimal --component rustfmt --component clippy
+          rustup default 1.99.1
+
+      - name: Run quality gate
+        shell: pwsh
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\check.ps1
+
+      - name: Package release assets
+        shell: pwsh
+        run: .\scripts\package-release.ps1 -Tag $env:GITHUB_REF_NAME
+
+      - name: Upload packaged assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-harbor-release
+          path: dist/*.exe
+          if-no-files-found: error
+
+  publish:
+    name: Publish GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Check out release notes
+        uses: actions/checkout@v4
+
+      - name: Download packaged assets
+        uses: actions/download-artifact@v4
+        with:
+          name: browser-harbor-release
+          path: dist
+
+      - name: Create or update release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="$GITHUB_REF_NAME"
+          version="${tag#v}"
+          asset="dist/BrowserHarbor-${version}-x64.exe"
+          notes="docs/releases/$tag.md"
+          if [[ ! -f "$notes" ]]; then
+            notes="CHANGELOG.md"
+          fi
+          sha256="$(sha256sum "$asset" | awk '{print $1}')"
+          combined_notes="release-notes-with-checksum.md"
+          {
+            cat "$notes"
+            printf '\n## 校验 · Verify\n\n`SHA-256: %s`\n' "$sha256"
+          } > "$combined_notes"
+          prerelease=()
+          if [[ "$tag" == *-* ]]; then
+            prerelease+=(--prerelease)
+          fi
+          gh release create "$tag" "$asset" \
+            --title "Browser Harbor $version" \
+            --notes-file "$combined_notes" \
+            "${prerelease[@]}"

@@ -1,0 +1,47 @@
+[package]
+name = "browser-harbor"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.99"
+license = "MIT OR Apache-2.0"
+description = "Browser Harbor - portable browser download and management tool"
+repository = "https://github.com/MagicCube99/browser-harbor"
+
+[dependencies]
+base64 = "0.22.1"
+cab = "0.6.0"
+eframe = { version = "0.37.0", default-features = false, features = ["accesskit", "clipboard", "glow", "links", "system_fonts"] }
+futures-util = "0.3.31"
+hex = "0.4.3"
+msi = "0.10.0"
+pgp = { version = "0.21.0", default-features = false }
+quick-xml = "0.42.0"
+regex-lite = "0.1.9"
+reqwest = { version = "0.13.5", default-features = false, features = ["gzip", "json", "native-tls", "stream", "system-proxy"] }
+rfd = { version = "0.17.2", default-features = false }
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.154"
+sevenz-rust2 = { version = "0.24.1", default-features = false, features = ["util"] }
+sha2 = "0.10.9"
+thiserror = "2.0.21"
+tokio = { version = "1.48.0", features = ["macros", "rt-multi-thread", "sync", "time"] }
+url = "2.5.7"
+walkdir = "2.5.0"
+windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_Security_Cryptography", "Win32_Storage_FileSystem", "Win32_System_Diagnostics_ToolHelp", "Win32_System_ProcessStatus", "Win32_System_Threading", "Win32_UI_HiDpi", "Win32_UI_Shell", "Win32_UI_WindowsAndMessaging"] }
+zip = { version = "9.0.5", default-features = false, features = ["deflate"] }
+
+[dev-dependencies]
+egui_system_font_provider = "0.37.0"
+egui_kittest = { version = "0.37.0", features = ["eframe"] }
+sevenz-rust2 = { version = "0.24.1", default-features = false, features = ["compress", "util"] }
+tempfile = "3.27.0"
+
+[build-dependencies]
+winresource = { version = "0.1.34", default-features = false }
+
+[profile.release]
+opt-level = "z"
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+strip = "symbols"
