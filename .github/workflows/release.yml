@@ -1,5 +1,6 @@
 name: Release
 
+# Tag pushes build one verified Windows release.
 on:
   push:
     tags:
