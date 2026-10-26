@@ -62,6 +62,7 @@ Brave, Helium, and Ungoogled Chromium retain an experimental Chrome++ compatibil
 - Downloaded browser installers are never executed as setup programs.
 - Official APIs and the project-signed manifest establish identity; mirrors and accelerators carry bytes only.
 - The embedded signed manifest covers all 19 channel/CPU combinations and Chrome++/Libportable, so a blocked metadata endpoint does not remove the offline bootstrap path.
+- A scheduled metadata workflow refreshes and signs upstream changes without publishing a new EXE.
 - Program replacements preserve user data and runtime configuration according to target rules.
 - The EXE is not Authenticode-signed yet, so Windows SmartScreen may show a warning.
 

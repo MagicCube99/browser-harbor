@@ -39,6 +39,8 @@ The signed manifest may be fetched through domestic mirrors because its signatur
 
 The version cell and tooltip identify signed-manifest results explicitly. An expired signed manifest is used only with a visible warning.
 
+The signed manifest is refreshed by a scheduled GitHub workflow when official browser versions or integrity values change. This metadata update does not publish or require a new EXE.
+
 ## Browser pages
 
 ### Browser

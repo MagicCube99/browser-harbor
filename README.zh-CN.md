@@ -62,6 +62,7 @@ Brave、Helium、Ungoogled Chromium 仍带有实验性 Chrome++ 兼容标记。I
 - 不直接执行下载的浏览器安装器。
 - 官方 API 或项目签名清单确定发布身份；镜像和加速站只负责传输字节。
 - EXE 内置签名清单覆盖全部 19 个渠道/CPU 组合和 Chrome++、Libportable，元数据站点不可用时仍可启动安装。
+- 定时的元数据工作流会自动刷新并签名上游变化，不需要发布新 EXE。
 - 程序替换按目标规则保留用户数据和运行时配置。
 - EXE 尚未做 Authenticode 代码签名，Windows SmartScreen 可能提示警告。
 

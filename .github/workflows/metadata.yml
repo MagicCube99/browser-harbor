@@ -1,0 +1,76 @@
+name: Metadata
+
+on:
+  schedule:
+    - cron: "17 2 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: signed-metadata
+  cancel-in-progress: true
+
+jobs:
+  refresh:
+    name: Refresh signed browser metadata
+    runs-on: windows-2025
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install pinned Rust toolchain
+        shell: pwsh
+        run: |
+          rustup toolchain install 1.99.1 --profile minimal
+          rustup default 1.99.1
+
+      - name: Refresh official metadata
+        shell: pwsh
+        run: |
+          cargo run --quiet --bin metadata -- refresh `
+            --baseline .\assets\trusted-metadata.json `
+            --signature .\assets\trusted-metadata.sig `
+            --public-key .\assets\metadata-public-key.hex `
+            --output .\assets\trusted-metadata.json
+
+      - name: Sign metadata
+        shell: pwsh
+        env:
+          BROWSER_HARBOR_METADATA_SIGNING_KEY: ${{ secrets.BROWSER_HARBOR_METADATA_SIGNING_KEY }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:BROWSER_HARBOR_METADATA_SIGNING_KEY)) {
+            throw "The metadata signing key secret is not configured."
+          }
+          cargo run --quiet --bin metadata -- sign-env `
+            --manifest .\assets\trusted-metadata.json `
+            --variable BROWSER_HARBOR_METADATA_SIGNING_KEY `
+            --signature .\assets\trusted-metadata.sig
+
+      - name: Verify signed metadata
+        shell: pwsh
+        run: |
+          cargo run --quiet --bin metadata -- verify `
+            --manifest .\assets\trusted-metadata.json `
+            --signature .\assets\trusted-metadata.sig `
+            --public-key .\assets\metadata-public-key.hex
+
+      - name: Commit changed metadata
+        shell: pwsh
+        run: |
+          git config user.name "Browser Harbor Metadata Bot"
+          git config user.email "metadata-bot@users.noreply.github.com"
+          git add assets/trusted-metadata.json assets/trusted-metadata.sig
+          git diff --cached --quiet
+          if ($LASTEXITCODE -eq 0) {
+            Write-Host "Signed metadata is unchanged."
+            exit 0
+          }
+          if ($LASTEXITCODE -ne 1) {
+            exit $LASTEXITCODE
+          }
+          git commit -m "chore(metadata): refresh signed browser releases"
+          git push origin HEAD:main
