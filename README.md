@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/MagicCube99/browser-harbor/releases/latest"><img src="https://img.shields.io/github/v/release/MagicCube99/browser-harbor?label=Download" alt="Download"></a>
+  <a href="https://github.com/MagicCube99/browser-harbor/releases"><img src="https://img.shields.io/badge/Download-Releases-blue" alt="Download releases"></a>
   <img src="https://img.shields.io/badge/Windows-10%20%7C%2011-0078D4" alt="Windows 10 | 11">
   <img src="https://img.shields.io/badge/x64-64--bit-blue" alt="x64">
   <a href="LICENSE-MIT"><img src="https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-green" alt="MIT OR Apache-2.0"></a>
@@ -35,6 +35,14 @@ Run the EXE from any writable folder. No installer, administrator rights, backgr
 Requirements: Windows 10 22H2 or Windows 11, x64.
 
 `v0.1.0` remains available as the frozen compatibility build. The `v0.2.x` Verified Edition uses signed release metadata; it does not change the existing browser-artifact mirror download path.
+
+## Release policy
+
+- From `v0.2` onward, each release publishes one Verified Edition EXE.
+- There is no separate unsigned or "no verification" distribution line.
+- Browser, Chrome++, Libportable, and local-package installation always require trusted integrity values.
+- If an official-API-only metadata mode is added later, it will be a runtime option within the same version line, not a second product version.
+- `v0.1.0` is an archived historical compatibility release, not an alternative maintained edition.
 
 ## Highlights
 

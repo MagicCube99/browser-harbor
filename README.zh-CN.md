@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/MagicCube99/browser-harbor/releases/latest"><img src="https://img.shields.io/github/v/release/MagicCube99/browser-harbor?label=%E4%B8%8B%E8%BD%BD%20Download" alt="下载"></a>
+  <a href="https://github.com/MagicCube99/browser-harbor/releases"><img src="https://img.shields.io/badge/Download-Releases-blue" alt="下载发布版本"></a>
   <img src="https://img.shields.io/badge/Windows-10%20%7C%2011-0078D4" alt="Windows 10 | 11">
   <img src="https://img.shields.io/badge/x64-64--bit-blue" alt="x64">
   <a href="LICENSE-MIT"><img src="https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-green" alt="MIT OR Apache-2.0"></a>
@@ -35,6 +35,14 @@ Browser Harbor 是一个精简的原生 Windows 工具，支持 14 个 Chromium 
 运行要求：Windows 10 22H2 或 Windows 11 x64。
 
 `v0.1.0` 保留为冻结的兼容版；`v0.2.x` 是验证版，增加签名发布清单，但不改变浏览器大文件原有的镜像下载路径。
+
+## 发布策略
+
+- 从 `v0.2` 起，每个版本只发布一个 Verified Edition EXE。
+- 不提供另一条“无签名”或“不校验”发行线。
+- 浏览器、Chrome++、Libportable 和本地安装包始终要求可信完整性值。
+- 如果以后增加“仅使用官方 API”模式，它会是同一版本内的运行时选项，而不是第二套产品版本。
+- `v0.1.0` 是已归档的历史兼容版，不是仍受维护的替代版本。
 
 ## 功能亮点
 
