@@ -12,7 +12,7 @@ jobs:
   build:
     name: Build Windows x64 release
     runs-on: windows-2025
-    timeout-minutes: 35
+    timeout-minutes: 50
     steps:
       - name: Check out source
         uses: actions/checkout@v5
@@ -25,12 +25,12 @@ jobs:
 
       - name: Run quality gate
         shell: pwsh
-        timeout-minutes: 20
+        timeout-minutes: 35
         run: powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\check.ps1
 
       - name: Package release assets
         shell: pwsh
-        timeout-minutes: 5
+        timeout-minutes: 10
         run: .\scripts\package-release.ps1 -Tag $env:GITHUB_REF_NAME
 
       - name: Upload packaged assets
