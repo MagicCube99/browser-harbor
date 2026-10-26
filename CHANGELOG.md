@@ -2,6 +2,26 @@
 
 [简体中文](CHANGELOG.zh-CN.md) · English
 
+## v0.2.0 — 2026-10-26
+
+First stable Verified Edition.
+
+### Added
+
+- Ed25519-signed release metadata with a public key embedded in the executable.
+- Automatic signed-metadata refresh through GitHub Actions without requiring a new EXE or Release.
+- One-session upstream checks and ten-minute verified release-descriptor reuse.
+
+### Security
+
+- Browser, Chrome++, Libportable, and local-package installation always require trusted integrity values.
+- Accelerators may transport metadata and artifacts but cannot establish release identity.
+
+### Compatibility
+
+- `v0.1.0` remains frozen as the historical compatibility release.
+- `manager.json` remains schema v10; trusted metadata is cached separately.
+
 ## v0.2.0-beta.3 — 2026-10-26
 
 ### Changed

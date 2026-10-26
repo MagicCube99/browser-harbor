@@ -12,7 +12,7 @@ Browser Harbor 是单 EXE 便携程序，不需要安装，也不需要管理员
 
 ## 首次启动
 
-1. 从 GitHub Releases 下载 `BrowserHarbor-0.2.0-beta.3-x64.exe`。
+1. 从 GitHub Releases 下载 `BrowserHarbor-0.2.0-x64.exe`。
 2. 把 EXE 放到可写目录后直接运行。
 3. 从浏览器下拉框选择目标。
 4. 检查 Browser Root 及其下级路径。

@@ -12,7 +12,7 @@ Browser Harbor is a portable single EXE. It does not require installation or adm
 
 ## First launch
 
-1. Download `BrowserHarbor-0.2.0-beta.3-x64.exe` from GitHub Releases.
+1. Download `BrowserHarbor-0.2.0-x64.exe` from GitHub Releases.
 2. Run the EXE from a writable folder you control.
 3. Select a browser from the browser drop-down.
 4. Review the Browser Root and child paths.

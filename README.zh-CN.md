@@ -28,7 +28,7 @@ Browser Harbor 是一个精简的原生 Windows 工具，支持 14 个 Chromium 
 
 ## 下载
 
-从 [v0.2.0-beta.3 Release](https://github.com/MagicCube99/browser-harbor/releases/tag/v0.2.0-beta.3) 下载 `BrowserHarbor-0.2.0-beta.3-x64.exe`。
+从 [v0.2.0 Release](https://github.com/MagicCube99/browser-harbor/releases/tag/v0.2.0) 下载 `BrowserHarbor-0.2.0-x64.exe`。
 
 把 EXE 放到任意可写目录后直接运行。无需安装、管理员权限、后台服务或 WebView2。
 
