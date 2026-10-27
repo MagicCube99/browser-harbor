@@ -49,6 +49,7 @@ jobs:
     timeout-minutes: 15
     permissions:
       contents: write
+      actions: write
     steps:
       - name: Check out release notes
         uses: actions/checkout@v5
@@ -90,3 +91,20 @@ jobs:
             --title "Browser Harbor $version" \
             --notes-file "$combined_notes" \
             "${prerelease[@]}"
+
+      - name: Trigger Gitee release mirror
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3; do
+            if gh workflow run gitee-release.yml \
+              --repo "$GITHUB_REPOSITORY" \
+              --ref main \
+              -f "tag=${GITHUB_REF_NAME}"; then
+              exit 0
+            fi
+            sleep "$((attempt * 5))"
+          done
+          exit 1
