@@ -72,10 +72,7 @@ jobs:
           git ls-remote gitee > /dev/null
           git fetch --force origin "refs/tags/${tag}:refs/tags/${tag}"
           target_sha="$(git rev-parse "${tag}^{commit}")"
-          lightweight_tag="gitee-mirror-${tag}"
-          git tag --force "$lightweight_tag" "$target_sha"
-          git push --force gitee "refs/tags/${lightweight_tag}:refs/tags/${tag}"
-          git tag --delete "$lightweight_tag" > /dev/null
+          git push --force gitee "refs/tags/${tag}:refs/tags/${tag}"
 
           work="${RUNNER_TEMP}/gitee-release"
           assets="${work}/assets"
@@ -94,7 +91,32 @@ jobs:
             --write-out '%{http_code}' \
             "${api}/releases/tags/${tag}")"
 
+          create_release=false
           if [[ "$lookup_status" == "404" ]]; then
+            create_release=true
+          elif [[ "$lookup_status" == "200" ]]; then
+            release_id="$(jq -r '.id // empty' "${work}/existing-release.json")"
+            if [[ -z "$release_id" ]]; then
+              create_release=true
+            else
+              create_status="$(curl --silent --show-error \
+                --request PATCH \
+                --form-string "access_token=${GITEE_TOKEN}" \
+                --form-string "tag_name=${tag}" \
+                --form-string "name=${release_name}" \
+                --form-string "body=${release_body}" \
+                --form-string "prerelease=${prerelease}" \
+                --output "${work}/saved-release.json" \
+                --write-out '%{http_code}' \
+                "${api}/releases/${release_id}")"
+            fi
+          else
+            echo "Gitee release lookup failed with HTTP ${lookup_status}" >&2
+            jq -r '.message // empty' "${work}/existing-release.json" >&2 || true
+            exit 1
+          fi
+
+          if [[ "$create_release" == "true" ]]; then
             create_status="$(curl --silent --show-error \
               --request POST \
               --data-urlencode "access_token=${GITEE_TOKEN}" \
@@ -106,22 +128,6 @@ jobs:
               --output "${work}/saved-release.json" \
               --write-out '%{http_code}' \
               "${api}/releases")"
-          elif [[ "$lookup_status" == "200" ]]; then
-            release_id="$(jq -r '.id' "${work}/existing-release.json")"
-            create_status="$(curl --silent --show-error \
-              --request PATCH \
-              --form-string "access_token=${GITEE_TOKEN}" \
-              --form-string "tag_name=${tag}" \
-              --form-string "name=${release_name}" \
-              --form-string "body=${release_body}" \
-              --form-string "prerelease=${prerelease}" \
-              --output "${work}/saved-release.json" \
-              --write-out '%{http_code}' \
-              "${api}/releases/${release_id}")"
-          else
-            echo "Gitee release lookup failed with HTTP ${lookup_status}" >&2
-            jq -r '.message // empty' "${work}/existing-release.json" >&2 || true
-            exit 1
           fi
 
           if [[ "$create_status" != "200" && "$create_status" != "201" ]]; then
