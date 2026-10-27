@@ -423,7 +423,12 @@ pub fn repair_portable_paths(
 ) -> Result<PortablePathRepair, RepairError> {
     if !matches!(
         target,
-        TargetId::Firefox | TargetId::Zen | TargetId::Iceweasel | TargetId::SkyKakapo
+        TargetId::Firefox
+            | TargetId::Floorp
+            | TargetId::LibreWolf
+            | TargetId::Zen
+            | TargetId::Iceweasel
+            | TargetId::SkyKakapo
     ) {
         return Err(RepairError::UnsupportedTarget);
     }
@@ -451,11 +456,11 @@ pub fn repair_portable_paths(
     let ini_path = program.join(ini_name);
     let backup_path = chromeplus::backup_ini(&ini_path, &root.join("backups"), "path-repair")?;
     match target {
-        TargetId::Firefox | TargetId::Zen => {
+        TargetId::Firefox | TargetId::Floorp | TargetId::LibreWolf | TargetId::Zen => {
             libportable::write_portable_ini(
                 program,
                 program,
-                data,
+                profile,
                 config.cache_directory.as_deref(),
             )?;
         }
@@ -961,6 +966,59 @@ mod tests {
         let ini = fs::read_to_string(program.join("portable.ini")).unwrap();
         assert!(ini.contains(r"PortableDataPath=..\Profiles"));
         assert!(ini.lines().any(|line| line.trim() == "TmpDataPath="));
+    }
+
+    #[test]
+    fn portable_path_repair_supports_floorp_and_librewolf() {
+        for (target, root_name, program_name, profile_path) in [
+            (
+                TargetId::Floorp,
+                "Floorp",
+                "app",
+                r"data\profile\default",
+            ),
+            (
+                TargetId::LibreWolf,
+                "LibreWolf",
+                "LibreWolf",
+                r"Profiles\Default",
+            ),
+        ] {
+            let directory = tempdir().unwrap();
+            let root = directory.path().join(root_name);
+            let program = root.join(program_name);
+            let profile = root.join(profile_path);
+            fs::create_dir_all(&program).unwrap();
+            fs::create_dir_all(&profile).unwrap();
+            fs::copy(
+                std::env::current_exe().unwrap(),
+                program.join(target.spec().executable_candidates[0]),
+            )
+            .unwrap();
+            fs::write(
+                program.join("portable.ini"),
+                format!(
+                    "[General]\r\nPortable=1\r\nPortableDataPath={}\r\n[Env]\r\nTmpDataPath=\r\n",
+                    profile.display()
+                ),
+            )
+            .unwrap();
+            let mut config = TargetConfig::for_target(target);
+            config.browser_root = Some(root);
+            config.derive_paths_from_root(target);
+
+            let repair = repair_portable_paths(target, &config)
+                .unwrap_or_else(|error| panic!("{} repair failed: {error}", target.display_name()));
+
+            assert!(repair.backup_path.is_file());
+            let ini = fs::read_to_string(program.join("portable.ini")).unwrap();
+            let expected = if target == TargetId::Floorp {
+                r"PortableDataPath=..\data\profile\default"
+            } else {
+                r"PortableDataPath=..\Profiles\Default"
+            };
+            assert!(ini.contains(expected), "{}: {ini}", target.display_name());
+        }
     }
 
     #[test]

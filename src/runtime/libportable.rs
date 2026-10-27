@@ -128,7 +128,9 @@ pub fn is_compatible(product: TargetId, version: &str) -> bool {
     let major = parts.next().unwrap_or(0);
     let minor = parts.next().unwrap_or(0);
     match product {
-        TargetId::Firefox => (115..=158).contains(&major),
+        TargetId::Firefox | TargetId::Floorp | TargetId::LibreWolf => {
+            (115..=158).contains(&major)
+        }
         TargetId::Zen => major == 1 && minor == 23,
         _ => false,
     }
@@ -223,7 +225,11 @@ mod tests {
     #[test]
     fn libportable_version_gate_is_target_specific() {
         assert!(is_compatible(TargetId::Firefox, "158.0.1"));
+        assert!(is_compatible(TargetId::Floorp, "158.0.1"));
+        assert!(is_compatible(TargetId::LibreWolf, "158.0.1"));
         assert!(is_compatible(TargetId::Zen, "1.23.4b"));
+        assert!(!is_compatible(TargetId::Floorp, "159.0"));
+        assert!(!is_compatible(TargetId::LibreWolf, "159.0"));
         assert!(!is_compatible(TargetId::Zen, "159.0"));
         assert!(!is_compatible(TargetId::Chrome, "158.0.1"));
     }
