@@ -758,6 +758,7 @@ impl BrowserHarborApp {
             network: self.state.draft().network.clone(),
             cache_dir: self.state.cache_dir(),
             current_version,
+            chrome_plus_expected_version: None,
             replace_same_version,
             cached_release,
         }));
@@ -3156,6 +3157,9 @@ fn operation_status(phase: &OperationPhase) -> String {
         OperationPhase::Installed { receipt } => format!("已安装 {}", receipt.version),
         OperationPhase::ChromePlusChecked { latest_version, .. } => {
             format!("Chrome++ 检查完成：{latest_version}")
+        }
+        OperationPhase::ChromePlusInstalled { version } => {
+            format!("Chrome++ 已更新到 {version}")
         }
         OperationPhase::Cancelled => "任务已取消".to_owned(),
         OperationPhase::Failed { message } => message.clone(),

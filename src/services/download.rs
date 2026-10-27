@@ -402,6 +402,31 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn reuses_one_verified_artifact_for_later_targets() {
+        let bytes = b"shared chromeplus runtime".to_vec();
+        let url = serve_once(bytes.clone(), "200 OK");
+        let directory = tempdir().unwrap();
+        let downloader = Downloader::new(
+            reqwest::Client::new(),
+            directory.path().to_path_buf(),
+            Arc::new(AtomicBool::new(false)),
+        );
+        let artifact = artifact(url, &bytes);
+
+        let first = downloader
+            .download(&artifact, &NetworkSettings::default(), |_| {})
+            .await
+            .unwrap();
+        let second = downloader
+            .download(&artifact, &NetworkSettings::default(), |_| {})
+            .await
+            .unwrap();
+
+        assert_eq!(first, second);
+        assert_eq!(std::fs::read(second).unwrap(), bytes);
+    }
+
+    #[tokio::test]
     async fn hash_mismatch_removes_partial_file() {
         let bytes = b"tampered".to_vec();
         let url = serve_once(bytes.clone(), "200 OK");
