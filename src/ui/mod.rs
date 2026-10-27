@@ -3809,9 +3809,14 @@ mod tests {
         let status = harness.get_by_label(&message);
         let network = harness.get_by_label("全局设置");
         let theme = harness.get_by_label("外观：跟随系统");
+        let language = harness.get_by_role_and_label(Role::Button, "界面语言: 中文");
+        let version_label = format!("ver {}", env!("CARGO_PKG_VERSION"));
+        let version = harness.get_by_role_and_label(Role::Link, &version_label);
 
         assert!(status.rect().max.x < network.rect().min.x);
         assert!(status.rect().max.x < theme.rect().min.x);
+        assert!(status.rect().max.x < language.rect().min.x);
+        assert!(status.rect().max.x < version.rect().min.x);
         let gap = network.rect().min.x - status.rect().max.x;
         assert!(
             gap <= 10.0,
