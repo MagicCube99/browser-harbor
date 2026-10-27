@@ -797,7 +797,13 @@ mod tests {
                 "Profiles",
                 r"Profiles\Cache",
             ),
-            (TargetId::Floorp, Some("app"), "data", "data", "data"),
+            (
+                TargetId::Floorp,
+                Some("app"),
+                "data",
+                r"data\profile\default",
+                r"data\profile\default",
+            ),
             (
                 TargetId::Helium,
                 Some("App"),
@@ -816,8 +822,8 @@ mod tests {
                 TargetId::LibreWolf,
                 Some("LibreWolf"),
                 "Profiles",
-                "Profiles",
-                "Profiles",
+                r"Profiles\Default",
+                r"Profiles\Default",
             ),
             (
                 TargetId::SkyKakapo,
