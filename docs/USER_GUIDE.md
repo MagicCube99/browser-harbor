@@ -13,7 +13,7 @@ Browser Harbor is a portable single EXE. It does not require installation or adm
 
 ## First launch
 
-1. Download `BrowserHarbor-0.2.1-x64.exe` from GitHub Releases.
+1. Download `BrowserHarbor-0.3.0-x64.exe` from GitHub Releases.
 2. Run it from a writable folder.
 3. Select a browser.
 4. Review the program, data, profile, and cache paths.
@@ -91,6 +91,7 @@ Edge uses the matching `setdll` helper to add the `version.dll` import. Brave, H
 - Iceweasel uses its package portable runtime.
 - SkyKakapo uses its bundled `tmemutil` runtime.
 - Floorp and LibreWolf are made portable at the browser executable itself with Libportable; their bundled launchers are not required.
+- Browser Harbor removes those bundled launchers and LibreWolf's updater/task scripts during installation or update.
 
 ## Global settings
 

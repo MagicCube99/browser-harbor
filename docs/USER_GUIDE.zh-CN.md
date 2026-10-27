@@ -13,7 +13,7 @@ Browser Harbor 是单 EXE 便携程序，不需要安装，也不需要管理员
 
 ## 首次启动
 
-1. 从 GitHub Releases 下载 `BrowserHarbor-0.2.1-x64.exe`。
+1. 从 GitHub Releases 下载 `BrowserHarbor-0.3.0-x64.exe`。
 2. 放到可写目录后直接运行。
 3. 选择浏览器。
 4. 检查程序、数据、Profile 和缓存目录。
@@ -91,6 +91,7 @@ Edge 会使用同版本 `setdll` 添加 `version.dll` 导入。Brave、Helium �
 - Iceweasel 使用包内便携运行时。
 - SkyKakapo 使用自带 `tmemutil` 运行时。
 - Floorp 和 LibreWolf 均由 Libportable 直接便携化浏览器 EXE，不依赖发行包内的启动器。
+- 安装或更新时，管理器会删除这两个浏览器包内的启动器，以及 LibreWolf 的更新器和计划任务脚本。
 
 ## 全局设置
 
