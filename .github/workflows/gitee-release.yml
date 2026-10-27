@@ -82,6 +82,7 @@ jobs:
           release_name="$(jq -r '.name // .tagName' "${work}/release.json")"
           release_body="$(jq -r '.body // ""' "${work}/release.json")"
           prerelease="$(jq -r '.isPrerelease' "${work}/release.json")"
+          target_sha="$(git rev-parse "${tag}^{commit}")"
           api="https://gitee.com/api/v5/repos/MagicCube99/browser-harbor"
 
           lookup_status="$(curl --silent --show-error --get \
@@ -98,7 +99,7 @@ jobs:
               --data-urlencode "name=${release_name}" \
               --data-urlencode "body=${release_body}" \
               --data-urlencode "prerelease=${prerelease}" \
-              --data-urlencode "target_commitish=main" \
+              --data-urlencode "target_commitish=${target_sha}" \
               --output "${work}/saved-release.json" \
               --write-out '%{http_code}' \
               "${api}/releases")"
