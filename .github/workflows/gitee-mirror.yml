@@ -1,0 +1,80 @@
+name: Mirror to Gitee
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gitee-mirror
+  cancel-in-progress: true
+
+jobs:
+  mirror:
+    name: Mirror Git refs to Gitee
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Check Gitee credentials
+        id: credentials
+        shell: bash
+        env:
+          GITEE_USERNAME: ${{ secrets.GITEE_USERNAME }}
+          GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
+          GIT_TERMINAL_PROMPT: "0"
+        run: |
+          if [[ -z "${GITEE_USERNAME:-}" || -z "${GITEE_TOKEN:-}" ]]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Gitee mirror skipped::Add GITEE_USERNAME and GITEE_TOKEN repository secrets to enable mirroring."
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Push main and tags to Gitee
+        if: steps.credentials.outputs.configured == 'true'
+        shell: bash
+        env:
+          GITEE_USERNAME: ${{ secrets.GITEE_USERNAME }}
+          GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
+        run: |
+          set -euo pipefail
+          credential_file="${RUNNER_TEMP}/gitee-credentials"
+          git config --global credential.helper "store --file=${credential_file}"
+          printf 'protocol=https\nhost=gitee.com\nusername=%s\npassword=%s\n\n' \
+            "$GITEE_USERNAME" "$GITEE_TOKEN" | git credential approve
+
+          git remote add gitee "https://gitee.com/MagicCube99/browser-harbor.git"
+          git ls-remote gitee > /dev/null
+          git push --force gitee HEAD:refs/heads/main
+          git push --force --tags gitee
+
+          curl --silent --show-error --fail \
+            --request PATCH \
+            --form-string "access_token=${GITEE_TOKEN}" \
+            --form-string "name=browser-harbor" \
+            --form-string "description=Browser Harbor - portable browser downloader and manager" \
+            --form-string "homepage=https://gitee.com/MagicCube99/browser-harbor" \
+            --form-string "default_branch=main" \
+            --form-string "private=false" \
+            --form-string "has_issues=true" \
+            --form-string "has_wiki=false" \
+            --form-string "pull_requests_enabled=false" \
+            --form-string "online_edit_enabled=false" \
+            "https://gitee.com/api/v5/repos/MagicCube99/browser-harbor" \
+            > /dev/null

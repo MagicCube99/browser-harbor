@@ -1,0 +1,172 @@
+name: Mirror Release to Gitee
+
+on:
+  release:
+    types:
+      - published
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing GitHub release tag to mirror
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gitee-release-${{ github.event.release.tag_name || inputs.tag }}
+  cancel-in-progress: false
+
+jobs:
+  mirror:
+    name: Mirror GitHub Release to Gitee
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Check Gitee credentials
+        id: credentials
+        shell: bash
+        env:
+          GITEE_USERNAME: ${{ secrets.GITEE_USERNAME }}
+          GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
+        run: |
+          if [[ -z "${GITEE_USERNAME:-}" || -z "${GITEE_TOKEN:-}" ]]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Gitee Release mirror skipped::Add GITEE_USERNAME and GITEE_TOKEN repository secrets to enable release mirroring."
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Mirror release
+        if: steps.credentials.outputs.configured == 'true'
+        shell: bash
+        env:
+          GITEE_USERNAME: ${{ secrets.GITEE_USERNAME }}
+          GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.event.release.tag_name || inputs.tag }}
+          GIT_TERMINAL_PROMPT: "0"
+        run: |
+          set -euo pipefail
+          tag="${RELEASE_TAG}"
+          if [[ ! "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([-.][0-9A-Za-z.-]+)?$ ]]; then
+            echo "Invalid release tag: $tag" >&2
+            exit 1
+          fi
+
+          credential_file="${RUNNER_TEMP}/gitee-release-credentials"
+          git config --global credential.helper "store --file=${credential_file}"
+          printf 'protocol=https\nhost=gitee.com\nusername=%s\npassword=%s\n\n' \
+            "$GITEE_USERNAME" "$GITEE_TOKEN" | git credential approve
+
+          git remote add gitee "https://gitee.com/MagicCube99/browser-harbor.git"
+          git ls-remote gitee > /dev/null
+          git fetch --force origin "refs/tags/${tag}:refs/tags/${tag}"
+          git push --force gitee "refs/tags/${tag}:refs/tags/${tag}"
+
+          work="${RUNNER_TEMP}/gitee-release"
+          assets="${work}/assets"
+          mkdir -p "$assets"
+          gh release view "$tag" --json name,body,isPrerelease,tagName > "${work}/release.json"
+          gh release download "$tag" --dir "$assets"
+
+          release_name="$(jq -r '.name // .tagName' "${work}/release.json")"
+          release_body="$(jq -r '.body // ""' "${work}/release.json")"
+          prerelease="$(jq -r '.isPrerelease' "${work}/release.json")"
+          api="https://gitee.com/api/v5/repos/MagicCube99/browser-harbor"
+
+          lookup_status="$(curl --silent --show-error --get \
+            --data-urlencode "access_token=${GITEE_TOKEN}" \
+            --output "${work}/existing-release.json" \
+            --write-out '%{http_code}' \
+            "${api}/releases/tags/${tag}")"
+
+          if [[ "$lookup_status" == "404" ]]; then
+            create_status="$(curl --silent --show-error \
+              --request POST \
+              --form-string "access_token=${GITEE_TOKEN}" \
+              --form-string "tag_name=${tag}" \
+              --form-string "name=${release_name}" \
+              --form-string "body=${release_body}" \
+              --form-string "prerelease=${prerelease}" \
+              --form-string "target_commitish=${tag}" \
+              --output "${work}/saved-release.json" \
+              --write-out '%{http_code}' \
+              "${api}/releases")"
+          elif [[ "$lookup_status" == "200" ]]; then
+            release_id="$(jq -r '.id' "${work}/existing-release.json")"
+            create_status="$(curl --silent --show-error \
+              --request PATCH \
+              --form-string "access_token=${GITEE_TOKEN}" \
+              --form-string "tag_name=${tag}" \
+              --form-string "name=${release_name}" \
+              --form-string "body=${release_body}" \
+              --form-string "prerelease=${prerelease}" \
+              --output "${work}/saved-release.json" \
+              --write-out '%{http_code}' \
+              "${api}/releases/${release_id}")"
+          else
+            echo "Gitee release lookup failed with HTTP ${lookup_status}" >&2
+            jq -r '.message // empty' "${work}/existing-release.json" >&2 || true
+            exit 1
+          fi
+
+          if [[ "$create_status" != "200" && "$create_status" != "201" ]]; then
+            echo "Gitee release create/update failed with HTTP ${create_status}" >&2
+            jq -r '.message // empty' "${work}/saved-release.json" >&2 || true
+            exit 1
+          fi
+
+          release_id="$(jq -r '.id' "${work}/saved-release.json")"
+          attachment_status="$(curl --silent --show-error --get \
+            --data-urlencode "access_token=${GITEE_TOKEN}" \
+            --output "${work}/attachments.json" \
+            --write-out '%{http_code}' \
+            "${api}/releases/${release_id}/attach_files?per_page=100")"
+          if [[ "$attachment_status" != "200" ]]; then
+            echo "Gitee attachment lookup failed with HTTP ${attachment_status}" >&2
+            exit 1
+          fi
+
+          while IFS= read -r -d '' file; do
+            name="$(basename "$file")"
+            size="$(stat -c '%s' "$file")"
+            existing_id="$(jq -r --arg name "$name" '.[] | select(.name == $name) | .id' "${work}/attachments.json" | head -n 1)"
+            existing_size="$(jq -r --arg name "$name" '.[] | select(.name == $name) | .size' "${work}/attachments.json" | head -n 1)"
+
+            if [[ -n "$existing_id" && "$existing_size" == "$size" ]]; then
+              echo "Attachment already current: ${name}"
+              continue
+            fi
+            if [[ -n "$existing_id" ]]; then
+              curl --silent --show-error --fail --get \
+                --request DELETE \
+                --data-urlencode "access_token=${GITEE_TOKEN}" \
+                "${api}/releases/${release_id}/attach_files/${existing_id}" > /dev/null
+            fi
+
+            upload_status="$(curl --silent --show-error \
+              --request POST \
+              --form-string "access_token=${GITEE_TOKEN}" \
+              --form "file=@${file}" \
+              --output "${work}/upload.json" \
+              --write-out '%{http_code}' \
+              "${api}/releases/${release_id}/attach_files")"
+            if [[ "$upload_status" != "201" ]]; then
+              echo "Gitee attachment upload failed for ${name} with HTTP ${upload_status}" >&2
+              jq -r '.message // empty' "${work}/upload.json" >&2 || true
+              exit 1
+            fi
+            echo "Uploaded attachment: ${name}"
+          done < <(find "$assets" -type f -print0)
+
+          echo "::notice title=Gitee Release mirrored::${tag} was mirrored to Gitee."
