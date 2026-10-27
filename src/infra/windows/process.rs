@@ -26,6 +26,19 @@ pub fn is_process_running(executable: &Path) -> Result<bool, ProcessError> {
 
 pub fn running_process_count(executable: &Path) -> Result<usize, ProcessError> {
     let target = normalized_path(executable);
+    count_processes(|path| normalized_path(path) == target)
+}
+
+pub fn running_process_count_in_directory(directory: &Path) -> Result<usize, ProcessError> {
+    let directory = normalized_path(directory);
+    let prefix = format!("{}\\", directory.trim_end_matches('\\'));
+    count_processes(|path| {
+        let path = normalized_path(path);
+        path.starts_with(&prefix)
+    })
+}
+
+fn count_processes(predicate: impl Fn(&Path) -> bool) -> Result<usize, ProcessError> {
     let snapshot = unsafe { CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0) };
     if snapshot == INVALID_HANDLE_VALUE {
         return Err(ProcessError::Snapshot(std::io::Error::last_os_error()));
@@ -39,7 +52,7 @@ pub fn running_process_count(executable: &Path) -> Result<usize, ProcessError> {
         let mut count = 0;
         loop {
             if let Some(path) = process_path(entry.th32ProcessID)
-                && normalized_path(&path) == target
+                && predicate(&path)
             {
                 count += 1;
             }
@@ -88,7 +101,7 @@ mod tests {
         time::{Duration, Instant},
     };
 
-    use super::{is_process_running, running_process_count};
+    use super::{is_process_running, running_process_count, running_process_count_in_directory};
 
     #[test]
     fn finds_the_current_test_executable_by_full_path() {
@@ -118,6 +131,44 @@ mod tests {
             assert!(
                 Instant::now() < deadline,
                 "expected two matching processes, found {count}"
+            );
+            thread::sleep(Duration::from_millis(50));
+        };
+        for child in &mut children {
+            let _ = child.kill();
+            let _ = child.wait();
+        }
+        assert!(count >= 2);
+    }
+
+    #[test]
+    fn counts_alternate_executables_inside_one_program_directory() {
+        let directory = tempfile::tempdir().unwrap();
+        let command = std::env::var_os("COMSPEC").expect("Windows command processor is missing");
+        let first_path = directory.path().join("browser-a.exe");
+        let second_path = directory.path().join("browser-b.exe");
+        std::fs::copy(&command, &first_path).unwrap();
+        std::fs::copy(&command, &second_path).unwrap();
+        let mut children = [first_path, second_path]
+            .iter()
+            .map(|path| {
+                Command::new(path)
+                    .args(["/C", "ping 127.0.0.1 -n 10 > nul"])
+                    .stdout(Stdio::null())
+                    .stderr(Stdio::null())
+                    .spawn()
+                    .unwrap()
+            })
+            .collect::<Vec<_>>();
+        let deadline = Instant::now() + Duration::from_secs(5);
+        let count = loop {
+            let count = running_process_count_in_directory(directory.path()).unwrap();
+            if count >= 2 {
+                break count;
+            }
+            assert!(
+                Instant::now() < deadline,
+                "expected two processes in the directory, found {count}"
             );
             thread::sleep(Duration::from_millis(50));
         };

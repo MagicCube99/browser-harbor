@@ -261,7 +261,8 @@ async fn run_operation(
         });
     }
     if request.mode == OperationMode::ChromePlusInstall {
-        let release = resolve_chrome_plus_release(&http, &request.network, &request.cache_dir).await?;
+        let release =
+            resolve_chrome_plus_release(&http, &request.network, &request.cache_dir).await?;
         require_expected_chrome_plus_version(
             request.chrome_plus_expected_version.as_deref(),
             &release.version,
@@ -273,14 +274,22 @@ async fn run_operation(
             request.cache_dir.clone(),
             cancellation.clone(),
         );
-        let runtime =
-            download_chrome_plus_runtime(&downloader, &request, release, &emit).await?;
+        let runtime = download_chrome_plus_runtime(&downloader, &request, release, &emit).await?;
         let receipt = ChromePlusUpdateService::update(ChromePlusUpdateRequest {
             target,
             config: request.target_config,
             runtime,
         })
-        .map_err(Box::<dyn std::error::Error + Send + Sync>::from)?;
+        .map_err(|error| -> Box<dyn std::error::Error + Send + Sync> {
+            match error {
+                crate::services::install::InstallError::BrowserRunning(path) => format!(
+                    "浏览器仍在运行，请手工关闭所有实例后再更新 Chrome++：{}",
+                    path.display()
+                )
+                .into(),
+                error => error.into(),
+            }
+        })?;
         return Ok(OperationResult::ChromePlusInstalled {
             version: receipt.version,
         });
@@ -644,7 +653,8 @@ async fn download_chrome_plus_runtime(
         source: "Bush2021/chrome_plus".to_owned(),
         published_at: None,
     };
-    let path = download_artifact(downloader, &descriptor, &request.network, "Chrome++", emit).await?;
+    let path =
+        download_artifact(downloader, &descriptor, &request.network, "Chrome++", emit).await?;
     let setdll_archive = if request.target == TargetId::Edge {
         let descriptor = ReleaseDescriptor {
             target: request.target,
@@ -859,12 +869,8 @@ mod tests {
 
     #[test]
     fn chromeplus_update_rejects_a_changed_checked_version() {
-        assert!(
-            require_expected_chrome_plus_version(Some("1.18.3"), "1.18.3").is_ok()
-        );
-        assert!(
-            require_expected_chrome_plus_version(Some("1.18.3"), "1.18.4").is_err()
-        );
+        assert!(require_expected_chrome_plus_version(Some("1.18.3"), "1.18.3").is_ok());
+        assert!(require_expected_chrome_plus_version(Some("1.18.3"), "1.18.4").is_err());
         assert!(require_expected_chrome_plus_version(None, "1.18.3").is_err());
     }
 

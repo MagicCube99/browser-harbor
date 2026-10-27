@@ -21,7 +21,9 @@ use crate::{
         settings::TargetConfig,
         target::{ChromePlusMode, TargetId},
     },
-    infra::windows::process::{ProcessError, is_process_running, running_process_count},
+    infra::windows::process::{
+        ProcessError, is_process_running, running_process_count_in_directory,
+    },
     runtime::{RuntimeError, chromeplus, libportable, native},
     services::version_probe::locate_executable,
 };
@@ -363,7 +365,7 @@ impl ChromePlusUpdateService {
         let program_directory = executable
             .parent()
             .ok_or(InstallError::ExecutableNotFound)?;
-        if running_process_count(&executable)? > 0 {
+        if running_process_count_in_directory(configured_program)? > 0 {
             return Err(InstallError::BrowserRunning(executable));
         }
 
@@ -421,7 +423,7 @@ impl ChromePlusUpdateService {
             setdll_runtime_root: setdll_runtime_root.as_deref(),
         })?;
 
-        if running_process_count(&executable)? > 0 {
+        if running_process_count_in_directory(configured_program)? > 0 {
             return Err(InstallError::BrowserRunning(executable));
         }
         commit_chrome_plus_files(
@@ -1538,6 +1540,34 @@ mod tests {
         assert_eq!(
             fs::read(destination.join("chrome++.ini")).unwrap(),
             b"old-ini"
+        );
+    }
+
+    #[test]
+    fn edge_chromeplus_commit_includes_the_staged_patched_executable() {
+        let directory = tempdir().unwrap();
+        let staging = directory.path().join("staging");
+        let destination = directory.path().join("destination");
+        let backup = directory.path().join("backup");
+        fs::create_dir_all(&staging).unwrap();
+        fs::create_dir_all(&destination).unwrap();
+        fs::write(staging.join("msedge.exe"), b"new-edge").unwrap();
+        fs::write(staging.join("version.dll"), b"new-dll").unwrap();
+        fs::write(staging.join("chrome++.ini"), b"new-ini").unwrap();
+        fs::write(destination.join("msedge.exe"), b"old-edge").unwrap();
+        fs::write(destination.join("version.dll"), b"old-dll").unwrap();
+        fs::write(destination.join("chrome++.ini"), b"old-ini").unwrap();
+
+        commit_chrome_plus_files(&staging, &destination, &backup, TargetId::Edge).unwrap();
+
+        assert_eq!(fs::read(destination.join("msedge.exe")).unwrap(), b"new-edge");
+        assert_eq!(
+            fs::read(destination.join("version.dll")).unwrap(),
+            b"new-dll"
+        );
+        assert_eq!(
+            fs::read(destination.join("chrome++.ini")).unwrap(),
+            b"new-ini"
         );
     }
 

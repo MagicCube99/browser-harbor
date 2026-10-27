@@ -33,7 +33,10 @@ use crate::{
         target::{BrowserFamily, ChromePlusMode, SupportLevel, TargetId},
         version::{LocalVersion, VersionRelation, VersionSource, compare_versions},
     },
-    infra::windows::{folder_picker, shortcut::create_browser_shortcut},
+    infra::windows::{
+        folder_picker, process::running_process_count_in_directory,
+        shortcut::create_browser_shortcut,
+    },
     services::{
         download::{clear_download_cache, download_cache_usage},
         health::{
@@ -306,6 +309,8 @@ pub struct BrowserHarborApp {
     local_versions: BTreeMap<TargetId, LocalVersionState>,
     health_dialog: Option<HealthDialog>,
     same_version_prompt: Option<SameVersionPrompt>,
+    chrome_plus_update_prompt: Option<ChromePlusUpdatePrompt>,
+    browser_upgrade_prompt: Option<BrowserUpgradePrompt>,
     program_identity: ProgramIdentity,
     identity_prompt: Option<IdentityPrompt>,
     operation: Option<OperationController>,
@@ -326,6 +331,23 @@ enum LocalVersionState {
 struct SameVersionPrompt {
     current_version: String,
     upstream: UpstreamCheck,
+}
+
+#[derive(Debug, Clone)]
+struct ChromePlusUpdatePrompt {
+    target: TargetId,
+    current_version: Option<String>,
+    latest_version: String,
+}
+
+#[derive(Debug, Clone)]
+struct BrowserUpgradePrompt {
+    target: TargetId,
+    current_browser: String,
+    upstream_browser: String,
+    chrome_plus_current: String,
+    chrome_plus_latest: String,
+    replace_same_version: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -363,6 +385,8 @@ impl BrowserHarborApp {
             local_versions: BTreeMap::new(),
             health_dialog: None,
             same_version_prompt: None,
+            chrome_plus_update_prompt: None,
+            browser_upgrade_prompt: None,
             program_identity: ProgramIdentity::NoExecutable,
             identity_prompt: None,
             operation: None,
@@ -546,6 +570,93 @@ impl BrowserHarborApp {
         }
     }
 
+    fn chrome_plus_running_process_count(&self, target: TargetId) -> Result<usize, String> {
+        let config = self.state.draft().targets[&target].clone();
+        let config = self
+            .state
+            .resolve_operation_paths(config)
+            .map_err(|error| error.to_string())?;
+        let program = config
+            .browser_directory
+            .as_deref()
+            .ok_or_else(|| "程序目录未配置".to_owned())?;
+        running_process_count_in_directory(program).map_err(|error| error.to_string())
+    }
+
+    fn chrome_plus_pending_update(
+        &self,
+        target: TargetId,
+        config: &crate::domain::settings::TargetConfig,
+    ) -> Option<(String, String)> {
+        let current = self
+            .chrome_plus_versions
+            .get(&target)
+            .cloned()
+            .flatten()
+            .or_else(|| config.chrome_plus_version.clone())?;
+        let latest = self.chrome_plus_latest.get(&target)?.clone();
+        (compare_versions(&current, &latest) == VersionRelation::UpstreamNewer)
+            .then_some((current, latest))
+    }
+
+    fn request_chrome_plus_update(
+        &mut self,
+        target: TargetId,
+        current_version: Option<String>,
+        latest_version: String,
+    ) {
+        match self.chrome_plus_running_process_count(target) {
+            Ok(0) => {
+                self.chrome_plus_update_prompt = Some(ChromePlusUpdatePrompt {
+                    target,
+                    current_version,
+                    latest_version,
+                });
+                self.status_message = None;
+            }
+            Ok(count) => {
+                self.status_message = Some(chrome_plus_running_message(
+                    self.state.draft().language,
+                    target,
+                    count,
+                ));
+            }
+            Err(error) => {
+                self.status_message = Some(format!("无法检查浏览器运行状态：{error}"));
+            }
+        }
+    }
+
+    fn confirm_chrome_plus_update(&mut self) {
+        let Some(prompt) = self.chrome_plus_update_prompt.clone() else {
+            return;
+        };
+        match self.chrome_plus_running_process_count(prompt.target) {
+            Ok(0) => {
+                self.chrome_plus_update_prompt = None;
+                self.state.select(prompt.target);
+                self.start_operation_checked_with_expected(
+                    OperationMode::ChromePlusInstall,
+                    false,
+                    false,
+                    Some(prompt.latest_version),
+                );
+            }
+            Ok(count) => {
+                self.chrome_plus_update_prompt = None;
+                self.status_message = Some(chrome_plus_running_message(
+                    self.state.draft().language,
+                    prompt.target,
+                    count,
+                ));
+            }
+            Err(error) => {
+                self.chrome_plus_update_prompt = None;
+                self.status_message = Some(format!("无法检查浏览器运行状态：{error}"));
+            }
+        }
+    }
+
     fn display_local_version(
         &self,
         target: TargetId,
@@ -626,13 +737,42 @@ impl BrowserHarborApp {
         let config = self.state.draft().targets[&target].clone();
         let current = self.detected_local_version(target).cloned();
         let upstream = self.latest_check(target, &config).cloned();
+        let chrome_plus_update = self.chrome_plus_pending_update(target, &config);
         if let (Some(current), Some(upstream)) = (current, upstream)
             && compare_versions(&current.version, &upstream.version) == VersionRelation::Same
         {
+            if let Some((chrome_plus_current, chrome_plus_latest)) = chrome_plus_update {
+                self.status_message = Some("浏览器版本相同；替换操作还会更新 Chrome++".to_owned());
+                self.browser_upgrade_prompt = Some(BrowserUpgradePrompt {
+                    target,
+                    current_browser: current.version.clone(),
+                    upstream_browser: upstream.version.clone(),
+                    chrome_plus_current,
+                    chrome_plus_latest,
+                    replace_same_version: true,
+                });
+                return;
+            }
             self.status_message = Some("本地版本与上游版本相同，等待确认替换".to_owned());
             self.same_version_prompt = Some(SameVersionPrompt {
                 current_version: current.version,
                 upstream,
+            });
+            return;
+        }
+        if let Some((chrome_plus_current, chrome_plus_latest)) = chrome_plus_update {
+            self.status_message = Some("浏览器升级还会更新 Chrome++，等待确认".to_owned());
+            self.browser_upgrade_prompt = Some(BrowserUpgradePrompt {
+                target,
+                current_browser: self
+                    .detected_local_version(target)
+                    .map_or_else(|| "—".to_owned(), |version| version.version.clone()),
+                upstream_browser: self
+                    .latest_check(target, &config)
+                    .map_or_else(|| "—".to_owned(), |check| check.version.clone()),
+                chrome_plus_current,
+                chrome_plus_latest,
+                replace_same_version: false,
             });
             return;
         }
@@ -700,6 +840,21 @@ impl BrowserHarborApp {
         replace_same_version: bool,
         identity_confirmed: bool,
     ) {
+        self.start_operation_checked_with_expected(
+            mode,
+            replace_same_version,
+            identity_confirmed,
+            None,
+        );
+    }
+
+    fn start_operation_checked_with_expected(
+        &mut self,
+        mode: OperationMode,
+        replace_same_version: bool,
+        identity_confirmed: bool,
+        chrome_plus_expected_version: Option<String>,
+    ) {
         if self.operation.is_some() {
             return;
         }
@@ -712,11 +867,18 @@ impl BrowserHarborApp {
         let current_version = self
             .detected_local_version(target)
             .map(|version| version.version.clone());
-        if mode == OperationMode::Install && config.browser_root.is_none() {
+        if matches!(
+            mode,
+            OperationMode::Install | OperationMode::ChromePlusInstall
+        ) && config.browser_root.is_none()
+        {
             self.status_message = Some("请先设置浏览器根目录".to_owned());
             return;
         }
-        if mode == OperationMode::Install {
+        if matches!(
+            mode,
+            OperationMode::Install | OperationMode::ChromePlusInstall
+        ) {
             config = match self.state.resolve_operation_paths(config) {
                 Ok(config) => config,
                 Err(error) => {
@@ -724,21 +886,22 @@ impl BrowserHarborApp {
                     return;
                 }
             };
-            if !identity_confirmed
-                && let ProgramIdentity::Mismatch {
-                    actual,
-                    product_name,
-                } = self.program_identity.clone()
-            {
-                self.identity_prompt = Some(IdentityPrompt {
-                    target,
-                    actual,
-                    product_name,
-                    replace_same_version,
-                });
-                self.status_message = Some("浏览器身份不一致，等待确认".to_owned());
-                return;
-            }
+        }
+        if mode == OperationMode::Install
+            && !identity_confirmed
+            && let ProgramIdentity::Mismatch {
+                actual,
+                product_name,
+            } = self.program_identity.clone()
+        {
+            self.identity_prompt = Some(IdentityPrompt {
+                target,
+                actual,
+                product_name,
+                replace_same_version,
+            });
+            self.status_message = Some("浏览器身份不一致，等待确认".to_owned());
+            return;
         }
         if let Err(error) = crate::services::http::UrlRouter::validate_accelerators(
             &self.state.draft().network.accelerators,
@@ -758,7 +921,7 @@ impl BrowserHarborApp {
             network: self.state.draft().network.clone(),
             cache_dir: self.state.cache_dir(),
             current_version,
-            chrome_plus_expected_version: None,
+            chrome_plus_expected_version,
             replace_same_version,
             cached_release,
         }));
@@ -864,8 +1027,13 @@ impl BrowserHarborApp {
                     current_version,
                     latest_version,
                 } => {
-                    self.chrome_plus_latest
-                        .insert(event.target, latest_version.clone());
+                    for target in TargetId::ALL
+                        .into_iter()
+                        .filter(|target| target.chrome_plus_mode() != ChromePlusMode::Disabled)
+                    {
+                        self.chrome_plus_latest
+                            .insert(target, latest_version.clone());
+                    }
                     self.status_message = Some(match current_version.as_deref() {
                         Some(current)
                             if compare_versions(current, latest_version)
@@ -876,6 +1044,19 @@ impl BrowserHarborApp {
                         Some(_) => format!("Chrome++ 发现上游版本：{latest_version}"),
                         None => format!("Chrome++ 最新版本：{latest_version}"),
                     });
+                }
+                OperationPhase::ChromePlusInstalled { version } => {
+                    let mut config = self.state.draft().targets[&event.target].clone();
+                    config.chrome_plus_version = Some(version.clone());
+                    self.update_target_config(event.target, config);
+                    self.chrome_plus_versions
+                        .insert(event.target, Some(version.clone()));
+                    self.chrome_plus_ini_loaded.remove(&event.target);
+                    self.chrome_plus_latest
+                        .insert(event.target, version.clone());
+                    self.status_message = Some(format!(
+                        "Chrome++ 已更新到 {version}，浏览器数据和配置已保留"
+                    ));
                 }
                 OperationPhase::Cancelled => {
                     self.status_message = Some("任务已取消".to_owned());
@@ -906,6 +1087,8 @@ impl BrowserHarborApp {
         self.status_message = None;
         self.operation_phase = None;
         self.identity_prompt = None;
+        self.chrome_plus_update_prompt = None;
+        self.browser_upgrade_prompt = None;
         self.refresh_local_version(target);
         self.refresh_program_identity(target);
         if target.chrome_plus_mode() == ChromePlusMode::Disabled
@@ -1563,9 +1746,10 @@ impl BrowserHarborApp {
             .and_then(|root| resolve_preview_path(self.state.tool_root(), root))
             .map(|root| root.join("backups"));
         let installed = ini_path.is_some();
+        let latest_version = self.chrome_plus_latest.get(&target).cloned();
         let update_label = chrome_plus_update_button_label(
             installed_version.as_deref(),
-            self.chrome_plus_latest.get(&target).map(String::as_str),
+            latest_version.as_deref(),
         );
         let mut changed = config.chrome_plus_version != stored_chrome_plus_version;
         let mut ini_changed = false;
@@ -1589,6 +1773,7 @@ impl BrowserHarborApp {
         let mut backup_ini = false;
         let mut restore_defaults = false;
         let mut check_update = false;
+        let mut request_update = false;
         let mut load_keymapping = false;
         let mut load_ini = false;
 
@@ -1601,6 +1786,19 @@ impl BrowserHarborApp {
                         egui::vec2(86.0, 24.0),
                         Layout::right_to_left(Align::Center),
                         |ui| {
+                            let update_available = update_label == "可更新";
+                            let update_hover = if update_available {
+                                chrome_plus_update_hover(
+                                    self.state.draft().language,
+                                    installed_version.as_deref().unwrap_or("—"),
+                                    latest_version.as_deref().unwrap_or("—"),
+                                )
+                            } else {
+                                latest_version.as_deref().map_or_else(
+                                    || "检查 Bush2021/chrome_plus 的最新正式版本".to_owned(),
+                                    |latest| format!("最新版本：{latest}；点击重新检查"),
+                                )
+                            };
                             let update = ui
                                 .add_enabled(
                                     self.operation.is_none(),
@@ -1608,10 +1806,7 @@ impl BrowserHarborApp {
                                         .min_size(egui::vec2(24.0, 24.0))
                                         .frame(false),
                                 )
-                                .localized_hover(self.chrome_plus_latest.get(&target).map_or_else(
-                                    || "检查 Bush2021/chrome_plus 的最新正式版本".to_owned(),
-                                    |latest| format!("最新版本：{latest}；点击重新检查"),
-                                ));
+                                .localized_hover(update_hover);
                             let hovered = update.hovered() || update.has_focus();
                             ui.painter().rect_filled(
                                 update.rect,
@@ -1635,23 +1830,38 @@ impl BrowserHarborApp {
                                 "可更新" => palette.accent_text,
                                 _ => palette.text,
                             };
-                            paint_refresh_icon(
-                                ui.painter(),
-                                update.rect.center(),
-                                if hovered {
-                                    palette.accent_text
-                                } else {
-                                    update_color
-                                },
-                            );
+                            let icon_color = if hovered {
+                                palette.accent_text
+                            } else {
+                                update_color
+                            };
+                            if update_available {
+                                paint_update_icon(ui.painter(), update.rect.center(), icon_color);
+                            } else {
+                                paint_refresh_icon(ui.painter(), update.rect.center(), icon_color);
+                            }
+                            let accessible_label = if update_available {
+                                chrome_plus_update_action_label(
+                                    self.state.draft().language,
+                                    latest_version.as_deref().unwrap_or("—"),
+                                )
+                            } else {
+                                localized(update_label.as_str())
+                            };
                             update.widget_info(|| {
                                 egui::WidgetInfo::labeled(
                                     egui::Role::Button,
                                     self.operation.is_none(),
-                                    localized(update_label.as_str()),
+                                    accessible_label.clone(),
                                 )
                             });
-                            check_update = update.clicked();
+                            if update.clicked() {
+                                if update_available {
+                                    request_update = true;
+                                } else {
+                                    check_update = true;
+                                }
+                            }
 
                             ui.add_space(3.0);
                             let version_text = installed_version
@@ -2054,6 +2264,9 @@ impl BrowserHarborApp {
         {
             self.status_message = Some(format!("无法打开配置文件：{error}"));
         }
+        if request_update && let Some(latest) = latest_version {
+            self.request_chrome_plus_update(target, installed_version, latest);
+        }
         if check_update {
             self.start_operation(OperationMode::ChromePlusCheck, false);
         }
@@ -2356,6 +2569,145 @@ impl BrowserHarborApp {
             self.same_version_prompt = None;
             self.operation_phase = None;
             self.status_message = Some("已取消同版本替换".to_owned());
+        }
+    }
+
+    fn show_chrome_plus_update_prompt(&mut self, ctx: &egui::Context) {
+        let Some(prompt) = self.chrome_plus_update_prompt.clone() else {
+            return;
+        };
+        if prompt.target != self.state.selected_target() {
+            self.chrome_plus_update_prompt = None;
+            return;
+        }
+        let palette = match ctx.theme() {
+            egui::Theme::Light => LIGHT_PALETTE,
+            egui::Theme::Dark => DARK_PALETTE,
+        };
+        let mut confirm = false;
+        let mut cancel = false;
+        let response = egui::Modal::new(egui::Id::unique("chromeplus_update_confirmation"))
+            .frame(
+                Frame::new()
+                    .fill(palette.surface)
+                    .stroke(Stroke::new(1.0, palette.border))
+                    .corner_radius(CornerRadius::same(8))
+                    .inner_margin(16),
+            )
+            .show(ctx, |ui| {
+                ui.set_width(390.0);
+                ui.heading("更新 Chrome++");
+                ui.add_space(7.0);
+                ui.localized_label(
+                    RichText::new(format!(
+                        "Chrome++ {} → {}",
+                        prompt.current_version.as_deref().unwrap_or("—"),
+                        prompt.latest_version
+                    ))
+                    .strong()
+                    .color(palette.text),
+                );
+                ui.localized_label(format!("当前浏览器：{}", prompt.target.display_name()));
+                ui.add_space(8.0);
+                ui.localized_label(
+                    RichText::new(
+                        "将只替换 Chrome++ 文件，保留浏览器程序、Data、Profile 和缓存；旧 INI 会先备份。",
+                    )
+                    .color(palette.muted),
+                );
+                ui.localized_label(
+                    RichText::new(
+                        "请保持所有当前浏览器实例关闭。点击更新后会再次检测；仍在运行的实例不会被强制结束。",
+                    )
+                    .color(palette.warning),
+                );
+                ui.add_space(12.0);
+                ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                    confirm = ui.localized_button("更新 Chrome++").clicked();
+                    cancel = ui.localized_button("取消").clicked();
+                });
+            });
+        if response.should_close() {
+            cancel = true;
+        }
+        if confirm {
+            self.confirm_chrome_plus_update();
+        } else if cancel {
+            self.chrome_plus_update_prompt = None;
+            self.status_message = Some("已取消 Chrome++ 更新".to_owned());
+        }
+    }
+
+    fn show_browser_upgrade_prompt(&mut self, ctx: &egui::Context) {
+        let Some(prompt) = self.browser_upgrade_prompt.clone() else {
+            return;
+        };
+        if prompt.target != self.state.selected_target() {
+            self.browser_upgrade_prompt = None;
+            return;
+        }
+        let palette = match ctx.theme() {
+            egui::Theme::Light => LIGHT_PALETTE,
+            egui::Theme::Dark => DARK_PALETTE,
+        };
+        let mut confirm = false;
+        let mut cancel = false;
+        let response = egui::Modal::new(egui::Id::unique("browser_upgrade_confirmation"))
+            .frame(
+                Frame::new()
+                    .fill(palette.surface)
+                    .stroke(Stroke::new(1.0, palette.border))
+                    .corner_radius(CornerRadius::same(8))
+                    .inner_margin(16),
+            )
+            .show(ctx, |ui| {
+                ui.set_width(390.0);
+                ui.heading("同时更新 Chrome++");
+                ui.add_space(7.0);
+                ui.localized_label(format!(
+                    "浏览器：{} → {}",
+                    prompt.current_browser, prompt.upstream_browser
+                ));
+                ui.localized_label(
+                    RichText::new(format!(
+                        "Chrome++：{} → {}",
+                        prompt.chrome_plus_current, prompt.chrome_plus_latest
+                    ))
+                    .strong()
+                    .color(palette.accent_text),
+                );
+                ui.add_space(8.0);
+                ui.localized_label(
+                    RichText::new(
+                        if prompt.replace_same_version {
+                            "浏览器版本相同，继续会重新下载并替换浏览器，同时更新 Chrome++。"
+                        } else {
+                            "浏览器升级会替换程序目录，因此本次操作也会安装已检测到的 Chrome++ 新版本。"
+                        },
+                    )
+                    .color(palette.muted),
+                );
+                ui.localized_label(
+                    RichText::new(
+                        "Data、Profile、缓存和可恢复的 Chrome++ 配置会保留；请先关闭当前浏览器的所有实例。",
+                    )
+                    .color(palette.warning),
+                );
+                ui.add_space(12.0);
+                ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                    confirm = ui.localized_button("继续浏览器操作").clicked();
+                    cancel = ui.localized_button("取消").clicked();
+                });
+            });
+        if response.should_close() {
+            cancel = true;
+        }
+        if confirm {
+            self.browser_upgrade_prompt = None;
+            self.start_operation(OperationMode::Install, prompt.replace_same_version);
+        } else if cancel {
+            self.browser_upgrade_prompt = None;
+            self.status_message = Some("已取消浏览器操作".to_owned());
         }
     }
 
@@ -2737,6 +3089,8 @@ impl eframe::App for BrowserHarborApp {
                 });
             });
         self.show_same_version_prompt(ui.ctx());
+        self.show_chrome_plus_update_prompt(ui.ctx());
+        self.show_browser_upgrade_prompt(ui.ctx());
         self.show_identity_prompt(ui.ctx());
         self.show_health_dialog(ui.ctx());
     }
@@ -2859,6 +3213,35 @@ fn paint_refresh_icon(painter: &egui::Painter, center: egui::Pos2, color: Color3
     let back = tip - tangent * 3.4;
     painter.line_segment([tip, back + radial * 2.1], stroke);
     painter.line_segment([tip, back - radial * 2.1], stroke);
+}
+
+fn paint_update_icon(painter: &egui::Painter, center: egui::Pos2, color: Color32) {
+    let stroke = Stroke::new(1.3, color);
+    painter.line_segment(
+        [
+            center + egui::vec2(0.0, -6.0),
+            center + egui::vec2(0.0, 3.5),
+        ],
+        stroke,
+    );
+    painter.line_segment(
+        [
+            center + egui::vec2(-3.5, 0.0),
+            center + egui::vec2(0.0, 3.5),
+        ],
+        stroke,
+    );
+    painter.line_segment(
+        [center + egui::vec2(3.5, 0.0), center + egui::vec2(0.0, 3.5)],
+        stroke,
+    );
+    painter.line_segment(
+        [
+            center + egui::vec2(-6.0, 6.0),
+            center + egui::vec2(6.0, 6.0),
+        ],
+        stroke,
+    );
 }
 
 fn browser_selector(ui: &mut egui::Ui, selected: TargetId, width: f32) -> Option<TargetId> {
@@ -3027,6 +3410,36 @@ fn chrome_plus_update_button_label(current: Option<&str>, latest: Option<&str>) 
             "可更新".to_owned()
         }
         _ => "检查更新".to_owned(),
+    }
+}
+
+fn chrome_plus_running_message(language: Language, target: TargetId, count: usize) -> String {
+    let name = target.display_name();
+    match language {
+        Language::Chinese => {
+            format!("检测到 {count} 个 {name} 进程；请手工关闭所有 {name} 实例后再更新 Chrome++")
+        }
+        Language::English => format!(
+            "Detected {count} running {name} process(es); close every {name} instance manually before updating Chrome++"
+        ),
+    }
+}
+
+fn chrome_plus_update_action_label(language: Language, latest: &str) -> String {
+    match language {
+        Language::Chinese => format!("更新 Chrome++ 到 {latest}"),
+        Language::English => format!("Update Chrome++ to {latest}"),
+    }
+}
+
+fn chrome_plus_update_hover(language: Language, current: &str, latest: &str) -> String {
+    match language {
+        Language::Chinese => {
+            format!("{current} → {latest}；更新前请手工关闭所有当前浏览器实例")
+        }
+        Language::English => format!(
+            "{current} → {latest}; close every instance of the current browser before updating"
+        ),
     }
 }
 
@@ -3473,7 +3886,7 @@ mod tests {
     use tempfile::tempdir;
 
     use super::{
-        BODY_FONT_SIZE, BrowserHarborApp, LIGHT_PALETTE, ProgramIdentity, StatusTone,
+        BODY_FONT_SIZE, BrowserHarborApp, DetailTab, LIGHT_PALETTE, ProgramIdentity, StatusTone,
         chrome_plus_update_button_label, configure_context, create_auto_shortcut, relation_status,
         set_language,
     };
@@ -4275,6 +4688,156 @@ mod tests {
         assert!((integration.center().y - configuration.center().y).abs() < 1.0);
 
         set_language(Language::Chinese);
+    }
+
+    #[test]
+    fn chromeplus_update_blocks_when_multiple_target_instances_are_running() {
+        use std::process::{Child, Command, Stdio};
+
+        struct Children(Vec<Child>);
+        impl Drop for Children {
+            fn drop(&mut self) {
+                for child in &mut self.0 {
+                    let _ = child.kill();
+                    let _ = child.wait();
+                }
+            }
+        }
+
+        let directory = tempdir().unwrap();
+        let browser = directory.path().join("Chrome");
+        let program = browser.join("App");
+        fs::create_dir_all(&program).unwrap();
+        let executable = program.join("chrome.exe");
+        fs::copy(std::env::var_os("COMSPEC").unwrap(), &executable).unwrap();
+        write_ini(
+            &program.join("chrome++.ini"),
+            "[general]\r\ncommand_line=\r\n",
+            IniEncoding::Utf16Le,
+        )
+        .unwrap();
+        let _children = Children(
+            (0..2)
+                .map(|_| {
+                    Command::new(&executable)
+                        .args(["/C", "ping 127.0.0.1 -n 10 > nul"])
+                        .stdout(Stdio::null())
+                        .stderr(Stdio::null())
+                        .spawn()
+                        .unwrap()
+                })
+                .collect(),
+        );
+        let mut settings = Settings {
+            selected_browser: TargetId::Chrome,
+            ..Settings::default()
+        };
+        let config = settings.targets.get_mut(&TargetId::Chrome).unwrap();
+        config.browser_root = Some(browser);
+        config.browser_directory = Some(program);
+        config.data_directory = Some(r"D:\Browser\Chrome\Profiles".into());
+        config.profile_directory = Some(r"D:\Browser\Chrome\Profiles".into());
+        let state = AppState::new(
+            settings,
+            ConfigStore::new(directory.path().join("manager.json")),
+        );
+        let mut harness = harness_for(BrowserHarborApp::new(state));
+        let app = harness.state_mut();
+        app.active_tab = DetailTab::ChromePlus;
+        app.chrome_plus_versions
+            .insert(TargetId::Chrome, Some("1.18.2".to_owned()));
+        app.chrome_plus_latest
+            .insert(TargetId::Chrome, "1.18.3".to_owned());
+        harness.run();
+
+        harness.get_by_label("更新 Chrome++ 到 1.18.3").click();
+        harness.run();
+
+        harness
+            .get_by_label("检测到 2 个 Chrome 进程；请手工关闭所有 Chrome 实例后再更新 Chrome++");
+        assert!(harness.state().operation.is_none());
+    }
+
+    #[test]
+    fn chromeplus_update_ignores_other_browser_programs() {
+        use std::process::{Child, Command, Stdio};
+
+        struct ChildGuard(Child);
+        impl Drop for ChildGuard {
+            fn drop(&mut self) {
+                let _ = self.0.kill();
+                let _ = self.0.wait();
+            }
+        }
+
+        let directory = tempdir().unwrap();
+        let browser = directory.path().join("Chrome");
+        let program = browser.join("App");
+        fs::create_dir_all(&program).unwrap();
+        fs::copy(std::env::current_exe().unwrap(), program.join("chrome.exe")).unwrap();
+        write_ini(
+            &program.join("chrome++.ini"),
+            "[general]\r\ncommand_line=\r\n",
+            IniEncoding::Utf16Le,
+        )
+        .unwrap();
+        let other = directory.path().join("Helium/App");
+        fs::create_dir_all(&other).unwrap();
+        let other_executable = other.join("helium.exe");
+        fs::copy(std::env::var_os("COMSPEC").unwrap(), &other_executable).unwrap();
+        let _other_child = ChildGuard(
+            Command::new(&other_executable)
+                .args(["/C", "ping 127.0.0.1 -n 10 > nul"])
+                .stdout(Stdio::null())
+                .stderr(Stdio::null())
+                .spawn()
+                .unwrap(),
+        );
+        let mut settings = Settings {
+            selected_browser: TargetId::Chrome,
+            ..Settings::default()
+        };
+        let config = settings.targets.get_mut(&TargetId::Chrome).unwrap();
+        config.browser_root = Some(browser);
+        config.browser_directory = Some(program);
+        config.data_directory = Some(r"D:\Browser\Chrome\Profiles".into());
+        config.profile_directory = Some(r"D:\Browser\Chrome\Profiles".into());
+        let state = AppState::new(
+            settings,
+            ConfigStore::new(directory.path().join("manager.json")),
+        );
+        let mut harness = harness_for(BrowserHarborApp::new(state));
+        let app = harness.state_mut();
+        app.active_tab = DetailTab::ChromePlus;
+        app.chrome_plus_versions
+            .insert(TargetId::Chrome, Some("1.18.2".to_owned()));
+        app.chrome_plus_latest
+            .insert(TargetId::Chrome, "1.18.3".to_owned());
+        harness.run();
+
+        harness.get_by_label("更新 Chrome++ 到 1.18.3").click();
+        harness.run();
+
+        harness.get_by_label("Chrome++ 1.18.2 → 1.18.3");
+        assert!(harness.state().operation.is_none());
+    }
+
+    #[test]
+    fn browser_upgrade_prompt_names_both_version_transitions() {
+        let mut harness = harness();
+        harness.state_mut().browser_upgrade_prompt = Some(super::BrowserUpgradePrompt {
+            target: TargetId::Firefox,
+            current_browser: "159.0".to_owned(),
+            upstream_browser: "160.0".to_owned(),
+            chrome_plus_current: "1.18.2".to_owned(),
+            chrome_plus_latest: "1.18.3".to_owned(),
+            replace_same_version: false,
+        });
+        harness.run();
+
+        harness.get_by_label("同时更新 Chrome++");
+        harness.get_by_label("浏览器：159.0 → 160.0");
+        harness.get_by_label("Chrome++：1.18.2 → 1.18.3");
     }
 
     #[test]
