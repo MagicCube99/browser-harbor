@@ -181,6 +181,20 @@ impl ConfigStore {
         {
             config.browser_directory = Some(application);
         }
+        if found < 11 {
+            if let Some(config) = settings.targets.get_mut(&TargetId::Floorp)
+                && let Some(root) = config.browser_root.as_ref()
+                && config.profile_directory.as_ref() == Some(&root.join("data"))
+            {
+                config.profile_directory = Some(root.join(r"data\profile\default"));
+            }
+            if let Some(config) = settings.targets.get_mut(&TargetId::LibreWolf)
+                && let Some(root) = config.browser_root.as_ref()
+                && config.profile_directory.as_ref() == Some(&root.join("Profiles"))
+            {
+                config.profile_directory = Some(root.join(r"Profiles\Default"));
+            }
+        }
         for (target, config) in &mut settings.targets {
             config.fill_default_paths(*target);
         }
@@ -403,7 +417,7 @@ mod tests {
     fn default_settings_include_all_targets_with_default_paths() {
         let settings = Settings::default();
 
-        assert_eq!(settings.schema_version, 10);
+        assert_eq!(settings.schema_version, 11);
         assert_eq!(settings.selected_browser, TargetId::Firefox);
         assert_eq!(settings.theme, ThemeMode::System);
         assert_eq!(settings.language, Language::Chinese);
@@ -447,7 +461,7 @@ mod tests {
         store.save(&Settings::default()).unwrap();
 
         let value: serde_json::Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
-        assert_eq!(value["schemaVersion"], 10);
+        assert_eq!(value["schemaVersion"], 11);
         assert!(value.get("targets").is_none());
         assert!(value.get("network").is_none());
         assert!(value.get("theme").is_none());
@@ -471,7 +485,7 @@ mod tests {
 
         let loaded = store.load().unwrap();
 
-        assert_eq!(loaded.schema_version, 10);
+        assert_eq!(loaded.schema_version, 11);
         assert_eq!(loaded.targets.len(), TargetId::ALL.len());
         assert_eq!(
             loaded.targets[&TargetId::Helium].browser_root,
@@ -610,7 +624,7 @@ mod tests {
 
         let loaded = store.load().unwrap();
 
-        assert_eq!(loaded.schema_version, 10);
+        assert_eq!(loaded.schema_version, 11);
         for (target, installed_version) in [
             (TargetId::Iceweasel, "159.0"),
             (TargetId::SkyKakapo, "158.0.1"),
@@ -627,7 +641,7 @@ mod tests {
         }
         assert!(store.compact_if_needed(&loaded).unwrap());
         let saved: serde_json::Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
-        assert_eq!(saved["schemaVersion"], 10);
+        assert_eq!(saved["schemaVersion"], 11);
     }
 
     #[test]
@@ -651,7 +665,7 @@ mod tests {
 
         let loaded = store.load().unwrap();
 
-        assert_eq!(loaded.schema_version, 10);
+        assert_eq!(loaded.schema_version, 11);
         let edge = &loaded.targets[&TargetId::Edge];
         assert_eq!(
             edge.browser_directory,
@@ -662,7 +676,79 @@ mod tests {
         assert_eq!(edge.installed_version.as_deref(), Some("156.0.4314.42"));
         assert!(store.compact_if_needed(&loaded).unwrap());
         let saved: serde_json::Value = serde_json::from_slice(&fs::read(path).unwrap()).unwrap();
-        assert_eq!(saved["schemaVersion"], 10);
+        assert_eq!(saved["schemaVersion"], 11);
+    }
+
+    #[test]
+    fn schema_v10_preserves_floorp_and_librewolf_profiles_for_direct_runtime() {
+        let directory = tempdir().unwrap();
+        let path = temp_path(&directory);
+        let store = ConfigStore::new(path.clone());
+        let mut value = serde_json::to_value(Settings::default()).unwrap();
+        value["schemaVersion"] = serde_json::json!(10);
+        value["selectedBrowser"] = serde_json::json!("floorp");
+        value["targets"]
+            .as_object_mut()
+            .unwrap()
+            .retain(|target, _| matches!(target.as_str(), "floorp" | "libre_wolf"));
+
+        value["targets"]["floorp"]["browserRoot"] = serde_json::json!(r"D:\Portable\Floorp");
+        value["targets"]["floorp"]["browserDirectory"] =
+            serde_json::json!(r"D:\Portable\Floorp\app");
+        value["targets"]["floorp"]["dataDirectory"] = serde_json::json!(r"D:\Portable\Floorp\data");
+        value["targets"]["floorp"]["profileDirectory"] =
+            serde_json::json!(r"D:\Portable\Floorp\data");
+
+        value["targets"]["libre_wolf"]["browserRoot"] = serde_json::json!(r"D:\Portable\LibreWolf");
+        value["targets"]["libre_wolf"]["browserDirectory"] =
+            serde_json::json!(r"D:\Portable\LibreWolf\LibreWolf");
+        value["targets"]["libre_wolf"]["dataDirectory"] =
+            serde_json::json!(r"D:\Portable\LibreWolf\Profiles");
+        value["targets"]["libre_wolf"]["profileDirectory"] =
+            serde_json::json!(r"D:\Portable\LibreWolf\Profiles");
+        fs::write(&path, serde_json::to_vec_pretty(&value).unwrap()).unwrap();
+
+        let loaded = store.load().unwrap();
+
+        assert_eq!(loaded.schema_version, 11);
+        assert_eq!(
+            loaded.targets[&TargetId::Floorp].profile_directory,
+            Some(std::path::PathBuf::from(
+                r"D:\Portable\Floorp\data\profile\default"
+            ))
+        );
+        assert_eq!(
+            loaded.targets[&TargetId::LibreWolf].profile_directory,
+            Some(std::path::PathBuf::from(
+                r"D:\Portable\LibreWolf\Profiles\Default"
+            ))
+        );
+    }
+
+    #[test]
+    fn schema_v10_keeps_custom_floorp_profile_directory() {
+        let directory = tempdir().unwrap();
+        let path = temp_path(&directory);
+        let store = ConfigStore::new(path.clone());
+        let mut value = serde_json::to_value(Settings::default()).unwrap();
+        value["schemaVersion"] = serde_json::json!(10);
+        value["targets"]
+            .as_object_mut()
+            .unwrap()
+            .retain(|target, _| target == "floorp");
+        value["targets"]["floorp"]["browserRoot"] = serde_json::json!(r"D:\Portable\Floorp");
+        value["targets"]["floorp"]["dataDirectory"] = serde_json::json!(r"D:\Portable\Floorp\data");
+        value["targets"]["floorp"]["profileDirectory"] =
+            serde_json::json!(r"E:\BrowserProfiles\Floorp");
+        fs::write(&path, serde_json::to_vec_pretty(&value).unwrap()).unwrap();
+
+        let loaded = store.load().unwrap();
+
+        assert_eq!(loaded.schema_version, 11);
+        assert_eq!(
+            loaded.targets[&TargetId::Floorp].profile_directory,
+            Some(std::path::PathBuf::from(r"E:\BrowserProfiles\Floorp"))
+        );
     }
 
     #[test]
@@ -678,7 +764,7 @@ mod tests {
         assert!(store.compact_if_needed(&loaded).unwrap());
 
         let saved: serde_json::Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
-        assert_eq!(saved["schemaVersion"], 10);
+        assert_eq!(saved["schemaVersion"], 11);
         assert!(saved.get("targets").is_none());
         assert_eq!(store.load().unwrap(), loaded);
         assert!(!store.compact_if_needed(&loaded).unwrap());
@@ -706,7 +792,7 @@ mod tests {
         assert_eq!(store.load().unwrap(), settings);
         assert!(!directory.path().join("manager.json.tmp").exists());
         let raw = fs::read_to_string(&path).unwrap();
-        assert!(raw.contains("\"schemaVersion\": 10"));
+        assert!(raw.contains("\"schemaVersion\": 11"));
         assert!(raw.contains("\"selectedBrowser\": \"firefox\""));
         assert!(raw.contains("\"theme\": \"dark\""));
         assert!(raw.contains("\"language\": \"english\""));
@@ -819,7 +905,7 @@ mod tests {
             error,
             ConfigError::UnsupportedVersion {
                 found: 999,
-                supported: 10,
+                supported: 11,
                 ..
             }
         ));
@@ -839,7 +925,7 @@ mod tests {
 
         let loaded = store.load().unwrap();
 
-        assert_eq!(loaded.schema_version, 10);
+        assert_eq!(loaded.schema_version, 11);
         assert_eq!(loaded.theme, ThemeMode::System);
         assert_eq!(fs::read(&path).unwrap(), raw);
     }
@@ -862,7 +948,7 @@ mod tests {
 
         let loaded = store.load().unwrap();
 
-        assert_eq!(loaded.schema_version, 10);
+        assert_eq!(loaded.schema_version, 11);
         assert_eq!(
             loaded.targets[&TargetId::Iceweasel].channel,
             crate::domain::release::ReleaseChannel::Esr
@@ -901,7 +987,7 @@ mod tests {
         let loaded = store.load().unwrap();
         let helium = &loaded.targets[&TargetId::Helium];
 
-        assert_eq!(loaded.schema_version, 10);
+        assert_eq!(loaded.schema_version, 11);
         assert_eq!(
             helium.browser_root,
             Some(std::path::PathBuf::from(r".\Helium"))

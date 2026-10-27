@@ -29,6 +29,8 @@ pub enum RuntimeError {
     HelperTimeout,
     #[error("Libportable does not support {product} version {version}")]
     UnsupportedLibportableVersion { product: String, version: String },
+    #[error("portable runtime injection was not verified in {0}")]
+    InjectionVerification(PathBuf),
     #[error("Chrome++ key mapping is invalid on line {line}: {value}")]
     InvalidChromePlusKeyMapping { line: usize, value: String },
     #[error("runtime preparation failed for {path}")]

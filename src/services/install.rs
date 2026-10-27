@@ -839,12 +839,18 @@ fn verify_installed(
                 }
             }
         }
-        crate::domain::runtime::RuntimeKind::Libportable
+        crate::domain::runtime::RuntimeKind::Libportable => {
             if !program.join("portable64.dll").is_file()
                 || !program.join("portable.ini").is_file()
-                || !program.join("upcheck.exe").is_file() =>
-        {
-            return Err(InstallError::RuntimeMissing("Libportable"));
+                || !program.join("upcheck.exe").is_file()
+            {
+                return Err(InstallError::RuntimeMissing("Libportable"));
+            }
+            if !crate::runtime::pe_imports_dll(&program.join("mozglue.dll"), "portable64.dll")
+                .map_err(|source| io_error(&program.join("mozglue.dll"), source))?
+            {
+                return Err(InstallError::RuntimeMissing("Libportable mozglue import"));
+            }
         }
         crate::domain::runtime::RuntimeKind::IceweaselNative
             if !program.join("portable64.dll").is_file()
@@ -1269,50 +1275,78 @@ mod tests {
     }
 
     #[test]
+    fn libportable_installation_requires_injected_mozglue() {
+        let directory = tempdir().unwrap();
+        let program = directory.path().join("app");
+        fs::create_dir_all(&program).unwrap();
+        fs::write(program.join("floorp.exe"), fake_x64_exe()).unwrap();
+        fs::write(program.join("mozglue.dll"), fake_x64_exe()).unwrap();
+        fs::write(program.join("portable64.dll"), b"portable").unwrap();
+        fs::write(program.join("upcheck.exe"), b"upcheck").unwrap();
+        fs::write(program.join("portable.ini"), b"[General]\nPortable=1\n").unwrap();
+
+        let error =
+            super::verify_installed(&program.join("floorp.exe"), &program, TargetId::Floorp)
+                .unwrap_err();
+
+        assert!(matches!(
+            error,
+            super::InstallError::RuntimeMissing("Libportable mozglue import")
+        ));
+    }
+
+    #[test]
     fn native_package_layout_and_user_root_files_are_preserved() {
         let directory = tempdir().unwrap();
         let root = directory.path().join("Floorp");
-        let archive = directory.path().join("floorp.zip");
-        let file = File::create(&archive).unwrap();
-        let mut writer = ZipWriter::new(file);
-        for (name, bytes) in [
-            ("app/floorp.exe", fake_x64_exe()),
-            ("app/version.txt", b"1.0".to_vec()),
-            ("floorp-portable.exe", fake_x64_exe()),
-            ("portapp.json", br#"{"version":"1.0"}"#.to_vec()),
-            (
-                "floorp-portable.yml",
-                b"app:\n  check_for_updates: true\n".to_vec(),
-            ),
-        ] {
-            writer
-                .start_file(name, SimpleFileOptions::default())
-                .unwrap();
-            writer.write_all(&bytes).unwrap();
-        }
-        writer.finish().unwrap();
-        fs::create_dir_all(root.join("Data")).unwrap();
-        fs::write(root.join("Data/user-profile"), b"keep").unwrap();
+        let staging = directory.path().join("staging");
+        let backup = directory.path().join("backup");
+        fs::create_dir_all(staging.join("app")).unwrap();
+        fs::write(staging.join("app/floorp.exe"), fake_x64_exe()).unwrap();
+        fs::write(staging.join("app/version.txt"), b"1.0").unwrap();
+        fs::write(staging.join("floorp-portable.exe"), fake_x64_exe()).unwrap();
+        fs::write(staging.join("portapp.json"), br#"{"version":"1.0"}"#).unwrap();
+        fs::write(
+            staging.join("floorp-portable.yml"),
+            b"app:\n  check_for_updates: true\n",
+        )
+        .unwrap();
+        fs::create_dir_all(root.join("data/profile/default")).unwrap();
+        fs::write(root.join("data/profile/default/prefs.js"), b"keep").unwrap();
         fs::write(
             root.join("floorp-portable.yml"),
             b"app:\n  check_for_updates: false\n",
         )
         .unwrap();
-        let mut descriptor = release("1.0", &archive);
-        descriptor.target = TargetId::Floorp;
-        descriptor.artifact.file_name = "floorp.zip".to_owned();
-        descriptor.placement = ProgramPlacement::NativePackage;
+        let data = root.join("data");
+        let profile = root.join(r"data\profile\default");
 
-        let receipt = InstallService::install(request(descriptor, &archive, &root)).unwrap();
+        crate::runtime::native::configure_native_package(
+            &staging,
+            &root,
+            TargetId::Floorp,
+            &data,
+            None,
+        )
+        .unwrap();
+        commit_native_package(
+            &staging,
+            &root,
+            &backup,
+            TargetId::Floorp,
+            &["floorp-portable.yml"],
+            &data,
+            None,
+        )
+        .unwrap();
 
-        assert_eq!(receipt.browser_directory, root.join("app"));
         assert!(root.join("app/floorp.exe").is_file());
         assert!(root.join("floorp-portable.exe").is_file());
         assert_eq!(
             fs::read(root.join("floorp-portable.yml")).unwrap(),
             b"app:\n  check_for_updates: false\n"
         );
-        assert_eq!(fs::read(root.join("Data/user-profile")).unwrap(), b"keep");
+        assert_eq!(fs::read(profile.join("prefs.js")).unwrap(), b"keep");
     }
 
     #[test]

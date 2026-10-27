@@ -16,8 +16,6 @@ pub enum RuntimeKind {
     IceweaselNative,
     SkyKakapoNative,
     CatsxpLauncher,
-    FloorpLauncher,
-    LibreWolfLauncher,
     TurboLauncher,
 }
 

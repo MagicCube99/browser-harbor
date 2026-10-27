@@ -10,7 +10,7 @@ use super::{
     target::TargetId,
 };
 
-pub const CURRENT_SCHEMA_VERSION: u32 = 10;
+pub const CURRENT_SCHEMA_VERSION: u32 = 11;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -288,6 +288,18 @@ mod tests {
         assert_eq!(
             librewolf.data_directory,
             Some(r".\LibreWolf\Profiles".into())
+        );
+        assert_eq!(
+            librewolf.profile_directory,
+            Some(r".\LibreWolf\Profiles\Default".into())
+        );
+
+        let floorp = TargetConfig::for_target(TargetId::Floorp);
+        assert_eq!(floorp.browser_directory, Some(r".\Floorp\app".into()));
+        assert_eq!(floorp.data_directory, Some(r".\Floorp\data".into()));
+        assert_eq!(
+            floorp.profile_directory,
+            Some(r".\Floorp\data\profile\default".into())
         );
 
         let thorium = TargetConfig::for_target(TargetId::Thorium);

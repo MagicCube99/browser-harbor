@@ -221,6 +221,11 @@ async fn installs_each_native_package_target() {
         std::env::temp_dir().join("pbm-live-native-cache"),
         Arc::new(AtomicBool::new(false)),
     );
+    let runtime_downloader = Downloader::new(
+        HttpClient::download_client(&network).unwrap(),
+        std::env::temp_dir().join("pbm-live-libportable-cache"),
+        Arc::new(AtomicBool::new(false)),
+    );
     let root = tempdir().unwrap();
 
     for target in [
@@ -242,6 +247,22 @@ async fn installs_each_native_package_target() {
             .download(&release.artifact, &network, |_| {})
             .await
             .unwrap();
+        let libportable_runtime = if target.spec().runtime.uses_libportable() {
+            let runtime = runtime::libportable::resolve_latest(&http).await.unwrap();
+            let path = runtime_downloader
+                .download(&runtime.artifact, &network, |_| {})
+                .await
+                .unwrap();
+            Some(RuntimeArchive {
+                archive_path: path,
+                version: runtime.version,
+                artifact: runtime.artifact,
+                setdll_archive: None,
+                setdll_artifact: None,
+            })
+        } else {
+            None
+        };
         let browser_root = root.path().join(target.display_name());
         let receipt = InstallService::install(InstallRequest {
             release,
@@ -253,9 +274,14 @@ async fn installs_each_native_package_target() {
             cache_directory: None,
             chrome_plus_config: ChromePlusConfig::default(),
             chrome_plus_runtime: None,
-            libportable_runtime: None,
+            libportable_runtime,
         })
-        .unwrap_or_else(|error| panic!("{} install failed: {error}", target.display_name()));
+        .unwrap_or_else(|error| {
+            panic!(
+                "{} install failed: {error}\n{error:?}",
+                target.display_name()
+            )
+        });
 
         if !find_file(
             &receipt.browser_directory,
@@ -288,13 +314,32 @@ async fn installs_each_native_package_target() {
             TargetId::Floorp => {
                 assert!(browser_root.join("floorp-portable.exe").is_file());
                 assert!(browser_root.join("portapp.json").is_file());
+                assert!(receipt.browser_directory.join("portable.ini").is_file());
+                assert!(receipt.browser_directory.join("portable64.dll").is_file());
+                assert_eq!(
+                    receipt.profile_directory,
+                    browser_root.join(r"data\profile\default")
+                );
+                let portable =
+                    std::fs::read_to_string(receipt.browser_directory.join("portable.ini"))
+                        .unwrap();
+                assert!(portable.contains(r"PortableDataPath=..\data\profile\default"));
                 let config =
                     std::fs::read_to_string(browser_root.join("floorp-portable.yml")).unwrap();
                 assert!(config.contains("check_for_updates: false"));
             }
             TargetId::LibreWolf => {
-                assert!(browser_root.join("Profiles").is_dir());
                 assert!(browser_root.join("LibreWolf-Portable.exe").is_file());
+                assert!(receipt.browser_directory.join("portable.ini").is_file());
+                assert!(receipt.browser_directory.join("portable64.dll").is_file());
+                assert_eq!(
+                    receipt.profile_directory,
+                    browser_root.join(r"Profiles\Default")
+                );
+                let portable =
+                    std::fs::read_to_string(receipt.browser_directory.join("portable.ini"))
+                        .unwrap();
+                assert!(portable.contains(r"PortableDataPath=..\Profiles\Default"));
             }
             TargetId::SkyKakapo => {
                 assert_eq!(receipt.browser_directory, browser_root.join("App"));
@@ -452,6 +497,92 @@ async fn installs_iceweasel_native_layout() {
     let (portable, _) = read_ini(&receipt.browser_directory.join("portable.ini")).unwrap();
     assert!(portable.contains(r"PortableDataPath=..\Profiles"));
     assert!(portable.lines().any(|line| line.trim() == "TmpDataPath="));
+}
+
+#[tokio::test]
+#[ignore = "downloads Floorp, LibreWolf and Libportable into temporary directories"]
+async fn installs_floorp_and_librewolf_with_direct_libportable_runtime() {
+    let network = NetworkSettings::default();
+    let http = HttpClient::new(&network).unwrap();
+    let resolver = ProviderResolver::new(http.clone());
+    let browser_downloader = Downloader::new(
+        HttpClient::download_client(&network).unwrap(),
+        std::env::temp_dir().join("pbm-live-firefox-direct-cache"),
+        Arc::new(AtomicBool::new(false)),
+    );
+    let runtime_downloader = Downloader::new(
+        HttpClient::download_client(&network).unwrap(),
+        std::env::temp_dir().join("pbm-live-libportable-cache"),
+        Arc::new(AtomicBool::new(false)),
+    );
+    let root = tempdir().unwrap();
+    let runtime = runtime::libportable::resolve_latest(&http).await.unwrap();
+    let runtime_artifact = runtime_downloader
+        .download(&runtime.artifact, &network, |_| {})
+        .await
+        .unwrap();
+
+    for (target, expected_profile, expected_path) in [
+        (
+            TargetId::Floorp,
+            r"data\profile\default",
+            r"PortableDataPath=..\data\profile\default",
+        ),
+        (
+            TargetId::LibreWolf,
+            r"Profiles\Default",
+            r"PortableDataPath=..\Profiles\Default",
+        ),
+    ] {
+        let release = resolver
+            .resolve(
+                target,
+                target.spec().default_channel,
+                target.spec().default_cpu_build,
+            )
+            .await
+            .unwrap();
+        let artifact = browser_downloader
+            .download(&release.artifact, &network, |_| {})
+            .await
+            .unwrap();
+        let browser_root = root.path().join(target.display_name());
+        let receipt = InstallService::install(InstallRequest {
+            release,
+            browser_artifact: artifact,
+            browser_root: browser_root.clone(),
+            browser_directory: None,
+            data_directory: None,
+            profile_directory: None,
+            cache_directory: None,
+            chrome_plus_config: ChromePlusConfig::default(),
+            chrome_plus_runtime: None,
+            libportable_runtime: Some(RuntimeArchive {
+                archive_path: runtime_artifact.clone(),
+                version: runtime.version.clone(),
+                artifact: runtime.artifact.clone(),
+                setdll_archive: None,
+                setdll_artifact: None,
+            }),
+        })
+        .unwrap_or_else(|error| {
+            panic!(
+                "{} install failed: {error}\n{error:?}",
+                target.display_name()
+            )
+        });
+
+        assert!(receipt.browser_directory.join("portable.ini").is_file());
+        assert!(receipt.browser_directory.join("portable64.dll").is_file());
+        assert!(receipt.browser_directory.join("upcheck.exe").is_file());
+        assert_eq!(
+            receipt.profile_directory,
+            browser_root.join(expected_profile)
+        );
+        let portable =
+            std::fs::read_to_string(receipt.browser_directory.join("portable.ini")).unwrap();
+        assert!(portable.contains(expected_path));
+    }
 }
 
 #[tokio::test]
