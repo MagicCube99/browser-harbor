@@ -3321,7 +3321,12 @@ fn readonly_field(ui: &mut egui::Ui, label: &str, value: &str) {
 
 #[cfg(test)]
 mod tests {
-    use std::{fs, path::PathBuf, sync::Arc};
+    use std::{
+        fs,
+        ops::{Deref, DerefMut},
+        path::PathBuf,
+        sync::Arc,
+    };
 
     use eframe::egui::accesskit::Role;
     use egui_kittest::{
@@ -3360,13 +3365,73 @@ mod tests {
             .build_eframe(move |_cc| app)
     }
 
-    fn harness() -> Harness<'static, BrowserHarborApp> {
+    struct TestHarness {
+        harness: Harness<'static, BrowserHarborApp>,
+        _directory: tempfile::TempDir,
+    }
+
+    impl Deref for TestHarness {
+        type Target = Harness<'static, BrowserHarborApp>;
+
+        fn deref(&self) -> &Self::Target {
+            &self.harness
+        }
+    }
+
+    impl DerefMut for TestHarness {
+        fn deref_mut(&mut self) -> &mut Self::Target {
+            &mut self.harness
+        }
+    }
+
+    fn harness() -> TestHarness {
         let directory = tempdir().unwrap();
         let state = AppState::new(
             Settings::default(),
             ConfigStore::new(directory.path().join("manager.json")),
         );
-        harness_for(BrowserHarborApp::new(state))
+        TestHarness {
+            harness: harness_for(BrowserHarborApp::new(state)),
+            _directory: directory,
+        }
+    }
+
+    #[test]
+    fn ui_harness_removes_auto_saved_config_after_drop() {
+        let marker = format!(
+            r"D:\browser-harbor-tempdir-lifecycle-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        );
+        {
+            let mut harness = harness();
+            harness.run();
+            harness
+                .get_by_role_and_label(Role::TextInput, "浏览器根目录")
+                .set_text_value_accesskit(&marker);
+            harness.run();
+        }
+
+        let leaked = fs::read_dir(std::env::temp_dir())
+            .unwrap()
+            .flatten()
+            .filter(|entry| entry.file_name().to_string_lossy().starts_with(".tmp"))
+            .filter_map(|entry| fs::read(entry.path().join("manager.json")).ok())
+            .filter_map(|bytes| serde_json::from_slice::<serde_json::Value>(&bytes).ok())
+            .any(|value| {
+                value
+                    .pointer("/targets/firefox/browserRoot")
+                    .and_then(serde_json::Value::as_str)
+                    == Some(marker.as_str())
+            });
+
+        assert!(
+            !leaked,
+            "UI test config survived after its TempDir owner was dropped"
+        );
     }
 
     fn firefox_harness_with_versions(
