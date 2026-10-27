@@ -312,7 +312,7 @@ async fn installs_each_native_package_target() {
                 assert_eq!(receipt.browser_directory, browser_root.join("App"));
             }
             TargetId::Floorp => {
-                assert!(browser_root.join("floorp-portable.exe").is_file());
+                assert!(!browser_root.join("floorp-portable.exe").exists());
                 assert!(browser_root.join("portapp.json").is_file());
                 assert!(receipt.browser_directory.join("portable.ini").is_file());
                 assert!(receipt.browser_directory.join("portable64.dll").is_file());
@@ -329,7 +329,15 @@ async fn installs_each_native_package_target() {
                 assert!(config.contains("check_for_updates: false"));
             }
             TargetId::LibreWolf => {
-                assert!(browser_root.join("LibreWolf-Portable.exe").is_file());
+                for name in [
+                    "LibreWolf-Portable.exe",
+                    "LibreWolf-WinUpdater.exe",
+                    "LibreWolf-WinUpdater.ini",
+                    "ScheduledTask-Create.ps1",
+                    "ScheduledTask-Remove.ps1",
+                ] {
+                    assert!(!browser_root.join(name).exists(), "{name} remained");
+                }
                 assert!(receipt.browser_directory.join("portable.ini").is_file());
                 assert!(receipt.browser_directory.join("portable64.dll").is_file());
                 assert_eq!(
@@ -575,6 +583,12 @@ async fn installs_floorp_and_librewolf_with_direct_libportable_runtime() {
         assert!(receipt.browser_directory.join("portable.ini").is_file());
         assert!(receipt.browser_directory.join("portable64.dll").is_file());
         assert!(receipt.browser_directory.join("upcheck.exe").is_file());
+        if target == TargetId::Floorp {
+            assert!(!browser_root.join("floorp-portable.exe").exists());
+        } else {
+            assert!(!browser_root.join("LibreWolf-Portable.exe").exists());
+            assert!(!browser_root.join("LibreWolf-WinUpdater.exe").exists());
+        }
         assert_eq!(
             receipt.profile_directory,
             browser_root.join(expected_profile)

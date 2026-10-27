@@ -503,6 +503,39 @@ fn commit_native_package(
 ) -> Result<(), InstallError> {
     fs::create_dir_all(destination).map_err(|source| io_error(destination, source))?;
     fs::create_dir_all(backup).map_err(|source| io_error(backup, source))?;
+    let obsolete = obsolete_native_files(target);
+    for entry in fs::read_dir(staging).map_err(|source| io_error(staging, source))? {
+        let entry = entry.map_err(|source| io_error(staging, source))?;
+        if entry.file_type().is_ok_and(|kind| kind.is_file())
+            && obsolete.iter().any(|name| {
+                entry
+                    .file_name()
+                    .to_string_lossy()
+                    .eq_ignore_ascii_case(name)
+            })
+        {
+            let path = entry.path();
+            fs::remove_file(&path).map_err(|source| io_error(&path, source))?;
+        }
+    }
+    let mut installed = Vec::new();
+    let mut backups = Vec::new();
+    for entry in fs::read_dir(destination).map_err(|source| io_error(destination, source))? {
+        let entry = entry.map_err(|source| io_error(destination, source))?;
+        if entry.file_type().is_ok_and(|kind| kind.is_file())
+            && obsolete.iter().any(|name| {
+                entry
+                    .file_name()
+                    .to_string_lossy()
+                    .eq_ignore_ascii_case(name)
+            })
+        {
+            let name = entry.file_name();
+            let saved = backup.join(&name);
+            fs::rename(entry.path(), &saved).map_err(|source| io_error(&saved, source))?;
+            backups.push((name, saved));
+        }
+    }
     let staged_entries = fs::read_dir(staging)
         .map_err(|source| io_error(staging, source))?
         .filter_map(Result::ok)
@@ -531,8 +564,6 @@ fn commit_native_package(
     }
     replace_names.sort_by_key(|name| name.to_ascii_lowercase());
 
-    let mut installed = Vec::new();
-    let mut backups = Vec::new();
     for name in &replace_names {
         if directory_name_matches(destination, data_directory, name)
             || cache_directory.is_some_and(|cache| directory_name_matches(destination, cache, name))
@@ -577,6 +608,20 @@ fn commit_native_package(
         installed.push(target);
     }
     Ok(())
+}
+
+fn obsolete_native_files(target: TargetId) -> &'static [&'static str] {
+    match target {
+        TargetId::Floorp => &["floorp-portable.exe"],
+        TargetId::LibreWolf => &[
+            "LibreWolf-Portable.exe",
+            "LibreWolf-WinUpdater.exe",
+            "LibreWolf-WinUpdater.ini",
+            "ScheduledTask-Create.ps1",
+            "ScheduledTask-Remove.ps1",
+        ],
+        _ => &[],
+    }
 }
 
 fn rollback_native(
@@ -945,15 +990,8 @@ fn copy_package_extras(
                 || (name.to_ascii_lowercase().starts_with("turbo")
                     && name.to_ascii_lowercase().ends_with(".exe"))
         }
-        TargetId::Floorp => {
-            name.eq_ignore_ascii_case("floorp-portable.yml")
-                || (name.to_ascii_lowercase().contains("floorp-portable")
-                    && name.to_ascii_lowercase().ends_with(".exe"))
-        }
-        TargetId::LibreWolf => {
-            name.to_ascii_lowercase().contains("portable")
-                && name.to_ascii_lowercase().ends_with(".exe")
-        }
+        TargetId::Floorp => name.eq_ignore_ascii_case("floorp-portable.yml"),
+        TargetId::LibreWolf => false,
         _ => false,
     };
     for entry in WalkDir::new(extracted)
@@ -1296,6 +1334,60 @@ mod tests {
     }
 
     #[test]
+    fn native_package_commit_removes_bundled_launchers() {
+        for (target, program_name, executable, obsolete) in [
+            (
+                TargetId::Floorp,
+                "app",
+                "floorp.exe",
+                &["floorp-portable.exe"][..],
+            ),
+            (
+                TargetId::LibreWolf,
+                "LibreWolf",
+                "librewolf.exe",
+                &[
+                    "LibreWolf-Portable.exe",
+                    "LibreWolf-WinUpdater.exe",
+                    "LibreWolf-WinUpdater.ini",
+                    "ScheduledTask-Create.ps1",
+                    "ScheduledTask-Remove.ps1",
+                ][..],
+            ),
+        ] {
+            let directory = tempdir().unwrap();
+            let destination = directory.path().join(target.display_name());
+            let staging = directory.path().join("staging");
+            let backup = directory.path().join("backup");
+            fs::create_dir_all(destination.join(program_name)).unwrap();
+            fs::create_dir_all(staging.join(program_name)).unwrap();
+            fs::write(staging.join(program_name).join(executable), fake_x64_exe()).unwrap();
+            for name in obsolete {
+                fs::write(destination.join(name), b"launcher").unwrap();
+            }
+
+            commit_native_package(
+                &staging,
+                &destination,
+                &backup,
+                target,
+                &[],
+                &destination.join("data"),
+                None,
+            )
+            .unwrap();
+
+            for name in obsolete {
+                assert!(
+                    !destination.join(name).exists(),
+                    "{} retained {name}",
+                    target.display_name()
+                );
+            }
+        }
+    }
+
+    #[test]
     fn native_package_layout_and_user_root_files_are_preserved() {
         let directory = tempdir().unwrap();
         let root = directory.path().join("Floorp");
@@ -1341,7 +1433,7 @@ mod tests {
         .unwrap();
 
         assert!(root.join("app/floorp.exe").is_file());
-        assert!(root.join("floorp-portable.exe").is_file());
+        assert!(!root.join("floorp-portable.exe").exists());
         assert_eq!(
             fs::read(root.join("floorp-portable.yml")).unwrap(),
             b"app:\n  check_for_updates: false\n"

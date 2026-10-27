@@ -2,6 +2,20 @@
 
 [简体中文](CHANGELOG.zh-CN.md) · English
 
+## v0.3.0 — 2026-10-27
+
+### Changed
+
+- Floorp and LibreWolf now use mandatory Libportable injection instead of package-bundled launchers.
+- All Firefox-family targets now remain portable when their browser executable is launched directly.
+- Floorp keeps `data/profile/default`; LibreWolf keeps `Profiles/Default`.
+- Bundled Floorp/LibreWolf launchers and LibreWolf updater/task scripts are removed to prevent update and launch conflicts.
+
+### Reliability
+
+- Configuration schema v11 migrates only known old default profile paths and preserves custom paths.
+- Libportable installation now verifies that `mozglue.dll` imports `portable64.dll`.
+
 ## v0.2.1 — 2026-10-26
 
 ### Fixed

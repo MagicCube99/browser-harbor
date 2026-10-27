@@ -2,6 +2,20 @@
 
 [English](CHANGELOG.md) · 简体中文
 
+## v0.3.0 — 2026-10-27
+
+### 调整
+
+- Floorp 和 LibreWolf 改用强制 Libportable 注入，不再依赖发行包内的启动器。
+- 六个 Firefox 系目标直接启动浏览器 EXE 时均保持便携。
+- Floorp 保留 `data/profile/default`，LibreWolf 保留 `Profiles/Default`。
+- 删除 Floorp/LibreWolf 包内启动器及 LibreWolf 更新器、计划任务脚本，避免启动和更新冲突。
+
+### 可靠性
+
+- 配置 schema v11 只迁移已知旧默认 Profile 路径，保留用户自定义路径。
+- Libportable 安装后强制验证 `mozglue.dll` 是否导入 `portable64.dll`。
+
 ## v0.2.1 — 2026-10-26
 
 ### 修复
