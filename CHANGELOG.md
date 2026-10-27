@@ -14,8 +14,8 @@
 
 ### Reliability
 
-- Configuration schema v11 migrates only known old default profile paths and preserves custom paths.
-- Libportable installation now verifies that `mozglue.dll` imports `portable64.dll`.
+- Existing custom browser and profile paths are preserved when upgrading from older settings.
+- Portable setup is only reported as successful after runtime injection is verified.
 
 ## v0.2.1 — 2026-10-26
 
