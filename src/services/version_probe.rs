@@ -53,7 +53,7 @@ pub fn probe_local_version(
     let executable = locate_executable(target, program_directory)?;
     let source = target.spec().version_source;
     let version = match source {
-        VersionSource::ApplicationIni => application_ini_version(&executable)?,
+        VersionSource::ApplicationIni => application_ini_version(target, &executable)?,
         VersionSource::ExecutableResource => {
             executable_product_version(&executable).map_err(|source| {
                 VersionProbeError::ExecutableVersion {
@@ -175,7 +175,10 @@ fn version_directory_key(name: &str) -> Vec<u64> {
         .collect()
 }
 
-fn application_ini_version(executable: &Path) -> Result<String, VersionProbeError> {
+fn application_ini_version(
+    target: TargetId,
+    executable: &Path,
+) -> Result<String, VersionProbeError> {
     let parent = executable
         .parent()
         .ok_or_else(|| VersionProbeError::ApplicationIniMissing(executable.to_path_buf()))?;
@@ -206,7 +209,13 @@ fn application_ini_version(executable: &Path) -> Result<String, VersionProbeErro
         {
             let version = normalize_version(value);
             if !version.is_empty() {
-                return Ok(version);
+                return Ok(if target == TargetId::Floorp {
+                    version
+                        .split_once('@')
+                        .map_or(version.clone(), |(product, _)| product.to_owned())
+                } else {
+                    version
+                });
             }
         }
     }
@@ -265,6 +274,22 @@ mod tests {
             error,
             VersionProbeError::ApplicationVersionMissing(_)
         ));
+    }
+
+    #[test]
+    fn floorp_local_version_excludes_the_embedded_gecko_suffix() {
+        let directory = tempdir().unwrap();
+        touch(&directory.path().join("floorp.exe"));
+        fs::write(
+            directory.path().join("application.ini"),
+            "[App]\r\nName=Floorp\r\nVersion=12.20.2@158.0.1\r\n[Gecko]\r\nMinVersion=158.0.1\r\n",
+        )
+        .unwrap();
+
+        let probe = probe_local_version(TargetId::Floorp, directory.path()).unwrap();
+
+        assert_eq!(probe.version, "12.20.2");
+        assert_eq!(probe.source, VersionSource::ApplicationIni);
     }
 
     #[test]

@@ -10,6 +10,7 @@
 - All Firefox-family targets now remain portable when their browser executable is launched directly.
 - Floorp keeps `data/profile/default`; LibreWolf keeps `Profiles/Default`.
 - Bundled Floorp/LibreWolf launchers and LibreWolf updater/task scripts are removed to prevent update and launch conflicts.
+- Floorp's local version display strips the internal `@<Gecko version>` suffix, so it compares correctly with upstream.
 
 ### Reliability
 

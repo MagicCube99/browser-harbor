@@ -10,6 +10,7 @@
 - 六个 Firefox 系目标直接启动浏览器 EXE 时均保持便携。
 - Floorp 保留 `data/profile/default`，LibreWolf 保留 `Profiles/Default`。
 - 删除 Floorp/LibreWolf 包内启动器及 LibreWolf 更新器、计划任务脚本，避免启动和更新冲突。
+- Floorp 本地版本会移除内部的 `@<Gecko 版本>` 后缀，避免与上游产品版本错误显示为不同。
 
 ### 可靠性
 
