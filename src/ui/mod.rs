@@ -2402,12 +2402,13 @@ impl BrowserHarborApp {
                     );
                     ui.add_space(3.0);
                 }
-                ui.horizontal(|ui| {
-                    let controls_width = if operation_active { 340.0 } else { 250.0 };
-                    let status_width = (ui.available_width() - controls_width - 8.0).max(100.0);
-                    ui.allocate_ui_with_layout(
-                        egui::vec2(status_width, 24.0),
-                        Layout::left_to_right(Align::Center),
+                egui::Sides::new()
+                    .height(24.0)
+                    .spacing(8.0)
+                    .shrink_left()
+                    .truncate()
+                    .show(
+                        ui,
                         |ui| {
                             ui.localized_label(
                                 RichText::new("自动保存已开启")
@@ -2423,170 +2424,170 @@ impl BrowserHarborApp {
                                 .localized_hover(text);
                             }
                         },
-                    );
-                    ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                        ui.hyperlink_to(
-                            RichText::new(format!("ver {}", env!("CARGO_PKG_VERSION")))
-                                .size(10.5)
-                                .color(palette.muted),
-                            RELEASES_URL,
-                        )
-                        .localized_hover("查看发布版本");
-                        ui.add_space(5.0);
+                        |ui| {
+                            ui.hyperlink_to(
+                                RichText::new(format!("ver {}", env!("CARGO_PKG_VERSION")))
+                                    .size(10.5)
+                                    .color(palette.muted),
+                                RELEASES_URL,
+                            )
+                            .localized_hover("查看发布版本");
+                            ui.add_space(5.0);
 
-                        let language_menu = egui::containers::menu::MenuButton::from_button(
-                            localized_button(if current_language == Language::English {
-                                "EN"
-                            } else {
-                                "中"
-                            })
-                            .min_size(egui::vec2(34.0, 24.0)),
-                        );
-                        let (language, _) = language_menu.ui(ui, |ui| {
-                            for (language, label) in
-                                [(Language::Chinese, "中文"), (Language::English, "English")]
-                            {
-                                if ui
-                                    .selectable_label(language == current_language, label)
-                                    .clicked()
+                            let language_menu = egui::containers::menu::MenuButton::from_button(
+                                localized_button(if current_language == Language::English {
+                                    "EN"
+                                } else {
+                                    "中"
+                                })
+                                .min_size(egui::vec2(34.0, 24.0)),
+                            );
+                            let (language, _) = language_menu.ui(ui, |ui| {
+                                for (language, label) in
+                                    [(Language::Chinese, "中文"), (Language::English, "English")]
                                 {
-                                    requested_language = Some(language);
-                                    ui.close();
-                                }
-                            }
-                        });
-                        language.widget_info(|| {
-                            egui::WidgetInfo::labeled(
-                                egui::Role::Button,
-                                true,
-                                format!(
-                                    "{}: {}",
-                                    localized("界面语言"),
-                                    if current_language == Language::English {
-                                        "English"
-                                    } else {
-                                        "中文"
-                                    }
-                                ),
-                            )
-                        });
-                        language.localized_hover("切换界面语言");
-
-                        let theme = ui
-                            .menu_button("   ", |ui| {
-                                ui.horizontal(|ui| {
-                                    for theme in
-                                        [ThemeMode::System, ThemeMode::Light, ThemeMode::Dark]
+                                    if ui
+                                        .selectable_label(language == current_language, label)
+                                        .clicked()
                                     {
-                                        if theme_icon_button(ui, theme, theme == current_theme)
-                                            .clicked()
-                                        {
-                                            requested_theme = Some(theme);
-                                            ui.close();
-                                        }
+                                        requested_language = Some(language);
+                                        ui.close();
                                     }
-                                });
-                            })
-                            .response;
-                        let visuals = ui.style().interact(&theme);
-                        paint_theme_icon(
-                            ui.painter(),
-                            current_theme,
-                            theme.rect.left_center() + egui::vec2(13.0, 0.0),
-                            6.5,
-                            if theme.hovered() {
-                                palette.accent_text
-                            } else {
-                                palette.text
-                            },
-                            visuals.weak_bg_fill,
-                        );
-                        theme.widget_info(|| {
-                            egui::WidgetInfo::labeled(
-                                egui::Role::Button,
-                                true,
-                                localized(format!(
-                                    "外观：{}",
-                                    localized(theme_label(current_theme))
-                                )),
-                            )
-                        });
-                        theme.localized_hover(format!(
-                            "外观：{}（点击切换）",
-                            localized(theme_label(current_theme))
-                        ));
+                                }
+                            });
+                            language.widget_info(|| {
+                                egui::WidgetInfo::labeled(
+                                    egui::Role::Button,
+                                    true,
+                                    format!(
+                                        "{}: {}",
+                                        localized("界面语言"),
+                                        if current_language == Language::English {
+                                            "English"
+                                        } else {
+                                            "中文"
+                                        }
+                                    ),
+                                )
+                            });
+                            language.localized_hover("切换界面语言");
 
-                        let network = ui.add_sized([30.0, 24.0], localized_button("").frame(false));
-                        let network_active = self.active_tab == DetailTab::Network;
-                        let network_background = if network_active {
-                            palette.accent_soft
-                        } else if network.hovered() || network.has_focus() {
-                            palette.hover
-                        } else {
-                            ui.visuals().window_fill
-                        };
-                        ui.painter().rect_filled(
-                            network.rect,
-                            CornerRadius::same(5),
-                            network_background,
-                        );
-                        if network_active || network.has_focus() {
-                            ui.painter().rect_stroke(
+                            let theme = ui
+                                .menu_button("   ", |ui| {
+                                    ui.horizontal(|ui| {
+                                        for theme in
+                                            [ThemeMode::System, ThemeMode::Light, ThemeMode::Dark]
+                                        {
+                                            if theme_icon_button(ui, theme, theme == current_theme)
+                                                .clicked()
+                                            {
+                                                requested_theme = Some(theme);
+                                                ui.close();
+                                            }
+                                        }
+                                    });
+                                })
+                                .response;
+                            let visuals = ui.style().interact(&theme);
+                            paint_theme_icon(
+                                ui.painter(),
+                                current_theme,
+                                theme.rect.left_center() + egui::vec2(13.0, 0.0),
+                                6.5,
+                                if theme.hovered() {
+                                    palette.accent_text
+                                } else {
+                                    palette.text
+                                },
+                                visuals.weak_bg_fill,
+                            );
+                            theme.widget_info(|| {
+                                egui::WidgetInfo::labeled(
+                                    egui::Role::Button,
+                                    true,
+                                    localized(format!(
+                                        "外观：{}",
+                                        localized(theme_label(current_theme))
+                                    )),
+                                )
+                            });
+                            theme.localized_hover(format!(
+                                "外观：{}（点击切换）",
+                                localized(theme_label(current_theme))
+                            ));
+
+                            let network =
+                                ui.add_sized([30.0, 24.0], localized_button("").frame(false));
+                            let network_active = self.active_tab == DetailTab::Network;
+                            let network_background = if network_active {
+                                palette.accent_soft
+                            } else if network.hovered() || network.has_focus() {
+                                palette.hover
+                            } else {
+                                ui.visuals().window_fill
+                            };
+                            ui.painter().rect_filled(
                                 network.rect,
                                 CornerRadius::same(5),
-                                Stroke::new(1.0, palette.accent),
-                                egui::StrokeKind::Inside,
+                                network_background,
                             );
-                        }
-                        paint_settings_icon(
-                            ui.painter(),
-                            network.rect.center(),
-                            if network.hovered() || network_active {
-                                palette.accent_text
-                            } else {
-                                palette.text
-                            },
-                        );
-                        network.widget_info(|| {
-                            egui::WidgetInfo::selected(
-                                egui::Role::Button,
-                                true,
-                                network_active,
-                                localized("全局设置"),
-                            )
-                        });
-                        if network
-                            .localized_hover(if network_active {
-                                "再次点击返回浏览器设置"
-                            } else {
-                                "全局设置：下载加速、代理、超时与缓存清理"
-                            })
-                            .clicked()
-                        {
-                            requested_tab = Some(if network_active {
-                                DetailTab::Overview
-                            } else {
-                                DetailTab::Network
-                            });
-                        }
-
-                        if operation_active {
-                            let cancelable = self
-                                .operation_phase
-                                .as_ref()
-                                .is_some_and(operation_cancelable);
-                            cancel_operation = ui
-                                .add_enabled(
-                                    cancelable,
-                                    localized_button("取消任务")
-                                        .fill(palette.control)
-                                        .stroke(Stroke::new(1.0, palette.border))
-                                        .min_size(egui::vec2(82.0, 26.0)),
+                            if network_active || network.has_focus() {
+                                ui.painter().rect_stroke(
+                                    network.rect,
+                                    CornerRadius::same(5),
+                                    Stroke::new(1.0, palette.accent),
+                                    egui::StrokeKind::Inside,
+                                );
+                            }
+                            paint_settings_icon(
+                                ui.painter(),
+                                network.rect.center(),
+                                if network.hovered() || network_active {
+                                    palette.accent_text
+                                } else {
+                                    palette.text
+                                },
+                            );
+                            network.widget_info(|| {
+                                egui::WidgetInfo::selected(
+                                    egui::Role::Button,
+                                    true,
+                                    network_active,
+                                    localized("全局设置"),
                                 )
-                                .clicked();
-                        }
-                    });
-                });
+                            });
+                            if network
+                                .localized_hover(if network_active {
+                                    "再次点击返回浏览器设置"
+                                } else {
+                                    "全局设置：下载加速、代理、超时与缓存清理"
+                                })
+                                .clicked()
+                            {
+                                requested_tab = Some(if network_active {
+                                    DetailTab::Overview
+                                } else {
+                                    DetailTab::Network
+                                });
+                            }
+
+                            if operation_active {
+                                let cancelable = self
+                                    .operation_phase
+                                    .as_ref()
+                                    .is_some_and(operation_cancelable);
+                                cancel_operation = ui
+                                    .add_enabled(
+                                        cancelable,
+                                        localized_button("取消任务")
+                                            .fill(palette.control)
+                                            .stroke(Stroke::new(1.0, palette.border))
+                                            .min_size(egui::vec2(82.0, 26.0)),
+                                    )
+                                    .clicked();
+                            }
+                        },
+                    );
             });
 
         if cancel_operation && let Some(operation) = &self.operation {
@@ -3811,6 +3812,11 @@ mod tests {
 
         assert!(status.rect().max.x < network.rect().min.x);
         assert!(status.rect().max.x < theme.rect().min.x);
+        let gap = network.rect().min.x - status.rect().max.x;
+        assert!(
+            gap <= 10.0,
+            "truncated footer status should use the available width; gap was {gap}"
+        );
     }
 
     #[test]
