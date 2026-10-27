@@ -13,7 +13,7 @@ Browser Harbor 是单 EXE 便携程序，不需要安装，也不需要管理员
 
 ## 首次启动
 
-1. 从 GitHub Releases 下载 `BrowserHarbor-0.3.1-x64.exe`。
+1. 从 GitHub Releases 下载 `BrowserHarbor-0.4.0-x64.exe`。
 2. 放到可写目录后直接运行。
 3. 选择浏览器。
 4. 检查程序、数据、Profile 和缓存目录。
@@ -82,6 +82,10 @@ Chrome++ 仍保存旧绝对路径时，可以在确认后修复。修复前会�
 ## Chrome++
 
 Chrome++ 支持 Brave、Chrome、Edge、Helium、Thorium 和 Ungoogled Chromium。Chrome++ 页面显示已安装版本、源码/GPL 许可证入口和全部公开配置。
+
+刷新按钮只检查上游版本；发现新版本后，它会变成更新按钮。更新 Chrome++ 时只替换 Chrome++ 文件，保留浏览器数据与 Profile 设置，并先备份旧 INI。检测范围仅限当前目标的程序目录，其他浏览器品牌继续运行不会阻止操作。当前目标只要仍有任一实例运行，就必须由用户手工关闭全部实例；Browser Harbor 不会强制结束进程。
+
+Chrome++ 制品按 SHA-256 缓存在 `%TEMP%\browser-harbor\cache`。更新另一个目标且版本相同时，会复用已验证的制品，不重复联网下载。
 
 Edge 会使用同版本 `setdll` 添加 `version.dll` 导入。Brave、Helium 和 Ungoogled Chromium 仍为实验性兼容。
 

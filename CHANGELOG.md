@@ -2,6 +2,20 @@
 
 [简体中文](CHANGELOG.zh-CN.md) · English
 
+## v0.4.0 — 2026-10-27
+
+### Added
+
+- Chrome++ can now be updated independently from the browser after an explicit update check.
+- Browser upgrades show both browser and Chrome++ version transitions before proceeding.
+
+### Reliability
+
+- Chrome++ update preflight scans every process in the selected target’s program directory, including multiple windows, background processes, and Edge version directories.
+- Running other browser brands do not block the selected target, and Browser Harbor never force-closes a browser.
+- Chrome++ update stages and backs up files, checks for running instances again before commit, and rolls back on failure.
+- One verified Chrome++ artifact is reused by later targets while its SHA-256 cache entry remains available.
+
 ## v0.3.1 — 2026-10-27
 
 ### Fixed

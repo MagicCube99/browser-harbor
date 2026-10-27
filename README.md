@@ -58,8 +58,9 @@ the current desktop.
   gets an OpenPGP signature check.
 - **Keeps the layout sane.** Program, data, profile, optional cache, and
   auto-created shortcuts have predictable places.
-- **Handles Chromium’s awkward corners.** Full Chrome++ integration, dynamic Edge
-  version directories, and the `version.dll` import-table fix Edge needs.
+- **Handles Chromium’s awkward corners.** Check and update Chrome++ independently,
+  reuse one verified download across targets, keep other running browsers out of
+  the way, and patch Edge’s dynamic version directories and `version.dll` import.
 - **Makes every Firefox-family target directly portable.** Firefox, Floorp,
   LibreWolf, and Zen use Libportable; Iceweasel and SkyKakapo keep their native
   runtimes. Redundant Floorp/LibreWolf launchers are removed.
@@ -90,7 +91,7 @@ builds for SSE3, SSE4, AVX, AVX2, and AVX512.
 
 ## 🚀 Quick start
 
-1. Download `BrowserHarbor-0.3.1-x64.exe` from
+1. Download `BrowserHarbor-0.4.0-x64.exe` from
    [GitHub Releases](https://github.com/MagicCube99/browser-harbor/releases/latest).
    If GitHub is unreachable, use the [Gitee mirror](https://gitee.com/MagicCube99/browser-harbor/releases).
 2. Put it in any writable folder and run it.

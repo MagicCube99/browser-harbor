@@ -46,7 +46,7 @@
 - **来源明确。** 下载地址来自厂商官方接口、Release API、签名元数据或允许的加速站；论坛附件不算来源。
 - **校验后才放行。** 浏览器、Chrome++、Libportable 和本地安装包都要匹配可信的校验信息；LibreWolf 还会检查 OpenPGP 签名。
 - **目录互不打扰。** 程序、数据、Profile、可选缓存和自动创建的快捷方式都有固定位置。
-- **处理 Chromium 系常见的兼容问题。** 支持完整 Chrome++、动态解析 Edge 版本目录，并修复 Edge 不会主动加载的 `version.dll` 导入。
+- **处理 Chromium 系常见的兼容问题。** Chrome++ 可独立检查和更新；同一版本只下载一次，并可在多个目标间复用；其他浏览器继续运行不会误阻止当前目标，同时支持 Edge 动态版本目录和 `version.dll` 导入修复。
 - **Firefox 系全部直接便携。** Firefox、Floorp、LibreWolf 和 Zen 使用 Libportable，Iceweasel 与 SkyKakapo 保留各自原生运行时；多余的 Floorp/LibreWolf 启动器会被删除。
 - **重定位先核对。** 选择新的 Browser Root 后再映射路径；已知属于其他浏览器的 `chrome.exe` 会被拒绝，未知自定义构建会先给出警告。
 - **检查只读，修复留痕。** 配置检查不会修改文件；修复路径前需要确认、关闭浏览器并备份 INI。
@@ -68,7 +68,7 @@ SSE3、SSE4、AVX、AVX2 和 AVX512 的 CPU 构建。
 ## 开始使用
 
 1. 从 [GitHub Releases](https://github.com/MagicCube99/browser-harbor/releases/latest)
-   下载 `BrowserHarbor-0.3.1-x64.exe`。
+   下载 `BrowserHarbor-0.4.0-x64.exe`。
    无法访问 GitHub 时，可从 [Gitee 镜像](https://gitee.com/MagicCube99/browser-harbor/releases)下载。
 2. 放进任意可写目录，直接运行。
 3. 选择浏览器，确认 Browser Root 和数据路径。
