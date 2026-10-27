@@ -91,24 +91,14 @@ jobs:
             "${api}/releases/tags/${tag}")"
 
           if [[ "$lookup_status" == "404" ]]; then
-            jq -n \
-              --arg access_token "$GITEE_TOKEN" \
-              --arg tag "$tag" \
-              --arg name "$release_name" \
-              --arg body "$release_body" \
-              --argjson prerelease "$prerelease" \
-              '{
-                access_token: $access_token,
-                tag_name: $tag,
-                name: $name,
-                body: $body,
-                prerelease: $prerelease,
-                target_commitish: "main"
-              }' > "${work}/create-release.json"
             create_status="$(curl --silent --show-error \
               --request POST \
-              --header "Content-Type: application/json" \
-              --data-binary "@${work}/create-release.json" \
+              --data-urlencode "access_token=${GITEE_TOKEN}" \
+              --data-urlencode "tag_name=${tag}" \
+              --data-urlencode "name=${release_name}" \
+              --data-urlencode "body=${release_body}" \
+              --data-urlencode "prerelease=${prerelease}" \
+              --data-urlencode "target_commitish=main" \
               --output "${work}/saved-release.json" \
               --write-out '%{http_code}' \
               "${api}/releases")"
