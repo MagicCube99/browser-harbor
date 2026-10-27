@@ -192,7 +192,7 @@ const TARGET_SPECS: [TargetSpec; 14] = [
         family: BrowserFamily::Firefox,
         support_level: SupportLevel::Standard,
         provider: ProviderKind::GitHubRelease,
-        runtime: RuntimeKind::FloorpLauncher,
+        runtime: RuntimeKind::Libportable,
         default_channel: ReleaseChannel::Stable,
         channels: STABLE,
         default_cpu_build: CpuBuild::X64,
@@ -202,12 +202,12 @@ const TARGET_SPECS: [TargetSpec; 14] = [
             program: Some("app"),
             package_prefix: None,
             data: "data",
-            profile: "data",
-            cache: "data",
+            profile: r"data\profile\default",
+            cache: r"data\profile\default",
         },
         version_source: FIREFOX_VERSION,
         executable_candidates: &["floorp.exe"],
-        preserved_program_files: &["floorp-portable.yml"],
+        preserved_program_files: FIREFOX_RUNTIME_FILES,
         display_beta: false,
     },
     TargetSpec {
@@ -264,7 +264,7 @@ const TARGET_SPECS: [TargetSpec; 14] = [
         family: BrowserFamily::Firefox,
         support_level: SupportLevel::Standard,
         provider: ProviderKind::LibreWolf,
-        runtime: RuntimeKind::LibreWolfLauncher,
+        runtime: RuntimeKind::Libportable,
         default_channel: ReleaseChannel::Stable,
         channels: STABLE,
         default_cpu_build: CpuBuild::X64,
@@ -274,12 +274,12 @@ const TARGET_SPECS: [TargetSpec; 14] = [
             program: Some("LibreWolf"),
             package_prefix: None,
             data: "Profiles",
-            profile: "Profiles",
-            cache: "Profiles",
+            profile: r"Profiles\Default",
+            cache: r"Profiles\Default",
         },
         version_source: FIREFOX_VERSION,
         executable_candidates: &["librewolf.exe"],
-        preserved_program_files: &[],
+        preserved_program_files: FIREFOX_RUNTIME_FILES,
         display_beta: false,
     },
     TargetSpec {
@@ -570,7 +570,7 @@ impl TargetId {
 
 #[cfg(test)]
 mod tests {
-    use super::{BrowserFamily, SupportLevel, TargetId};
+    use super::{BrowserFamily, RuntimeKind, SupportLevel, TargetId};
 
     #[test]
     fn all_targets_are_sorted_by_english_key() {
@@ -651,6 +651,26 @@ mod tests {
                 "zen",
             ]
         );
+    }
+
+    #[test]
+    fn firefox_family_targets_use_direct_portable_runtimes() {
+        for target in TargetId::ALL
+            .iter()
+            .copied()
+            .filter(|target| target.family() == BrowserFamily::Firefox)
+        {
+            assert!(
+                matches!(
+                    target.spec().runtime,
+                    RuntimeKind::Libportable
+                        | RuntimeKind::IceweaselNative
+                        | RuntimeKind::SkyKakapoNative
+                ),
+                "{} still depends on a package launcher runtime",
+                target.display_name()
+            );
+        }
     }
 
     #[test]

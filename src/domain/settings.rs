@@ -289,6 +289,18 @@ mod tests {
             librewolf.data_directory,
             Some(r".\LibreWolf\Profiles".into())
         );
+        assert_eq!(
+            librewolf.profile_directory,
+            Some(r".\LibreWolf\Profiles\Default".into())
+        );
+
+        let floorp = TargetConfig::for_target(TargetId::Floorp);
+        assert_eq!(floorp.browser_directory, Some(r".\Floorp\app".into()));
+        assert_eq!(floorp.data_directory, Some(r".\Floorp\data".into()));
+        assert_eq!(
+            floorp.profile_directory,
+            Some(r".\Floorp\data\profile\default".into())
+        );
 
         let thorium = TargetConfig::for_target(TargetId::Thorium);
         assert_eq!(thorium.browser_root, Some(r".\Thorium".into()));
