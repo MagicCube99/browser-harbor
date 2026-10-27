@@ -87,11 +87,10 @@ Edge uses the matching `setdll` helper to add the `version.dll` import. Brave, H
 
 ## Firefox-family runtimes
 
-- Official Firefox and Zen require Libportable.
+- Firefox, Floorp, LibreWolf, and Zen require Libportable.
 - Iceweasel uses its package portable runtime.
 - SkyKakapo uses its bundled `tmemutil` runtime.
-- Floorp and LibreWolf are made portable at the browser executable itself with Libportable; their bundled launchers are not required.
-- Browser Harbor removes those bundled launchers and LibreWolf's updater/task scripts during installation or update.
+- Floorp and LibreWolf are made portable at the browser executable itself; Browser Harbor removes their bundled launchers and LibreWolf's updater/task scripts during installation or update.
 
 ## Global settings
 

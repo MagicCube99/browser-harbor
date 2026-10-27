@@ -60,8 +60,9 @@ the current desktop.
   auto-created shortcuts have predictable places.
 - **Handles Chromium’s awkward corners.** Full Chrome++ integration, dynamic Edge
   version directories, and the `version.dll` import-table fix Edge needs.
-- **Runs Libportable where required.** Official Firefox and Zen receive the
-  runtime integration when their browser versions are supported.
+- **Makes every Firefox-family target directly portable.** Firefox, Floorp,
+  LibreWolf, and Zen use Libportable; Iceweasel and SkyKakapo keep their native
+  runtimes. Redundant Floorp/LibreWolf launchers are removed.
 - **Relocates without guessing.** Choose the new Browser Root and Browser Harbor
   remaps the paths. A known different browser is rejected even when its
   executable is also named `chrome.exe`; an unknown custom build gets an explicit

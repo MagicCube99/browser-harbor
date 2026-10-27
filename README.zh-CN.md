@@ -47,7 +47,7 @@
 - **校验后才放行。** 浏览器、Chrome++、Libportable 和本地安装包都要匹配可信的校验信息；LibreWolf 还会检查 OpenPGP 签名。
 - **目录互不打扰。** 程序、数据、Profile、可选缓存和自动创建的快捷方式都有固定位置。
 - **处理 Chromium 系常见的兼容问题。** 支持完整 Chrome++、动态解析 Edge 版本目录，并修复 Edge 不会主动加载的 `version.dll` 导入。
-- **适配 Firefox 系差异。** 官方 Firefox 和 Zen 会执行必需的 Libportable 集成，并且只对受支持的浏览器版本启用。
+- **Firefox 系全部直接便携。** Firefox、Floorp、LibreWolf 和 Zen 使用 Libportable，Iceweasel 与 SkyKakapo 保留各自原生运行时；多余的 Floorp/LibreWolf 启动器会被删除。
 - **重定位先核对。** 选择新的 Browser Root 后再映射路径；已知属于其他浏览器的 `chrome.exe` 会被拒绝，未知自定义构建会先给出警告。
 - **检查只读，修复留痕。** 配置检查不会修改文件；修复路径前需要确认、关闭浏览器并备份 INI。
 - **窗口不会留在屏幕外。** 保存的坐标会限制在当前虚拟桌面内。
