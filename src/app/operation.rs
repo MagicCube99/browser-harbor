@@ -705,6 +705,12 @@ async fn prepare_runtime_archives(
         RuntimeKind::ChromePlusFull | RuntimeKind::ChromePlusDataOnly => {
             let release =
                 resolve_chrome_plus_release(http, &request.network, &request.cache_dir).await?;
+            if request.chrome_plus_expected_version.is_some() {
+                require_expected_chrome_plus_version(
+                    request.chrome_plus_expected_version.as_deref(),
+                    &release.version,
+                )?;
+            }
             Ok((
                 Some(download_chrome_plus_runtime(downloader, request, release, emit).await?),
                 None,

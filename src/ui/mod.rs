@@ -2704,7 +2704,12 @@ impl BrowserHarborApp {
         }
         if confirm {
             self.browser_upgrade_prompt = None;
-            self.start_operation(OperationMode::Install, prompt.replace_same_version);
+            self.start_operation_checked_with_expected(
+                OperationMode::Install,
+                prompt.replace_same_version,
+                false,
+                Some(prompt.chrome_plus_latest),
+            );
         } else if cancel {
             self.browser_upgrade_prompt = None;
             self.status_message = Some("已取消浏览器操作".to_owned());
