@@ -71,7 +71,11 @@ jobs:
           git remote add gitee "https://gitee.com/MagicCube99/browser-harbor.git"
           git ls-remote gitee > /dev/null
           git fetch --force origin "refs/tags/${tag}:refs/tags/${tag}"
-          git push --force gitee "refs/tags/${tag}:refs/tags/${tag}"
+          target_sha="$(git rev-parse "${tag}^{commit}")"
+          lightweight_tag="gitee-mirror-${tag}"
+          git tag --force "$lightweight_tag" "$target_sha"
+          git push --force gitee "refs/tags/${lightweight_tag}:refs/tags/${tag}"
+          git tag --delete "$lightweight_tag" > /dev/null
 
           work="${RUNNER_TEMP}/gitee-release"
           assets="${work}/assets"
@@ -82,7 +86,6 @@ jobs:
           release_name="$(jq -r '.name // .tagName' "${work}/release.json")"
           release_body="$(jq -r '.body // ""' "${work}/release.json")"
           prerelease="$(jq -r '.isPrerelease' "${work}/release.json")"
-          target_sha="$(git rev-parse "${tag}^{commit}")"
           api="https://gitee.com/api/v5/repos/MagicCube99/browser-harbor"
 
           lookup_status="$(curl --silent --show-error --get \
