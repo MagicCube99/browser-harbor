@@ -71,6 +71,7 @@ jobs:
           git remote add gitee "https://gitee.com/MagicCube99/browser-harbor.git"
           git ls-remote gitee > /dev/null
           git fetch --force origin "refs/tags/${tag}:refs/tags/${tag}"
+          target_sha="$(git rev-parse "${tag}^{commit}")"
           git push --force gitee "refs/tags/${tag}:refs/tags/${tag}"
 
           work="${RUNNER_TEMP}/gitee-release"
@@ -82,7 +83,6 @@ jobs:
           release_name="$(jq -r '.name // .tagName' "${work}/release.json")"
           release_body="$(jq -r '.body // ""' "${work}/release.json")"
           prerelease="$(jq -r '.isPrerelease' "${work}/release.json")"
-          target_sha="$(git rev-parse "${tag}^{commit}")"
           api="https://gitee.com/api/v5/repos/MagicCube99/browser-harbor"
 
           lookup_status="$(curl --silent --show-error --get \
@@ -91,34 +91,43 @@ jobs:
             --write-out '%{http_code}' \
             "${api}/releases/tags/${tag}")"
 
+          create_release=false
           if [[ "$lookup_status" == "404" ]]; then
-            create_status="$(curl --silent --show-error \
-              --request POST \
-              --form-string "access_token=${GITEE_TOKEN}" \
-              --form-string "tag_name=${tag}" \
-              --form-string "name=${release_name}" \
-              --form-string "body=${release_body}" \
-              --form-string "prerelease=${prerelease}" \
-              --form-string "target_commitish=${target_sha}" \
-              --output "${work}/saved-release.json" \
-              --write-out '%{http_code}' \
-              "${api}/releases")"
+            create_release=true
           elif [[ "$lookup_status" == "200" ]]; then
-            release_id="$(jq -r '.id' "${work}/existing-release.json")"
-            create_status="$(curl --silent --show-error \
-              --request PATCH \
-              --form-string "access_token=${GITEE_TOKEN}" \
-              --form-string "tag_name=${tag}" \
-              --form-string "name=${release_name}" \
-              --form-string "body=${release_body}" \
-              --form-string "prerelease=${prerelease}" \
-              --output "${work}/saved-release.json" \
-              --write-out '%{http_code}' \
-              "${api}/releases/${release_id}")"
+            release_id="$(jq -r '.id // empty' "${work}/existing-release.json")"
+            if [[ -z "$release_id" ]]; then
+              create_release=true
+            else
+              create_status="$(curl --silent --show-error \
+                --request PATCH \
+                --form-string "access_token=${GITEE_TOKEN}" \
+                --form-string "tag_name=${tag}" \
+                --form-string "name=${release_name}" \
+                --form-string "body=${release_body}" \
+                --form-string "prerelease=${prerelease}" \
+                --output "${work}/saved-release.json" \
+                --write-out '%{http_code}' \
+                "${api}/releases/${release_id}")"
+            fi
           else
             echo "Gitee release lookup failed with HTTP ${lookup_status}" >&2
             jq -r '.message // empty' "${work}/existing-release.json" >&2 || true
             exit 1
+          fi
+
+          if [[ "$create_release" == "true" ]]; then
+            create_status="$(curl --silent --show-error \
+              --request POST \
+              --data-urlencode "access_token=${GITEE_TOKEN}" \
+              --data-urlencode "tag_name=${tag}" \
+              --data-urlencode "name=${release_name}" \
+              --data-urlencode "body=${release_body}" \
+              --data-urlencode "prerelease=${prerelease}" \
+              --data-urlencode "target_commitish=${target_sha}" \
+              --output "${work}/saved-release.json" \
+              --write-out '%{http_code}' \
+              "${api}/releases")"
           fi
 
           if [[ "$create_status" != "200" && "$create_status" != "201" ]]; then
@@ -141,20 +150,14 @@ jobs:
           while IFS= read -r -d '' file; do
             name="$(basename "$file")"
             size="$(stat -c '%s' "$file")"
-            existing_id="$(jq -r --arg name "$name" '.[] | select(.name == $name) | .id' "${work}/attachments.json" | head -n 1)"
+            existing_ids="$(jq -r --arg name "$name" '.[] | select(.name == $name) | .id' "${work}/attachments.json")"
+            existing_id="$(printf '%s\n' "$existing_ids" | head -n 1)"
             existing_size="$(jq -r --arg name "$name" '.[] | select(.name == $name) | .size' "${work}/attachments.json" | head -n 1)"
 
             if [[ -n "$existing_id" && "$existing_size" == "$size" ]]; then
               echo "Attachment already current: ${name}"
               continue
             fi
-            if [[ -n "$existing_id" ]]; then
-              curl --silent --show-error --fail --get \
-                --request DELETE \
-                --data-urlencode "access_token=${GITEE_TOKEN}" \
-                "${api}/releases/${release_id}/attach_files/${existing_id}" > /dev/null
-            fi
-
             upload_status="$(curl --silent --show-error \
               --request POST \
               --form-string "access_token=${GITEE_TOKEN}" \
@@ -167,6 +170,16 @@ jobs:
               jq -r '.message // empty' "${work}/upload.json" >&2 || true
               exit 1
             fi
+            uploaded_id="$(jq -r '.id' "${work}/upload.json")"
+            while IFS= read -r stale_id; do
+              if [[ -n "$stale_id" && "$stale_id" != "$uploaded_id" ]]; then
+                curl --silent --show-error --fail --get \
+                  --request DELETE \
+                  --data-urlencode "access_token=${GITEE_TOKEN}" \
+                  "${api}/releases/${release_id}/attach_files/${stale_id}" \
+                  > /dev/null
+              fi
+            done <<< "$existing_ids"
             echo "Uploaded attachment: ${name}"
           done < <(find "$assets" -type f -print0)
 
