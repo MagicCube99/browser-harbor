@@ -14,6 +14,7 @@ use std::{
 use crate::{
     domain::{
         release::{CpuBuild, ReleaseChannel, ReleaseDescriptor},
+        runtime::ChromePlusRelease,
         settings::{NetworkSettings, TargetConfig},
         version::compare_versions,
     },
@@ -22,7 +23,10 @@ use crate::{
     services::{
         download::Downloader,
         http::{HttpClient, signed_manifest_candidates},
-        install::{InstallReceipt, InstallRequest, InstallService, RuntimeArchive},
+        install::{
+            ChromePlusUpdateRequest, ChromePlusUpdateService, InstallReceipt, InstallRequest,
+            InstallService, RuntimeArchive,
+        },
         trusted_metadata::{METADATA_FILE, TrustedMetadata, verify_with_public_key},
     },
 };
@@ -61,6 +65,9 @@ pub enum OperationPhase {
     ChromePlusChecked {
         current_version: Option<String>,
         latest_version: String,
+    },
+    ChromePlusInstalled {
+        version: String,
     },
     Cancelled,
     Failed {
@@ -134,6 +141,7 @@ pub struct StartOperationRequest {
     pub network: NetworkSettings,
     pub cache_dir: PathBuf,
     pub current_version: Option<String>,
+    pub chrome_plus_expected_version: Option<String>,
     pub replace_same_version: bool,
     pub cached_release: Option<CachedReleaseMetadata>,
 }
@@ -142,6 +150,7 @@ pub struct StartOperationRequest {
 pub enum OperationMode {
     Check,
     ChromePlusCheck,
+    ChromePlusInstall,
     Install,
 }
 
@@ -206,6 +215,12 @@ pub fn start_operation(request: StartOperationRequest) -> OperationController {
                     },
                 ));
             }
+            Ok(OperationResult::ChromePlusInstalled { version }) => {
+                let _ = sender.send(OperationEvent::new(
+                    target,
+                    OperationPhase::ChromePlusInstalled { version },
+                ));
+            }
             Err(error) => {
                 let phase = if error.to_string().contains("cancelled") {
                     OperationPhase::Cancelled
@@ -236,19 +251,47 @@ async fn run_operation(
     emit(OperationPhase::Resolving);
     let http = HttpClient::new(&request.network)?;
     if request.mode == OperationMode::ChromePlusCheck {
-        let latest_version = match runtime::chromeplus::resolve_latest(&http).await {
-            Ok(release) => release.version,
-            Err(_) => {
-                load_trusted_metadata(&http, &request.network, &request.cache_dir)
-                    .await?
-                    .chrome_plus
-                    .ok_or("签名发布清单没有 Chrome++ 记录")?
-                    .version
-            }
-        };
+        let latest_version =
+            resolve_chrome_plus_release(&http, &request.network, &request.cache_dir)
+                .await?
+                .version;
         return Ok(OperationResult::ChromePlusChecked {
             current_version: request.target_config.chrome_plus_version,
             latest_version,
+        });
+    }
+    if request.mode == OperationMode::ChromePlusInstall {
+        let release =
+            resolve_chrome_plus_release(&http, &request.network, &request.cache_dir).await?;
+        require_expected_chrome_plus_version(
+            request.chrome_plus_expected_version.as_deref(),
+            &release.version,
+        )?;
+        let (direct_client, fallback_client) = HttpClient::download_clients(&request.network)?;
+        let downloader = Downloader::with_fallback_clients(
+            direct_client,
+            fallback_client,
+            request.cache_dir.clone(),
+            cancellation.clone(),
+        );
+        let runtime = download_chrome_plus_runtime(&downloader, &request, release, &emit).await?;
+        let receipt = ChromePlusUpdateService::update(ChromePlusUpdateRequest {
+            target,
+            config: request.target_config,
+            runtime,
+        })
+        .map_err(|error| -> Box<dyn std::error::Error + Send + Sync> {
+            match error {
+                crate::services::install::InstallError::BrowserRunning(path) => format!(
+                    "浏览器仍在运行，请手工关闭所有实例后再更新 Chrome++：{}",
+                    path.display()
+                )
+                .into(),
+                error => error.into(),
+            }
+        })?;
+        return Ok(OperationResult::ChromePlusInstalled {
+            version: receipt.version,
         });
     }
     let provider = ProviderResolver::new(http.clone());
@@ -533,6 +576,9 @@ enum OperationResult {
         current_version: Option<String>,
         latest_version: String,
     },
+    ChromePlusInstalled {
+        version: String,
+    },
 }
 
 async fn download_artifact(
@@ -559,6 +605,91 @@ async fn download_artifact(
     Ok(path)
 }
 
+fn require_expected_chrome_plus_version(
+    expected: Option<&str>,
+    actual: &str,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    let expected = expected.ok_or("Chrome++ 更新缺少已检查版本")?;
+    if expected != actual {
+        return Err(format!("Chrome++ 上游版本已从 {expected} 变化为 {actual}，请重新检查").into());
+    }
+    Ok(())
+}
+
+async fn resolve_chrome_plus_release(
+    http: &HttpClient,
+    network: &NetworkSettings,
+    cache_dir: &std::path::Path,
+) -> Result<ChromePlusRelease, Box<dyn std::error::Error + Send + Sync>> {
+    match runtime::chromeplus::resolve_latest(http).await {
+        Ok(release)
+            if release.artifact.integrity.is_some()
+                && release.setdll_artifact.integrity.is_some() =>
+        {
+            Ok(release)
+        }
+        Ok(_) | Err(_) => load_trusted_metadata(http, network, cache_dir)
+            .await?
+            .chrome_plus
+            .ok_or_else(|| "签名发布清单没有 Chrome++ 完整记录".into()),
+    }
+}
+
+async fn download_chrome_plus_runtime(
+    downloader: &Downloader,
+    request: &StartOperationRequest,
+    release: ChromePlusRelease,
+    emit: &(impl Fn(OperationPhase) + Sync),
+) -> Result<RuntimeArchive, Box<dyn std::error::Error + Send + Sync>> {
+    let descriptor = ReleaseDescriptor {
+        target: request.target,
+        version: release.version.clone(),
+        channel: ReleaseChannel::Stable,
+        cpu_build: request.target_config.cpu_build,
+        provider: crate::domain::release::ProviderKind::GitHubRelease,
+        artifact: release.artifact.clone(),
+        placement: request.target.spec().placement,
+        inner_archive: None,
+        source: "Bush2021/chrome_plus".to_owned(),
+        published_at: None,
+    };
+    let path =
+        download_artifact(downloader, &descriptor, &request.network, "Chrome++", emit).await?;
+    let setdll_archive = if request.target == TargetId::Edge {
+        let descriptor = ReleaseDescriptor {
+            target: request.target,
+            version: release.version.clone(),
+            channel: ReleaseChannel::Stable,
+            cpu_build: request.target_config.cpu_build,
+            provider: crate::domain::release::ProviderKind::GitHubRelease,
+            artifact: release.setdll_artifact.clone(),
+            placement: request.target.spec().placement,
+            inner_archive: None,
+            source: "Bush2021/chrome_plus setdll".to_owned(),
+            published_at: None,
+        };
+        Some(
+            download_artifact(
+                downloader,
+                &descriptor,
+                &request.network,
+                "Chrome++ setdll",
+                emit,
+            )
+            .await?,
+        )
+    } else {
+        None
+    };
+    Ok(RuntimeArchive {
+        archive_path: path,
+        version: release.version,
+        artifact: release.artifact,
+        setdll_archive,
+        setdll_artifact: release.setdll_artifact.into(),
+    })
+}
+
 async fn prepare_runtime_archives(
     http: &HttpClient,
     downloader: &Downloader,
@@ -572,67 +703,16 @@ async fn prepare_runtime_archives(
 
     match request.target.spec().runtime {
         RuntimeKind::ChromePlusFull | RuntimeKind::ChromePlusDataOnly => {
-            let release = match runtime::chromeplus::resolve_latest(http).await {
-                Ok(release)
-                    if release.artifact.integrity.is_some()
-                        && release.setdll_artifact.integrity.is_some() =>
-                {
-                    release
-                }
-                Ok(_) | Err(_) => load_trusted_metadata(http, &request.network, &request.cache_dir)
-                    .await?
-                    .chrome_plus
-                    .ok_or("签名发布清单没有 Chrome++ 完整记录")?,
-            };
-            let descriptor = ReleaseDescriptor {
-                target: request.target,
-                version: release.version.clone(),
-                channel: ReleaseChannel::Stable,
-                cpu_build: request.target_config.cpu_build,
-                provider: crate::domain::release::ProviderKind::GitHubRelease,
-                artifact: release.artifact.clone(),
-                placement: request.target.spec().placement,
-                inner_archive: None,
-                source: "Bush2021/chrome_plus".to_owned(),
-                published_at: None,
-            };
-            let path =
-                download_artifact(downloader, &descriptor, &request.network, "Chrome++", emit)
-                    .await?;
-            let setdll_archive = if request.target == TargetId::Edge {
-                let descriptor = ReleaseDescriptor {
-                    target: request.target,
-                    version: release.version.clone(),
-                    channel: ReleaseChannel::Stable,
-                    cpu_build: request.target_config.cpu_build,
-                    provider: crate::domain::release::ProviderKind::GitHubRelease,
-                    artifact: release.setdll_artifact.clone(),
-                    placement: request.target.spec().placement,
-                    inner_archive: None,
-                    source: "Bush2021/chrome_plus setdll".to_owned(),
-                    published_at: None,
-                };
-                Some(
-                    download_artifact(
-                        downloader,
-                        &descriptor,
-                        &request.network,
-                        "Chrome++ setdll",
-                        emit,
-                    )
-                    .await?,
-                )
-            } else {
-                None
-            };
+            let release =
+                resolve_chrome_plus_release(http, &request.network, &request.cache_dir).await?;
+            if request.chrome_plus_expected_version.is_some() {
+                require_expected_chrome_plus_version(
+                    request.chrome_plus_expected_version.as_deref(),
+                    &release.version,
+                )?;
+            }
             Ok((
-                Some(RuntimeArchive {
-                    archive_path: path,
-                    version: release.version,
-                    artifact: release.artifact,
-                    setdll_archive,
-                    setdll_artifact: release.setdll_artifact.into(),
-                }),
+                Some(download_chrome_plus_runtime(downloader, request, release, emit).await?),
                 None,
             ))
         }
@@ -693,6 +773,7 @@ impl OperationPhase {
                 | Self::SameVersion { .. }
                 | Self::Installed { .. }
                 | Self::ChromePlusChecked { .. }
+                | Self::ChromePlusInstalled { .. }
                 | Self::Cancelled
                 | Self::Failed { .. }
         )
@@ -703,7 +784,7 @@ impl OperationPhase {
 mod tests {
     use super::{
         CachedReleaseMetadata, MetadataSource, OperationPhase, UPSTREAM_REUSE_SECONDS,
-        requires_replacement_confirmation, unix_now,
+        require_expected_chrome_plus_version, requires_replacement_confirmation, unix_now,
     };
     use crate::domain::release::{
         ArchiveFormat, Artifact, CpuBuild, Integrity, ProgramPlacement, ProviderKind,
@@ -752,6 +833,12 @@ mod tests {
             .is_terminal()
         );
         assert!(
+            OperationPhase::ChromePlusInstalled {
+                version: "1.18.3".to_owned(),
+            }
+            .is_terminal()
+        );
+        assert!(
             OperationPhase::SameVersion {
                 current_version: "1.0.0".to_owned(),
                 upstream: super::UpstreamCheck {
@@ -784,6 +871,13 @@ mod tests {
         assert!(!requires_replacement_confirmation(
             false, "155.0.1", "156.0.1"
         ));
+    }
+
+    #[test]
+    fn chromeplus_update_rejects_a_changed_checked_version() {
+        assert!(require_expected_chrome_plus_version(Some("1.18.3"), "1.18.3").is_ok());
+        assert!(require_expected_chrome_plus_version(Some("1.18.3"), "1.18.4").is_err());
+        assert!(require_expected_chrome_plus_version(None, "1.18.3").is_err());
     }
 
     #[test]

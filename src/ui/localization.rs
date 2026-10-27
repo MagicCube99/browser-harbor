@@ -176,6 +176,27 @@ fn exact_translation(text: &str) -> Option<&'static str> {
         "已安装" => "Installed",
         "尚未安装" => "Not installed",
         "尚未检测" => "Not detected",
+        "更新 Chrome++" => "Update Chrome++",
+        "取消" => "Cancel",
+        "将只替换 Chrome++ 文件，保留浏览器程序、Data、Profile 和缓存；旧 INI 会先备份。" => {
+            "Only Chrome++ files will be replaced. The browser program, Data, Profile and cache are preserved; the previous INI is backed up first."
+        }
+        "请保持所有当前浏览器实例关闭。点击更新后会再次检测；仍在运行的实例不会被强制结束。" => {
+            "Keep every current browser instance closed. Running instances are checked again after confirmation and are never terminated."
+        }
+        "已取消 Chrome++ 更新" => "Chrome++ update cancelled",
+        "同时更新 Chrome++" => "Update Chrome++ too",
+        "继续浏览器操作" => "Continue browser operation",
+        "已取消浏览器操作" => "Browser operation cancelled",
+        "浏览器版本相同，继续会重新下载并替换浏览器，同时更新 Chrome++。" => {
+            "The browser versions match. Continuing will download and replace the browser again and update Chrome++ at the same time."
+        }
+        "浏览器升级会替换程序目录，因此本次操作也会安装已检测到的 Chrome++ 新版本。" => {
+            "Browser upgrade replaces the program directory, so this operation will also install the detected Chrome++ version."
+        }
+        "Data、Profile、缓存和可恢复的 Chrome++ 配置会保留；请先关闭当前浏览器的所有实例。" => {
+            "Data, Profile, cache and recoverable Chrome++ settings are preserved. Close every instance of the current browser first."
+        }
         "检查 Bush2021/chrome_plus 的最新正式版本" => {
             "Check the latest stable Bush2021/chrome_plus release"
         }
@@ -395,6 +416,14 @@ fn exact_translation(text: &str) -> Option<&'static str> {
 }
 
 fn dynamic_translation(text: &str) -> String {
+    if let Some(rest) = text.strip_prefix("Chrome++ 上游版本已从 ")
+        && let Some((previous, current)) = rest.split_once(" 变化为 ")
+        && let Some(current) = current.strip_suffix("，请重新检查")
+    {
+        return format!(
+            "Chrome++ upstream changed from {previous} to {current}; check again before updating"
+        );
+    }
     if let Some(rest) = text.strip_prefix("本地版本 ")
         && let Some((current, upstream)) = rest.split_once(" 与上游 ")
         && let Some(upstream) = upstream.strip_suffix(" 相同，等待确认")
@@ -422,6 +451,7 @@ fn dynamic_translation(text: &str) -> String {
     }
     for (prefix, replacement) in [
         ("当前浏览器：", "Current browser: "),
+        ("浏览器：", "Browser: "),
         ("当前目标：", "Current target: "),
         ("目录中的程序：", "Program in directory: "),
         ("目录中的程序是 ", "Directory contains "),
@@ -453,6 +483,15 @@ fn dynamic_translation(text: &str) -> String {
         ("Chrome++ 发现上游版本：", "Chrome++ upstream version: "),
         ("Chrome++ 最新版本：", "Latest Chrome++: "),
         ("Chrome++ 检查完成：", "Chrome++ check complete: "),
+        ("Chrome++ 已更新到 ", "Chrome++ updated to "),
+        (
+            "浏览器仍在运行，请手工关闭所有实例后再更新 Chrome++：",
+            "The browser is still running. Close every instance manually before updating Chrome++: ",
+        ),
+        (
+            "无法检查浏览器运行状态：",
+            "Cannot inspect browser process state: ",
+        ),
         (
             "官方元数据缺少可信摘要，签名发布清单也不可用：",
             "Official metadata has no trusted digest and the signed manifest is unavailable: ",

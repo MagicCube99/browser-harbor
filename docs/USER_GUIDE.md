@@ -13,7 +13,7 @@ Browser Harbor is a portable single EXE. It does not require installation or adm
 
 ## First launch
 
-1. Download `BrowserHarbor-0.3.0-x64.exe` from GitHub Releases.
+1. Download `BrowserHarbor-0.4.0-x64.exe` from GitHub Releases.
 2. Run it from a writable folder.
 3. Select a browser.
 4. Review the program, data, profile, and cache paths.
@@ -82,6 +82,10 @@ Paths inside the old Browser Root are remapped. Explicit paths outside it are pr
 ## Chrome++
 
 Chrome++ is available for Brave, Chrome, Edge, Helium, Thorium, and Ungoogled Chromium. The Chrome++ page shows the installed version, the integrated source/license link, and the complete public configuration set.
+
+The refresh control only checks upstream. When a newer version is available it becomes an update control. Updating Chrome++ replaces only Chrome++ files, preserves browser data and profile settings, and backs up the previous INI. Only the selected target’s program directory is checked: other running browser brands do not block it. If any instance of the selected target is running, close every instance manually; Browser Harbor never terminates it.
+
+Chrome++ release artifacts are cached by SHA-256 under `%TEMP%\browser-harbor\cache`. Updating another target with the same version reuses the verified archive without downloading it again.
 
 Edge uses the matching `setdll` helper to add the `version.dll` import. Brave, Helium, and Ungoogled Chromium remain experimental.
 
