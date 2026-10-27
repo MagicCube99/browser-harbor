@@ -971,12 +971,7 @@ mod tests {
     #[test]
     fn portable_path_repair_supports_floorp_and_librewolf() {
         for (target, root_name, program_name, profile_path) in [
-            (
-                TargetId::Floorp,
-                "Floorp",
-                "app",
-                r"data\profile\default",
-            ),
+            (TargetId::Floorp, "Floorp", "app", r"data\profile\default"),
             (
                 TargetId::LibreWolf,
                 "LibreWolf",

@@ -692,17 +692,14 @@ mod tests {
             .unwrap()
             .retain(|target, _| matches!(target.as_str(), "floorp" | "libre_wolf"));
 
-        value["targets"]["floorp"]["browserRoot"] =
-            serde_json::json!(r"D:\Portable\Floorp");
+        value["targets"]["floorp"]["browserRoot"] = serde_json::json!(r"D:\Portable\Floorp");
         value["targets"]["floorp"]["browserDirectory"] =
             serde_json::json!(r"D:\Portable\Floorp\app");
-        value["targets"]["floorp"]["dataDirectory"] =
-            serde_json::json!(r"D:\Portable\Floorp\data");
+        value["targets"]["floorp"]["dataDirectory"] = serde_json::json!(r"D:\Portable\Floorp\data");
         value["targets"]["floorp"]["profileDirectory"] =
             serde_json::json!(r"D:\Portable\Floorp\data");
 
-        value["targets"]["libre_wolf"]["browserRoot"] =
-            serde_json::json!(r"D:\Portable\LibreWolf");
+        value["targets"]["libre_wolf"]["browserRoot"] = serde_json::json!(r"D:\Portable\LibreWolf");
         value["targets"]["libre_wolf"]["browserDirectory"] =
             serde_json::json!(r"D:\Portable\LibreWolf\LibreWolf");
         value["targets"]["libre_wolf"]["dataDirectory"] =
@@ -739,10 +736,8 @@ mod tests {
             .as_object_mut()
             .unwrap()
             .retain(|target, _| target == "floorp");
-        value["targets"]["floorp"]["browserRoot"] =
-            serde_json::json!(r"D:\Portable\Floorp");
-        value["targets"]["floorp"]["dataDirectory"] =
-            serde_json::json!(r"D:\Portable\Floorp\data");
+        value["targets"]["floorp"]["browserRoot"] = serde_json::json!(r"D:\Portable\Floorp");
+        value["targets"]["floorp"]["dataDirectory"] = serde_json::json!(r"D:\Portable\Floorp\data");
         value["targets"]["floorp"]["profileDirectory"] =
             serde_json::json!(r"E:\BrowserProfiles\Floorp");
         fs::write(&path, serde_json::to_vec_pretty(&value).unwrap()).unwrap();
