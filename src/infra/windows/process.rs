@@ -21,6 +21,10 @@ pub enum ProcessError {
 }
 
 pub fn is_process_running(executable: &Path) -> Result<bool, ProcessError> {
+    running_process_count(executable).map(|count| count > 0)
+}
+
+pub fn running_process_count(executable: &Path) -> Result<usize, ProcessError> {
     let target = normalized_path(executable);
     let snapshot = unsafe { CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0) };
     if snapshot == INVALID_HANDLE_VALUE {
@@ -30,16 +34,17 @@ pub fn is_process_running(executable: &Path) -> Result<bool, ProcessError> {
         let mut entry: PROCESSENTRY32W = unsafe { std::mem::zeroed() };
         entry.dwSize = std::mem::size_of::<PROCESSENTRY32W>() as u32;
         if unsafe { Process32FirstW(snapshot, &mut entry) } == 0 {
-            return Ok(false);
+            return Ok(0);
         }
+        let mut count = 0;
         loop {
             if let Some(path) = process_path(entry.th32ProcessID)
                 && normalized_path(&path) == target
             {
-                return Ok(true);
+                count += 1;
             }
             if unsafe { Process32NextW(snapshot, &mut entry) } == 0 {
-                return Ok(false);
+                return Ok(count);
             }
         }
     })();
@@ -76,11 +81,50 @@ fn normalized_path(path: &Path) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::is_process_running;
+    use std::{
+        path::Path,
+        process::{Command, Stdio},
+        thread,
+        time::{Duration, Instant},
+    };
+
+    use super::{is_process_running, running_process_count};
 
     #[test]
     fn finds_the_current_test_executable_by_full_path() {
         let executable = std::env::current_exe().unwrap();
         assert!(is_process_running(&executable).unwrap());
+    }
+
+    #[test]
+    fn counts_multiple_instances_of_the_same_executable() {
+        let executable = std::env::var_os("COMSPEC").expect("Windows command processor is missing");
+        let mut children = (0..2)
+            .map(|_| {
+                Command::new(&executable)
+                    .args(["/C", "ping 127.0.0.1 -n 10 > nul"])
+                    .stdout(Stdio::null())
+                    .stderr(Stdio::null())
+                    .spawn()
+                    .unwrap()
+            })
+            .collect::<Vec<_>>();
+        let deadline = Instant::now() + Duration::from_secs(5);
+        let count = loop {
+            let count = running_process_count(Path::new(&executable)).unwrap();
+            if count >= 2 {
+                break count;
+            }
+            assert!(
+                Instant::now() < deadline,
+                "expected two matching processes, found {count}"
+            );
+            thread::sleep(Duration::from_millis(50));
+        };
+        for child in &mut children {
+            let _ = child.kill();
+            let _ = child.wait();
+        }
+        assert!(count >= 2);
     }
 }
