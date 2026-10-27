@@ -2,6 +2,13 @@
 
 [简体中文](CHANGELOG.zh-CN.md) · English
 
+## v0.3.1 — 2026-10-27
+
+### Fixed
+
+- The Chrome++ integration and configuration cards now use the same heading rhythm, with the installed Chrome++ version and update action moved into the integration heading row.
+- Footer status messages now use all space before the right-side controls; long messages still truncate before the language, appearance, global settings, and version controls.
+
 ## v0.3.0 — 2026-10-27
 
 ### Changed

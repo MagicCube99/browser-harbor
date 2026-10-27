@@ -90,7 +90,7 @@ builds for SSE3, SSE4, AVX, AVX2, and AVX512.
 
 ## 🚀 Quick start
 
-1. Download `BrowserHarbor-0.3.0-x64.exe` from
+1. Download `BrowserHarbor-0.3.1-x64.exe` from
    [GitHub Releases](https://github.com/MagicCube99/browser-harbor/releases/latest).
    If GitHub is unreachable, use the [Gitee mirror](https://gitee.com/MagicCube99/browser-harbor/releases).
 2. Put it in any writable folder and run it.

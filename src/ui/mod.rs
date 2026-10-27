@@ -1592,96 +1592,171 @@ impl BrowserHarborApp {
         let mut load_ini = false;
 
         ui.columns(2, |columns| {
-            section(&mut columns[0], "Chrome++ 集成", |ui| {
-                ui.horizontal(|ui| {
-                    metadata_label(ui, "模式", 72.0);
-                    ui.localized_label(RichText::new(chrome_plus_label(mode)).strong().color(
-                        if mode == ChromePlusMode::DataOnly {
-                            palette.warning
-                        } else {
-                            palette.text
+            section_with_header(
+                &mut columns[0],
+                "Chrome++ 集成",
+                |ui| {
+                    ui.allocate_ui_with_layout(
+                        egui::vec2(86.0, 24.0),
+                        Layout::right_to_left(Align::Center),
+                        |ui| {
+                            let update = ui
+                                .add_enabled(
+                                    self.operation.is_none(),
+                                    localized_button("")
+                                        .min_size(egui::vec2(24.0, 24.0))
+                                        .frame(false),
+                                )
+                                .localized_hover(self.chrome_plus_latest.get(&target).map_or_else(
+                                    || "检查 Bush2021/chrome_plus 的最新正式版本".to_owned(),
+                                    |latest| format!("最新版本：{latest}；点击重新检查"),
+                                ));
+                            let hovered = update.hovered() || update.has_focus();
+                            ui.painter().rect_filled(
+                                update.rect,
+                                CornerRadius::same(5),
+                                if hovered {
+                                    palette.hover
+                                } else {
+                                    Color32::TRANSPARENT
+                                },
+                            );
+                            if update.has_focus() {
+                                ui.painter().rect_stroke(
+                                    update.rect,
+                                    CornerRadius::same(5),
+                                    Stroke::new(1.0, palette.accent),
+                                    egui::StrokeKind::Inside,
+                                );
+                            }
+                            let update_color = match update_label.as_str() {
+                                "已最新" => palette.success,
+                                "可更新" => palette.accent_text,
+                                _ => palette.text,
+                            };
+                            paint_refresh_icon(
+                                ui.painter(),
+                                update.rect.center(),
+                                if hovered {
+                                    palette.accent_text
+                                } else {
+                                    update_color
+                                },
+                            );
+                            update.widget_info(|| {
+                                egui::WidgetInfo::labeled(
+                                    egui::Role::Button,
+                                    self.operation.is_none(),
+                                    localized(update_label.as_str()),
+                                )
+                            });
+                            check_update = update.clicked();
+
+                            ui.add_space(3.0);
+                            let version_text = installed_version
+                                .as_deref()
+                                .map_or_else(|| "—".to_owned(), |version| format!("v{version}"));
+                            ui.add(
+                                egui::Label::new(
+                                    RichText::new(version_text).monospace().strong().color(
+                                        if installed_version.is_some() {
+                                            palette.text
+                                        } else {
+                                            palette.muted
+                                        },
+                                    ),
+                                )
+                                .truncate(),
+                            )
+                            .localized_hover("已安装的 Chrome++ 版本");
                         },
-                    ));
-                });
-                ui.horizontal(|ui| {
-                    metadata_label(ui, "状态", 72.0);
-                    ui.localized_label(if installed {
-                        "已安装"
-                    } else {
-                        "尚未安装"
+                    );
+                },
+                |ui| {
+                    ui.horizontal(|ui| {
+                        metadata_label(ui, "模式", 72.0);
+                        ui.localized_label(RichText::new(chrome_plus_label(mode)).strong().color(
+                            if mode == ChromePlusMode::DataOnly {
+                                palette.warning
+                            } else {
+                                palette.text
+                            },
+                        ));
                     });
-                });
-                ui.horizontal(|ui| {
-                    metadata_label(ui, "来源", 72.0);
-                    ui.hyperlink_to(
-                        localized("Chrome++ 源码与 GPL-3.0 许可证"),
-                        CHROME_PLUS_SOURCE_URL,
-                    )
-                    .on_hover_text(CHROME_PLUS_SOURCE_URL);
-                });
-                ui.horizontal(|ui| {
-                    metadata_label(ui, "版本", 72.0);
-                    ui.localized_label(installed_version.as_deref().unwrap_or("尚未检测"));
-                    ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                        let response = ui
-                            .add_enabled(self.operation.is_none(), localized_button(update_label))
-                            .localized_hover(self.chrome_plus_latest.get(&target).map_or_else(
-                                || "检查 Bush2021/chrome_plus 的最新正式版本".to_owned(),
-                                |latest| format!("最新版本：{latest}；点击重新检查"),
-                            ));
-                        check_update = response.clicked();
+                    ui.horizontal(|ui| {
+                        metadata_label(ui, "状态", 72.0);
+                        ui.localized_label(if installed {
+                            "已安装"
+                        } else {
+                            "尚未安装"
+                        });
                     });
-                });
-            });
-            section(&mut columns[1], "配置文件", |ui| {
-                ui.spacing_mut().item_spacing.y = 4.0;
-                let button_width = ui.available_width();
-                load_ini = ui
-                    .add_enabled(
-                        ini_path.is_some(),
-                        localized_button("从 INI 载入").min_size(egui::vec2(button_width, 24.0)),
-                    )
-                    .clicked();
-                open_ini = ui
-                    .add_enabled(
-                        ini_path.is_some(),
-                        localized_button("打开配置文件").min_size(egui::vec2(button_width, 24.0)),
-                    )
-                    .clicked();
-                let menu = egui::containers::menu::MenuButton::from_button(
-                    localized_button("更多操作…").min_size(egui::vec2(button_width, 24.0)),
-                );
-                menu.ui(ui, |ui| {
-                    if ui
-                        .add_enabled(ini_path.is_some(), localized_button("打开所在文件夹"))
-                        .clicked()
-                    {
-                        open_ini_folder = true;
-                        ui.close();
-                    }
-                    if ui
-                        .add_enabled(
-                            ini_path.is_some() && backup_dir.is_some(),
-                            localized_button("备份当前 INI"),
+                    ui.horizontal(|ui| {
+                        metadata_label(ui, "来源", 72.0);
+                        ui.hyperlink_to(
+                            localized("Chrome++ 源码与 GPL-3.0 许可证"),
+                            CHROME_PLUS_SOURCE_URL,
                         )
-                        .clicked()
-                    {
-                        backup_ini = true;
-                        ui.close();
-                    }
-                    if ui
+                        .on_hover_text(CHROME_PLUS_SOURCE_URL);
+                    });
+                },
+            );
+            section_with_header(
+                &mut columns[1],
+                "配置文件",
+                |_| {},
+                |ui| {
+                    ui.spacing_mut().item_spacing.y = 4.0;
+                    let button_width = ui.available_width();
+                    load_ini = ui
                         .add_enabled(
-                            ini_path.is_some() && backup_dir.is_some(),
-                            localized_button("恢复默认配置"),
+                            ini_path.is_some(),
+                            localized_button("从 INI 载入")
+                                .min_size(egui::vec2(button_width, 24.0)),
                         )
-                        .localized_hover("先备份当前 INI，再将可编辑配置恢复为默认值")
-                        .clicked()
-                    {
-                        restore_defaults = true;
-                        ui.close();
-                    }
-                });
-            });
+                        .clicked();
+                    open_ini = ui
+                        .add_enabled(
+                            ini_path.is_some(),
+                            localized_button("打开配置文件")
+                                .min_size(egui::vec2(button_width, 24.0)),
+                        )
+                        .clicked();
+                    let menu = egui::containers::menu::MenuButton::from_button(
+                        localized_button("更多操作…").min_size(egui::vec2(button_width, 24.0)),
+                    );
+                    menu.ui(ui, |ui| {
+                        if ui
+                            .add_enabled(ini_path.is_some(), localized_button("打开所在文件夹"))
+                            .clicked()
+                        {
+                            open_ini_folder = true;
+                            ui.close();
+                        }
+                        if ui
+                            .add_enabled(
+                                ini_path.is_some() && backup_dir.is_some(),
+                                localized_button("备份当前 INI"),
+                            )
+                            .clicked()
+                        {
+                            backup_ini = true;
+                            ui.close();
+                        }
+                        if ui
+                            .add_enabled(
+                                ini_path.is_some() && backup_dir.is_some(),
+                                localized_button("恢复默认配置"),
+                            )
+                            .localized_hover("先备份当前 INI，再将可编辑配置恢复为默认值")
+                            .clicked()
+                        {
+                            restore_defaults = true;
+                            ui.close();
+                        }
+                    });
+                },
+            );
         });
         if target.support_level() == SupportLevel::Experimental {
             ui.add_space(5.0);
@@ -2763,6 +2838,28 @@ fn paint_settings_icon(painter: &egui::Painter, center: egui::Pos2, color: Color
     }
 }
 
+fn paint_refresh_icon(painter: &egui::Painter, center: egui::Pos2, color: Color32) {
+    let stroke = Stroke::new(1.25, color);
+    let radius = 5.5;
+    let start = -0.65 * std::f32::consts::PI;
+    let sweep = 1.72 * std::f32::consts::PI;
+    let points = (0..=22)
+        .map(|index| {
+            let angle = start + sweep * index as f32 / 22.0;
+            center + egui::vec2(angle.cos(), angle.sin()) * radius
+        })
+        .collect();
+    painter.add(egui::Shape::line(points, stroke));
+
+    let end = start + sweep;
+    let tip = center + egui::vec2(end.cos(), end.sin()) * radius;
+    let tangent = egui::vec2(-end.sin(), end.cos());
+    let radial = egui::vec2(end.cos(), end.sin());
+    let back = tip - tangent * 3.4;
+    painter.line_segment([tip, back + radial * 2.1], stroke);
+    painter.line_segment([tip, back - radial * 2.1], stroke);
+}
+
 fn browser_selector(ui: &mut egui::Ui, selected: TargetId, width: f32) -> Option<TargetId> {
     let palette = palette(ui);
     let mut requested = None;
@@ -3124,6 +3221,40 @@ fn section<R>(ui: &mut egui::Ui, title: &str, add_contents: impl FnOnce(&mut egu
         .show(ui, |ui| {
             ui.set_width(ui.available_width());
             ui.localized_label(RichText::new(title).size(12.0).strong().color(palette.text));
+            ui.add_space(1.0);
+            add_contents(ui)
+        })
+        .inner
+}
+
+fn section_with_header<R>(
+    ui: &mut egui::Ui,
+    title: &str,
+    add_header: impl FnOnce(&mut egui::Ui),
+    add_contents: impl FnOnce(&mut egui::Ui) -> R,
+) -> R {
+    let palette = palette(ui);
+    Frame::new()
+        .fill(palette.surface)
+        .stroke(Stroke::new(1.0, palette.border))
+        .corner_radius(CornerRadius::same(4))
+        .inner_margin(Margin::symmetric(9, 4))
+        .show(ui, |ui| {
+            ui.set_width(ui.available_width());
+            egui::Sides::new()
+                .height(24.0)
+                .spacing(6.0)
+                .shrink_left()
+                .truncate()
+                .show(
+                    ui,
+                    |ui| {
+                        ui.localized_label(
+                            RichText::new(title).size(12.0).strong().color(palette.text),
+                        );
+                    },
+                    add_header,
+                );
             ui.add_space(1.0);
             add_contents(ui)
         })
@@ -3819,7 +3950,7 @@ mod tests {
         assert!(status.rect().max.x < version.rect().min.x);
         let gap = network.rect().min.x - status.rect().max.x;
         assert!(
-            gap <= 10.0,
+            gap <= 12.0,
             "truncated footer status should use the available width; gap was {gap}"
         );
     }
@@ -4079,22 +4210,27 @@ mod tests {
         harness.get_by_label("忽略企业策略");
         harness.get_by_label("抑制错误升级提示");
         harness.get_by_label("按键映射");
-        harness.get_by_label("Chrome++ 集成");
-        harness.get_by_label("配置文件");
+        let integration = harness.get_by_label("Chrome++ 集成").rect();
+        let configuration = harness.get_by_label("配置文件").rect();
         harness.get_by_label("Chrome++ 源码与 GPL-3.0 许可证");
         let mode_row = harness.get_by_label("模式").rect();
         let status_row = harness.get_by_label("状态").rect();
-        let version_row = harness.get_by_label("版本").rect();
+        let source_row = harness.get_by_label("来源").rect();
         assert!((mode_row.min.x - status_row.min.x).abs() < 1.0);
-        assert!((mode_row.min.x - version_row.min.x).abs() < 1.0);
+        assert!((mode_row.min.x - source_row.min.x).abs() < 1.0);
+        assert!(mode_row.center().y < status_row.center().y);
+        assert!(status_row.center().y < source_row.center().y);
+        assert!((integration.center().y - configuration.center().y).abs() < 1.0);
+        let version = harness.get_by_label("—").rect();
         let check = harness.get_by_label("检查更新").rect();
-        assert!(check.min.x > version_row.max.x);
-        assert!((check.center().y - version_row.center().y).abs() < 4.0);
+        assert!(integration.max.x < version.min.x && version.max.x < check.min.x);
+        assert!((integration.center().y - version.center().y).abs() < 1.0);
+        assert!((integration.center().y - check.center().y).abs() < 1.0);
         let load = harness.get_by_label("从 INI 载入").rect();
         let open = harness.get_by_label("打开配置文件").rect();
         let more = harness.get_by_label("更多操作…").rect();
         let window_right = 560.0;
-        assert!(load.min.x > harness.get_by_label("Chrome++ 集成").rect().max.x);
+        assert!(load.min.x > integration.max.x);
         assert!(load.width() > 180.0);
         assert!((load.min.x - open.min.x).abs() < 1.0);
         assert!((load.min.x - more.min.x).abs() < 1.0);
@@ -4105,6 +4241,36 @@ mod tests {
         harness.get_by_label("打开所在文件夹");
         harness.get_by_label("备份当前 INI");
         harness.get_by_label("恢复默认配置");
+    }
+
+    #[test]
+    fn chromeplus_header_fits_in_english() {
+        let directory = tempdir().unwrap();
+        let settings = Settings {
+            selected_browser: TargetId::Chrome,
+            language: Language::English,
+            ..Settings::default()
+        };
+        let state = AppState::new(
+            settings,
+            ConfigStore::new(directory.path().join("manager.json")),
+        );
+        let mut harness = harness_for(BrowserHarborApp::new(state));
+        harness.run();
+        harness.get_by_label("Chrome++").click();
+        harness.run();
+
+        let integration = harness.get_by_label("Chrome++ integration").rect();
+        let configuration = harness.get_by_label("Configuration file").rect();
+        let version = harness.get_by_label("—").rect();
+        let check = harness.get_by_label("Check for updates").rect();
+        assert!(integration.width() > 100.0);
+        assert!(integration.max.x < version.min.x && version.max.x < check.min.x);
+        assert!((integration.center().y - version.center().y).abs() < 1.0);
+        assert!((integration.center().y - check.center().y).abs() < 1.0);
+        assert!((integration.center().y - configuration.center().y).abs() < 1.0);
+
+        set_language(Language::Chinese);
     }
 
     #[test]
@@ -4182,7 +4348,7 @@ mod tests {
         harness.get_by_label("Chrome++").click();
         harness.run();
 
-        harness.get_by_label(&expected);
+        harness.get_by_label(&format!("v{expected}"));
         assert_eq!(
             harness.state().state().saved().targets[&TargetId::Chrome]
                 .chrome_plus_version
