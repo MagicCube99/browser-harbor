@@ -90,7 +90,7 @@ Edge 会使用同版本 `setdll` 添加 `version.dll` 导入。Brave、Helium �
 - 官方 Firefox 和 Zen 强制使用 Libportable。
 - Iceweasel 使用包内便携运行时。
 - SkyKakapo 使用自带 `tmemutil` 运行时。
-- Floorp 和 LibreWolf 保持厂商便携布局。
+- Floorp 和 LibreWolf 均由 Libportable 直接便携化浏览器 EXE，不依赖发行包内的启动器。
 
 ## 全局设置
 
