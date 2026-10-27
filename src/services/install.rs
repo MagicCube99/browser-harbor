@@ -1560,7 +1560,10 @@ mod tests {
 
         commit_chrome_plus_files(&staging, &destination, &backup, TargetId::Edge).unwrap();
 
-        assert_eq!(fs::read(destination.join("msedge.exe")).unwrap(), b"new-edge");
+        assert_eq!(
+            fs::read(destination.join("msedge.exe")).unwrap(),
+            b"new-edge"
+        );
         assert_eq!(
             fs::read(destination.join("version.dll")).unwrap(),
             b"new-dll"
