@@ -17,11 +17,13 @@ use super::{
 use crate::{
     domain::{
         release::{ProgramPlacement, ReleaseDescriptor},
-        runtime::ChromePlusConfig,
+        runtime::{ChromePlusConfig, RuntimeKind},
+        settings::TargetConfig,
         target::{ChromePlusMode, TargetId},
     },
-    infra::windows::process::{ProcessError, is_process_running},
+    infra::windows::process::{ProcessError, is_process_running, running_process_count},
     runtime::{RuntimeError, chromeplus, libportable, native},
+    services::version_probe::locate_executable,
 };
 
 #[derive(Debug, Clone)]
@@ -31,6 +33,19 @@ pub struct RuntimeArchive {
     pub artifact: crate::domain::release::Artifact,
     pub setdll_archive: Option<PathBuf>,
     pub setdll_artifact: Option<crate::domain::release::Artifact>,
+}
+
+#[derive(Debug, Clone)]
+pub struct ChromePlusUpdateRequest {
+    pub target: TargetId,
+    pub config: TargetConfig,
+    pub runtime: RuntimeArchive,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ChromePlusUpdateReceipt {
+    pub version: String,
+    pub program_directory: PathBuf,
 }
 
 #[derive(Debug, Clone)]
@@ -61,6 +76,8 @@ pub struct InstallReceipt {
 pub enum InstallError {
     #[error("Browser Root must be an absolute path")]
     InvalidBrowserRoot,
+    #[error("Browser Root, Program Directory, or Profile Directory is missing")]
+    MissingPath,
     #[error("program directory must remain within Browser Root")]
     ProgramOutsideRoot,
     #[error("data, profile and cache directories must not be inside the program directory")]
@@ -98,6 +115,8 @@ pub enum InstallError {
 }
 
 pub struct InstallService;
+
+pub struct ChromePlusUpdateService;
 
 fn resolve_cache_directory(
     target: TargetId,
@@ -308,6 +327,155 @@ impl InstallService {
             chrome_plus_version,
         })
     }
+}
+
+impl ChromePlusUpdateService {
+    pub fn update(
+        request: ChromePlusUpdateRequest,
+    ) -> Result<ChromePlusUpdateReceipt, InstallError> {
+        let target = request.target;
+        if !matches!(
+            target.spec().runtime,
+            RuntimeKind::ChromePlusFull | RuntimeKind::ChromePlusDataOnly
+        ) {
+            return Err(InstallError::RuntimeMissing("Chrome++"));
+        }
+        let browser_root = request
+            .config
+            .browser_root
+            .as_deref()
+            .ok_or(InstallError::MissingPath)?;
+        if !browser_root.is_absolute() {
+            return Err(InstallError::InvalidBrowserRoot);
+        }
+        let configured_program = request
+            .config
+            .browser_directory
+            .as_deref()
+            .ok_or(InstallError::MissingPath)?;
+        let profile_directory = request
+            .config
+            .profile_directory
+            .as_deref()
+            .ok_or(InstallError::MissingPath)?;
+        let executable = locate_executable(target, configured_program)
+            .map_err(|_| InstallError::ExecutableNotFound)?;
+        let program_directory = executable
+            .parent()
+            .ok_or(InstallError::ExecutableNotFound)?;
+        if running_process_count(&executable)? > 0 {
+            return Err(InstallError::BrowserRunning(executable));
+        }
+
+        verify_runtime_artifact(&request.runtime.archive_path, &request.runtime.artifact)?;
+        let work = WorkDirectory::create(browser_root, target)?;
+        let runtime_root = work.path.join("chromeplus");
+        ArchiveService::extract(
+            &request.runtime.archive_path,
+            crate::domain::release::ArchiveFormat::SevenZip,
+            &runtime_root,
+        )?;
+        let setdll_runtime_root = if target == TargetId::Edge {
+            let archive = request
+                .runtime
+                .setdll_archive
+                .as_ref()
+                .ok_or(InstallError::RuntimeMissing("Chrome++ setdll"))?;
+            let artifact = request
+                .runtime
+                .setdll_artifact
+                .as_ref()
+                .ok_or(InstallError::ArtifactIntegrityMissing)?;
+            verify_runtime_artifact(archive, artifact)?;
+            let root = work.path.join("chromeplus-setdll");
+            ArchiveService::extract(
+                archive,
+                crate::domain::release::ArchiveFormat::SevenZip,
+                &root,
+            )?;
+            Some(root)
+        } else {
+            None
+        };
+
+        let staging_program = work.path.join("staging");
+        fs::create_dir_all(&staging_program)
+            .map_err(|source| io_error(&staging_program, source))?;
+        if target == TargetId::Edge {
+            let staged_executable = staging_program.join("msedge.exe");
+            fs::copy(&executable, &staged_executable)
+                .map_err(|source| io_error(&staged_executable, source))?;
+        }
+        chromeplus::prepare(chromeplus::ChromePlusPrepareRequest {
+            runtime_root: &runtime_root,
+            staging_program: &staging_program,
+            final_program: program_directory,
+            existing_program: Some(program_directory),
+            backup_dir: &browser_root.join("backups"),
+            data_dir: profile_directory,
+            cache_dir: request.config.cache_directory.as_deref(),
+            config: &request.config.chrome_plus,
+            mode: target.chrome_plus_mode(),
+            version: &request.runtime.version,
+            product: target,
+            setdll_runtime_root: setdll_runtime_root.as_deref(),
+        })?;
+
+        if running_process_count(&executable)? > 0 {
+            return Err(InstallError::BrowserRunning(executable));
+        }
+        commit_chrome_plus_files(
+            &staging_program,
+            program_directory,
+            &work.path.join("replacement-backup"),
+            target,
+        )?;
+        Ok(ChromePlusUpdateReceipt {
+            version: request.runtime.version,
+            program_directory: program_directory.to_path_buf(),
+        })
+    }
+}
+
+fn commit_chrome_plus_files(
+    staging: &Path,
+    destination: &Path,
+    backup: &Path,
+    target: TargetId,
+) -> Result<(), InstallError> {
+    fs::create_dir_all(backup).map_err(|source| io_error(backup, source))?;
+    let mut names = vec![
+        std::ffi::OsString::from("version.dll"),
+        std::ffi::OsString::from("chrome++.ini"),
+    ];
+    if target == TargetId::Edge {
+        names.insert(0, "msedge.exe".into());
+    }
+
+    let mut installed = Vec::new();
+    let mut backups = Vec::new();
+    for name in names {
+        let staged = staging.join(&name);
+        if !staged.is_file() {
+            rollback_native(&installed, &backups, destination);
+            return Err(InstallError::RuntimeMissing("Chrome++"));
+        }
+        let target_path = destination.join(&name);
+        if target_path.exists() {
+            let saved = backup.join(&name);
+            if let Err(source) = fs::rename(&target_path, &saved) {
+                rollback_native(&installed, &backups, destination);
+                return Err(io_error(&target_path, source));
+            }
+            backups.push((name.clone(), saved));
+        }
+        if let Err(source) = fs::rename(&staged, &target_path) {
+            rollback_native(&installed, &backups, destination);
+            return Err(io_error(&target_path, source));
+        }
+        installed.push(target_path);
+    }
+    Ok(())
 }
 
 #[allow(clippy::too_many_arguments)] // The transaction passes each already-validated directory explicitly.
@@ -1156,24 +1324,32 @@ mod tests {
     use std::{
         fs::{self, File},
         io::Write,
+        path::Path,
+        process::{Command, Stdio},
+        thread,
+        time::{Duration, Instant},
     };
 
+    use sevenz_rust2::ArchiveWriter;
     use sha2::{Digest, Sha256};
     use tempfile::tempdir;
     use zip::{ZipWriter, write::SimpleFileOptions};
 
     use super::{
-        InstallRequest, InstallService, commit_native_package, placement_paths,
+        ChromePlusUpdateRequest, ChromePlusUpdateService, InstallRequest, InstallService,
+        RuntimeArchive, commit_chrome_plus_files, commit_native_package, placement_paths,
         resolve_cache_directory, stored_browser_directory,
     };
     use crate::domain::{
         release::{
-            ArchiveFormat, Artifact, CpuBuild, ProgramPlacement, ProviderKind, ReleaseChannel,
-            ReleaseDescriptor,
+            ArchiveFormat, Artifact, CpuBuild, Integrity, ProgramPlacement, ProviderKind,
+            ReleaseChannel, ReleaseDescriptor,
         },
         runtime::ChromePlusConfig,
+        settings::TargetConfig,
         target::TargetId,
     };
+    use crate::infra::ini::{IniEncoding, write_ini};
 
     fn fake_x64_exe() -> Vec<u8> {
         let mut bytes = vec![0u8; 0x200];
@@ -1243,6 +1419,162 @@ mod tests {
             chrome_plus_runtime: None,
             libportable_runtime: None,
         }
+    }
+
+    fn chrome_plus_runtime(path: &Path, version: &str) -> RuntimeArchive {
+        let source = path.parent().unwrap().join("chromeplus-runtime-source");
+        let runtime_app = source.join("x64/App");
+        fs::create_dir_all(&runtime_app).unwrap();
+        fs::write(runtime_app.join("version.dll"), b"new-chromeplus-dll").unwrap();
+        write_ini(
+            &runtime_app.join("chrome++.ini"),
+            "[general]\r\ncommand_line=\r\n",
+            IniEncoding::Utf16Le,
+        )
+        .unwrap();
+        let mut writer = ArchiveWriter::create(path).unwrap();
+        writer.push_source_path(&source, |_| true).unwrap();
+        writer.finish().unwrap();
+        let bytes = fs::read(path).unwrap();
+        RuntimeArchive {
+            archive_path: path.to_path_buf(),
+            version: version.to_owned(),
+            artifact: Artifact {
+                file_name: "Chrome++_fixture.7z".to_owned(),
+                format: ArchiveFormat::SevenZip,
+                size: Some(bytes.len() as u64),
+                integrity: Some(Integrity::Sha256(hex::encode(Sha256::digest(&bytes)))),
+                urls: vec!["https://example.com/Chrome++_fixture.7z".to_owned()],
+                signature_url: None,
+            },
+            setdll_archive: None,
+            setdll_artifact: None,
+        }
+    }
+
+    fn chrome_plus_update_request(
+        directory: &Path,
+        target: TargetId,
+        runtime: RuntimeArchive,
+    ) -> ChromePlusUpdateRequest {
+        let root = directory.join("browser");
+        let program = root.join("App");
+        fs::create_dir_all(&program).unwrap();
+        let executable_name = if target == TargetId::Edge {
+            "msedge.exe"
+        } else {
+            "chrome.exe"
+        };
+        fs::write(program.join(executable_name), fake_x64_exe()).unwrap();
+        fs::write(program.join("browser-marker.bin"), b"keep-browser").unwrap();
+        fs::write(program.join("version.dll"), b"old-chromeplus-dll").unwrap();
+        write_ini(
+            &program.join("chrome++.ini"),
+            "[general]\r\ncommand_line=--old\r\n",
+            IniEncoding::Utf16Le,
+        )
+        .unwrap();
+        let profiles = root.join("Profiles");
+        fs::create_dir_all(&profiles).unwrap();
+        let mut config = TargetConfig::for_target(target);
+        config.browser_root = Some(root);
+        config.browser_directory = Some(program);
+        config.data_directory = Some(profiles.clone());
+        config.profile_directory = Some(profiles);
+        ChromePlusUpdateRequest {
+            target,
+            config,
+            runtime,
+        }
+    }
+
+    #[test]
+    fn standalone_chromeplus_update_replaces_only_chromeplus_files() {
+        let directory = tempdir().unwrap();
+        let runtime = chrome_plus_runtime(&directory.path().join("runtime.7z"), "1.18.3");
+        let request = chrome_plus_update_request(directory.path(), TargetId::Chrome, runtime);
+        let program = request.config.browser_directory.clone().unwrap();
+
+        let receipt = ChromePlusUpdateService::update(request).unwrap();
+
+        assert_eq!(receipt.version, "1.18.3");
+        assert_eq!(
+            fs::read(program.join("version.dll")).unwrap(),
+            b"new-chromeplus-dll"
+        );
+        assert_eq!(
+            fs::read(program.join("browser-marker.bin")).unwrap(),
+            b"keep-browser"
+        );
+    }
+
+    #[test]
+    fn chromeplus_file_commit_rolls_back_after_a_later_replacement_failure() {
+        let directory = tempdir().unwrap();
+        let staging = directory.path().join("staging");
+        let destination = directory.path().join("destination");
+        let backup = directory.path().join("backup");
+        fs::create_dir_all(&staging).unwrap();
+        fs::create_dir_all(&destination).unwrap();
+        fs::create_dir_all(&backup).unwrap();
+        fs::write(staging.join("version.dll"), b"new-dll").unwrap();
+        fs::write(staging.join("chrome++.ini"), b"new-ini").unwrap();
+        fs::write(destination.join("version.dll"), b"old-dll").unwrap();
+        fs::write(destination.join("chrome++.ini"), b"old-ini").unwrap();
+        fs::create_dir_all(backup.join("chrome++.ini")).unwrap();
+        fs::write(
+            backup.join("chrome++.ini").join("blocker.bin"),
+            b"blocked-backup-path",
+        )
+        .unwrap();
+
+        assert!(
+            commit_chrome_plus_files(&staging, &destination, &backup, TargetId::Chrome).is_err()
+        );
+        assert_eq!(
+            fs::read(destination.join("version.dll")).unwrap(),
+            b"old-dll"
+        );
+        assert_eq!(
+            fs::read(destination.join("chrome++.ini")).unwrap(),
+            b"old-ini"
+        );
+    }
+
+    #[test]
+    fn standalone_chromeplus_update_refuses_any_running_target_instance() {
+        let directory = tempdir().unwrap();
+        let runtime = chrome_plus_runtime(&directory.path().join("runtime.7z"), "1.18.3");
+        let request = chrome_plus_update_request(directory.path(), TargetId::Chrome, runtime);
+        let program = request.config.browser_directory.clone().unwrap();
+        let command = std::env::var_os("COMSPEC").unwrap();
+        fs::copy(&command, program.join("chrome.exe")).unwrap();
+        let mut child = Command::new(program.join("chrome.exe"))
+            .args(["/C", "ping 127.0.0.1 -n 10 > nul"])
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .spawn()
+            .unwrap();
+        let deadline = Instant::now() + Duration::from_secs(3);
+        while Instant::now() < deadline {
+            if crate::infra::windows::process::running_process_count(&program.join("chrome.exe"))
+                .unwrap()
+                > 0
+            {
+                break;
+            }
+            thread::sleep(Duration::from_millis(50));
+        }
+
+        let error = ChromePlusUpdateService::update(request).unwrap_err();
+
+        let _ = child.kill();
+        let _ = child.wait();
+        assert!(matches!(error, super::InstallError::BrowserRunning(_)));
+        assert_eq!(
+            fs::read(program.join("version.dll")).unwrap(),
+            b"old-chromeplus-dll"
+        );
     }
 
     #[test]
