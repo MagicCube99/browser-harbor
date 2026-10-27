@@ -839,12 +839,18 @@ fn verify_installed(
                 }
             }
         }
-        crate::domain::runtime::RuntimeKind::Libportable
+        crate::domain::runtime::RuntimeKind::Libportable => {
             if !program.join("portable64.dll").is_file()
                 || !program.join("portable.ini").is_file()
-                || !program.join("upcheck.exe").is_file() =>
-        {
-            return Err(InstallError::RuntimeMissing("Libportable"));
+                || !program.join("upcheck.exe").is_file()
+            {
+                return Err(InstallError::RuntimeMissing("Libportable"));
+            }
+            if !crate::runtime::pe_imports_dll(&program.join("mozglue.dll"), "portable64.dll")
+                .map_err(|source| io_error(&program.join("mozglue.dll"), source))?
+            {
+                return Err(InstallError::RuntimeMissing("Libportable mozglue import"));
+            }
         }
         crate::domain::runtime::RuntimeKind::IceweaselNative
             if !program.join("portable64.dll").is_file()
@@ -1265,6 +1271,27 @@ mod tests {
         assert!(matches!(
             error,
             super::InstallError::ArtifactIntegrityMissing
+        ));
+    }
+
+    #[test]
+    fn libportable_installation_requires_injected_mozglue() {
+        let directory = tempdir().unwrap();
+        let program = directory.path().join("app");
+        fs::create_dir_all(&program).unwrap();
+        fs::write(program.join("floorp.exe"), fake_x64_exe()).unwrap();
+        fs::write(program.join("mozglue.dll"), fake_x64_exe()).unwrap();
+        fs::write(program.join("portable64.dll"), b"portable").unwrap();
+        fs::write(program.join("upcheck.exe"), b"upcheck").unwrap();
+        fs::write(program.join("portable.ini"), b"[General]\nPortable=1\n").unwrap();
+
+        let error =
+            super::verify_installed(&program.join("floorp.exe"), &program, TargetId::Floorp)
+                .unwrap_err();
+
+        assert!(matches!(
+            error,
+            super::InstallError::RuntimeMissing("Libportable mozglue import")
         ));
     }
 

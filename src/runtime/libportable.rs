@@ -95,6 +95,12 @@ pub fn prepare(request: LibportablePrepareRequest<'_>) -> Result<(), RuntimeErro
         let _ = fs::write(&mozglue, original);
         return Err(error);
     }
+    if !super::pe_imports_dll(&mozglue, "portable64.dll")
+        .map_err(|source| io_error(&mozglue, source))?
+    {
+        let _ = fs::write(&mozglue, original);
+        return Err(RuntimeError::InjectionVerification(mozglue));
+    }
 
     let final_helper = request.staging_program.join("upcheck.exe");
     fs::rename(&target_helper, &final_helper).map_err(|source| io_error(&final_helper, source))?;
