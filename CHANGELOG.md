@@ -7,7 +7,7 @@
 ### Added
 
 - Chrome++ can now be updated independently from the browser after an explicit update check.
-- Browser upgrades show both browser and Chrome++ version transitions before proceeding.
+- When a Chrome++ update has been detected, browser upgrades show both browser and Chrome++ version transitions before proceeding.
 
 ### Reliability
 
