@@ -1048,15 +1048,17 @@ impl BrowserHarborApp {
                 OperationPhase::ChromePlusInstalled { version } => {
                     let mut config = self.state.draft().targets[&event.target].clone();
                     config.chrome_plus_version = Some(version.clone());
-                    self.update_target_config(event.target, config);
+                    let saved = self.update_target_config(event.target, config);
                     self.chrome_plus_versions
                         .insert(event.target, Some(version.clone()));
                     self.chrome_plus_ini_loaded.remove(&event.target);
                     self.chrome_plus_latest
                         .insert(event.target, version.clone());
-                    self.status_message = Some(format!(
-                        "Chrome++ 已更新到 {version}，浏览器数据和配置已保留"
-                    ));
+                    if saved {
+                        self.status_message = Some(format!(
+                            "Chrome++ 已更新到 {version}，浏览器数据和配置已保留"
+                        ));
+                    }
                 }
                 OperationPhase::Cancelled => {
                     self.status_message = Some("任务已取消".to_owned());
@@ -2276,7 +2278,7 @@ impl BrowserHarborApp {
         &mut self,
         target: TargetId,
         config: crate::domain::settings::TargetConfig,
-    ) {
+    ) -> bool {
         let program_path_changed =
             self.state
                 .draft()
@@ -2297,7 +2299,7 @@ impl BrowserHarborApp {
             self.chrome_plus_versions.remove(&target);
             self.chrome_plus_ini_loaded.remove(&target);
         }
-        self.auto_save();
+        self.auto_save()
     }
 
     fn show_health_dialog(&mut self, ctx: &egui::Context) {
