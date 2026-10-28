@@ -57,7 +57,13 @@ fn main() -> eframe::Result {
         .parent()
         .unwrap_or_else(|| std::path::Path::new("."))
         .to_path_buf();
-    let state = AppState::with_tool_root(settings, store, tool_root);
+    let state = AppState::with_config_paths(
+        settings,
+        store,
+        tool_root,
+        app_storage.user_config_path,
+        app_storage.portable_config_path,
+    );
     let app = match startup_error {
         Some(error) => BrowserHarborApp::with_startup_error(state, error),
         None => BrowserHarborApp::new(state),

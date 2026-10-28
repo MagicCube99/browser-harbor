@@ -27,7 +27,12 @@ try {
     & cargo build --release
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-    $exe = Join-Path (Get-Location) "target\release\browser-harbor.exe"
+    $targetDir = if ($env:CARGO_TARGET_DIR) {
+        [System.IO.Path]::GetFullPath($env:CARGO_TARGET_DIR)
+    } else {
+        Join-Path (Get-Location) "target"
+    }
+    $exe = Join-Path $targetDir "release\browser-harbor.exe"
     $versionInfo = (Get-Item -LiteralPath $exe).VersionInfo
     $manifestVersion = [regex]::Match(
         (Get-Content -Raw -LiteralPath "Cargo.toml"),

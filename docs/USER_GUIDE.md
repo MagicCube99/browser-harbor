@@ -13,7 +13,7 @@ Browser Harbor is a portable single EXE. It does not require installation or adm
 
 ## First launch
 
-1. Download `BrowserHarbor-0.4.2-x64.exe` from
+1. Download `BrowserHarbor-0.5.0-x64.exe` from
    [GitHub Releases](https://github.com/MagicCube99/browser-harbor/releases/latest)
    or the [Gitee mirror](https://gitee.com/MagicCube99/browser-harbor/releases).
 2. Run it from a writable folder.
@@ -28,6 +28,12 @@ The manager configuration is stored at:
 ```text
 %LOCALAPPDATA%\browser-harbor\manager.json
 ```
+
+The global settings page can switch the manager configuration to portable mode,
+which stores `manager.json` beside the Browser Harbor EXE. The EXE directory
+must be writable. Browser paths inside the file are still absolute, so copying
+the manager to another computer may require **Check configuration** and
+**Relocate…**. Temporary directories are never used for persistent settings.
 
 Use the `中` / `EN` control in the footer to switch languages. The choice is saved immediately.
 
@@ -55,10 +61,9 @@ Each Browser Target has its own:
 - Optional cache directory
 
 The user data directory is the root for bookmarks, history, cookies, sign-in
-state, and browser settings. A Profile is one browser profile inside that
-user-data model. Profile is an advanced field; Chromium-family targets usually
-need no separate Profile override, and clearing a required derived path restores
-the target’s default layout.
+state, and browser settings. Most targets manage their internal profiles
+automatically. A separate **Profile location** field appears only for Floorp
+and LibreWolf, whose distributions need an explicit profile location.
 
 The cache field is a cache **root**, not necessarily the final directory. A
 Chromium target commonly places HTTP cache files under
@@ -145,7 +150,10 @@ The executable is not Authenticode-signed. Obtain it only from GitHub Releases o
 
 ## Uninstall
 
-Delete the Browser Harbor EXE and `%LOCALAPPDATA%\browser-harbor\manager.json`. Browser programs and user data remain in their Browser Roots. You can also remove `%TEMP%\browser-harbor\cache` and shortcuts created in Browser Roots.
+Delete the Browser Harbor EXE and the active `manager.json` (either under
+`%LOCALAPPDATA%\browser-harbor` or beside the EXE). Browser programs and user
+data remain in their Browser Roots. You can also remove
+`%TEMP%\browser-harbor\cache` and shortcuts created in Browser Roots.
 
 ## Related documents
 
