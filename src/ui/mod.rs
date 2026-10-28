@@ -43,7 +43,7 @@ use crate::{
             HealthAspect, HealthReport, HealthState, ProgramIdentity, inspect,
             inspect_program_identity, relocate, repair_chromeplus_paths, repair_portable_paths,
         },
-        version_probe::{locate_executable, probe_local_version},
+        version_probe::{VersionProbeError, locate_executable, probe_local_version},
     },
 };
 
@@ -324,6 +324,8 @@ pub struct BrowserHarborApp {
 #[derive(Debug, Clone)]
 enum LocalVersionState {
     Detected(LocalVersion),
+    MissingDirectory(PathBuf),
+    Incomplete(PathBuf),
     Unavailable(String),
 }
 
@@ -416,24 +418,37 @@ impl BrowserHarborApp {
 
     fn refresh_local_version(&mut self, target: TargetId) {
         let config = self.state.draft().targets[&target].clone();
-        let result = self
-            .state
-            .resolve_operation_paths(config)
-            .map_err(|error| error.to_string())
-            .and_then(|config| {
-                config
-                    .browser_directory
-                    .ok_or_else(|| "程序目录未配置".to_owned())
-            })
-            .and_then(|directory| {
-                probe_local_version(target, &directory).map_err(|error| error.to_string())
-            });
-        let state = match result {
-            Ok(probe) => LocalVersionState::Detected(LocalVersion {
-                version: probe.version,
-                source: probe.source,
-            }),
-            Err(error) => LocalVersionState::Unavailable(error),
+        let state = match self.state.resolve_operation_paths(config) {
+            Err(error) => LocalVersionState::Unavailable(error.to_string()),
+            Ok(config) => {
+                let Some(root) = config.browser_root.as_deref() else {
+                    self.local_versions.insert(
+                        target,
+                        LocalVersionState::Unavailable("浏览器根目录未配置".to_owned()),
+                    );
+                    return;
+                };
+                if !root.is_dir() {
+                    LocalVersionState::MissingDirectory(root.to_path_buf())
+                } else if let Some(program) = config.browser_directory.as_deref() {
+                    if !program.is_dir() {
+                        LocalVersionState::MissingDirectory(program.to_path_buf())
+                    } else {
+                        match probe_local_version(target, program) {
+                            Ok(probe) => LocalVersionState::Detected(LocalVersion {
+                                version: probe.version,
+                                source: probe.source,
+                            }),
+                            Err(VersionProbeError::ExecutableNotFound(path)) => {
+                                LocalVersionState::Incomplete(path)
+                            }
+                            Err(error) => LocalVersionState::Unavailable(error.to_string()),
+                        }
+                    }
+                } else {
+                    LocalVersionState::Unavailable("程序目录未配置".to_owned())
+                }
+            }
         };
         self.local_versions.insert(target, state);
     }
@@ -655,22 +670,6 @@ impl BrowserHarborApp {
                 self.status_message = Some(format!("无法检查浏览器运行状态：{error}"));
             }
         }
-    }
-
-    fn display_local_version(
-        &self,
-        target: TargetId,
-        config: &crate::domain::settings::TargetConfig,
-    ) -> Option<LocalVersion> {
-        self.detected_local_version(target).cloned().or_else(|| {
-            config
-                .installed_version
-                .as_ref()
-                .map(|version| LocalVersion {
-                    version: version.clone(),
-                    source: VersionSource::InstallReceipt,
-                })
-        })
     }
 
     fn latest_check(
@@ -1164,21 +1163,50 @@ impl BrowserHarborApp {
         let mut config = self.state.draft().targets[&target].clone();
         self.maybe_auto_check(target, &config);
         let detected_version = self.detected_local_version(target).cloned();
-        let displayed_version = self.display_local_version(target, &config);
-        let local_probe_error = match self.local_versions.get(&target) {
-            Some(LocalVersionState::Unavailable(error)) => Some(error.as_str()),
-            _ => None,
-        };
-        let current_version = displayed_version.as_ref().map_or_else(
-            || "未检测到".to_owned(),
-            |version| match version.source {
-                VersionSource::InstallReceipt => {
-                    format!("{}（上次安装）", version.version)
-                }
-                _ => version.version.clone(),
-            },
+        let displayed_version = detected_version.clone();
+        let missing_directory = matches!(
+            self.local_versions.get(&target),
+            Some(LocalVersionState::MissingDirectory(_))
         );
-        let current_source = displayed_version.as_ref().map(|version| version.source);
+        let incomplete_install = matches!(
+            self.local_versions.get(&target),
+            Some(LocalVersionState::Incomplete(_))
+        );
+        let (current_version, current_hover, current_color) = match self.local_versions.get(&target)
+        {
+            Some(LocalVersionState::Detected(version)) => (
+                version.version.clone(),
+                format!(
+                    "版本来源：{}",
+                    localized(version_source_label(version.source))
+                ),
+                palette.text,
+            ),
+            Some(LocalVersionState::MissingDirectory(path)) => (
+                localized("目录不存在"),
+                format!("目录不存在：{}", path.display()),
+                palette.warning,
+            ),
+            Some(LocalVersionState::Incomplete(path)) => (
+                localized("安装不完整"),
+                format!("未找到浏览器程序：{}", path.display()),
+                palette.error,
+            ),
+            Some(LocalVersionState::Unavailable(error)) => {
+                (localized("版本未知"), error.clone(), palette.warning)
+            }
+            None => (
+                localized("未检测到"),
+                "未检测到本地浏览器版本".to_owned(),
+                palette.error,
+            ),
+        };
+        let current_hover = config
+            .installed_version
+            .as_ref()
+            .map_or(current_hover.clone(), |version| {
+                format!("{current_hover}；上次安装记录：{version}")
+            });
         let upstream = self.latest_check(target, &config).cloned();
         let latest_version = upstream
             .as_ref()
@@ -1190,12 +1218,18 @@ impl BrowserHarborApp {
             }
             _ => VersionRelation::Unknown,
         };
-        let relation_text =
-            relation_status(detected_version.is_some(), upstream.is_some(), relation);
+        let relation_text = if missing_directory {
+            Some(("未安装", StatusTone::Neutral))
+        } else if incomplete_install {
+            Some(("无法比较", StatusTone::Error))
+        } else {
+            relation_status(detected_version.is_some(), upstream.is_some(), relation)
+        };
         let install_label = match relation {
             VersionRelation::Same => "重新下载并替换",
             VersionRelation::UpstreamNewer => "下载并升级",
             VersionRelation::UpstreamOlder | VersionRelation::Different => "下载上游版本",
+            VersionRelation::Unknown if incomplete_install => "重新下载并安装",
             VersionRelation::Unknown if displayed_version.is_some() => "检查并安装/升级",
             VersionRelation::Unknown => "下载并安装",
         };
@@ -1209,13 +1243,6 @@ impl BrowserHarborApp {
         let mut requested_action = None;
         let mut requested_target = None;
         let mut create_shortcut = false;
-        let current_color = if detected_version.is_some() {
-            palette.text
-        } else if displayed_version.is_some() {
-            palette.warning
-        } else {
-            palette.error
-        };
         let upstream_color = if upstream.is_some() {
             palette.text
         } else {
@@ -1314,10 +1341,7 @@ impl BrowserHarborApp {
                     )
                     .extend(),
                 )
-                .localized_hover(format!(
-                    "版本来源：{}",
-                    localized(current_source.map_or("未检测", version_source_label))
-                ));
+                .localized_hover(current_hover.clone());
                 ui.add_space(18.0);
 
                 ui.localized_label(RichText::new("上游版本").color(palette.muted));
@@ -1340,10 +1364,7 @@ impl BrowserHarborApp {
                     ));
                 }
                 if let Some((text, tone)) = relation_text {
-                    let response = status_chip(ui, text, tone);
-                    if let Some(error) = local_probe_error {
-                        response.localized_hover(error);
-                    }
+                    status_chip(ui, text, tone).localized_hover(current_hover.clone());
                 }
             });
             ui.add_space(4.0);
@@ -4517,10 +4538,13 @@ mod tests {
     }
 
     #[test]
-    fn unreadable_local_version_uses_receipt_as_labeled_fallback() {
+    fn missing_browser_directory_does_not_show_receipt_as_current_version() {
         let directory = tempdir().unwrap();
         let mut settings = Settings::default();
         let config = settings.targets.get_mut(&TargetId::Firefox).unwrap();
+        let root = directory.path().join("deleted-firefox");
+        config.browser_root = Some(root.clone());
+        config.browser_directory = Some(root.join("App"));
         config.installed_version = Some("157.0.1".to_owned());
         let state = AppState::new(
             settings,
@@ -4539,10 +4563,33 @@ mod tests {
         );
         harness.run();
 
-        harness.get_by_label("157.0.1（上次安装）");
-        harness.get_by_label("157.0.1");
+        harness.get_by_label("目录不存在");
+        harness.get_by_label("未安装");
+        harness.get_by_label("下载并安装");
+        assert!(harness.query_by_label("157.0.1（上次安装）").is_none());
+    }
+
+    #[test]
+    fn existing_program_directory_without_browser_exe_is_marked_incomplete() {
+        let directory = tempdir().unwrap();
+        let mut settings = Settings::default();
+        let config = settings.targets.get_mut(&TargetId::Firefox).unwrap();
+        let root = directory.path().join("broken-firefox");
+        let program = root.join("App");
+        fs::create_dir_all(&program).unwrap();
+        config.browser_root = Some(root);
+        config.browser_directory = Some(program);
+        config.installed_version = Some("157.0.1".to_owned());
+        let state = AppState::new(
+            settings,
+            ConfigStore::new(directory.path().join("manager.json")),
+        );
+        let mut harness = harness_for(BrowserHarborApp::new(state));
+        harness.run();
+
+        harness.get_by_label("安装不完整");
         harness.get_by_label("无法比较");
-        harness.get_by_label("检查并安装/升级");
+        assert!(harness.query_by_label("157.0.1（上次安装）").is_none());
     }
 
     #[test]
