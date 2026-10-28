@@ -13,7 +13,9 @@ Browser Harbor is a portable single EXE. It does not require installation or adm
 
 ## First launch
 
-1. Download `BrowserHarbor-0.4.1-x64.exe` from GitHub Releases.
+1. Download `BrowserHarbor-0.4.1-x64.exe` from
+   [GitHub Releases](https://github.com/MagicCube99/browser-harbor/releases/latest)
+   or the [Gitee mirror](https://gitee.com/MagicCube99/browser-harbor/releases).
 2. Run it from a writable folder.
 3. Select a browser.
 4. Review the program, data, profile, and cache paths.
@@ -118,7 +120,7 @@ Confirm that `version.dll` and `chrome++.ini` are beside the browser executable.
 
 ### Windows warns about the EXE
 
-The executable is not Authenticode-signed. Obtain it only from GitHub Releases and compare its SHA-256 with the release notes.
+The executable is not Authenticode-signed. Obtain it only from GitHub Releases or the linked Gitee mirror, then compare its SHA-256 with the release notes.
 
 ## Uninstall
 
