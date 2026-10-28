@@ -49,7 +49,7 @@
 - **处理 Chromium 系常见的兼容问题。** Chrome++ 可独立检查和更新；同一版本只下载一次，并可在多个目标间复用；其他浏览器继续运行不会误阻止当前目标，同时支持 Edge 动态版本目录和 `version.dll` 导入修复。
 - **Firefox 系全部直接便携。** Firefox、Floorp、LibreWolf 和 Zen 使用 Libportable，Iceweasel 与 SkyKakapo 保留各自原生运行时；多余的 Floorp/LibreWolf 启动器会被删除。
 - **重定位先核对。** 选择新的 Browser Root 后再映射路径；已知属于其他浏览器的 `chrome.exe` 会被拒绝，未知自定义构建会先给出警告。
-- **检查只读，修复留痕。** 配置检查不会修改文件；修复路径前需要确认、关闭浏览器并备份 INI。
+- **检查只读，修复留痕。** “检查配置”不会修改文件；修复路径前需要确认、关闭浏览器并备份 INI。
 - **窗口不会留在屏幕外。** 保存的坐标会限制在当前虚拟桌面内。
 - **编辑立即保存。** 管理器配置默认保存在用户目录，也可把 `manager.json`
   放到 EXE 旁，随程序一起带走。
@@ -69,7 +69,7 @@ SSE3、SSE4、AVX、AVX2 和 AVX512 的 CPU 构建。
 ## 开始使用
 
 1. 从 [GitHub Releases](https://github.com/MagicCube99/browser-harbor/releases/latest)
-   下载 `BrowserHarbor-0.5.2-x64.exe`。
+   下载 `BrowserHarbor-0.5.3-x64.exe`。
    无法访问 GitHub 时，可从 [Gitee 镜像](https://gitee.com/MagicCube99/browser-harbor/releases)下载。
 2. 放进任意可写目录，直接运行。
 3. 选择浏览器，确认 Browser Root 和数据路径。

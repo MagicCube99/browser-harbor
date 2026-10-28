@@ -143,11 +143,11 @@ fn exact_translation(text: &str) -> Option<&'static str> {
         "高级：具体 Profile 子目录；通常无需修改，留空会按浏览器布局自动恢复" => {
             "Advanced: the specific Profile subdirectory. Usually no change is needed; leaving it empty restores the browser-layout default"
         }
-        "缓存根；留空跟随 Profile；修改后运行“检查配置”应用到现有安装" => {
-            "Cache root; leave empty to follow Profile. Run Check configuration after changing it to apply the path to an existing installation"
+        "缓存总目录；留空时跟随 Profile。已安装的浏览器修改路径后，请在“检查配置”中修正。" => {
+            "Cache root; leave empty to follow Profile. For an installed browser, use Check configuration after changing this path."
         }
-        "缓存根，最终通常为 <此目录>\\<Profile>\\Cache；修改后运行“检查配置”应用" => {
-            "Cache root; files usually end up under <this directory>\\<Profile>\\Cache. Run Check configuration after changing it"
+        "缓存总目录；浏览器缓存会在此目录下按 Profile 存放。已安装的浏览器修改路径后，请在“检查配置”中修正。" => {
+            "Cache root. Browser cache is stored here by Profile. For an installed browser, use Check configuration after changing this path."
         }
         "Chrome++ 文件位于浏览器程序目录" => {
             "Chrome++ files are stored in the browser program directory"
@@ -307,7 +307,6 @@ fn exact_translation(text: &str) -> Option<&'static str> {
         "未编辑时保留 INI 中已有的按键映射。" => {
             "Existing INI key mappings are kept until edited."
         }
-        "配置检查" => "Configuration check",
         "程序目录未配置" => "Program directory is not configured",
         "检查结果：正常" => "Result: Healthy",
         "请确认重新定位后的路径" => "Confirm the relocated paths",
@@ -641,6 +640,13 @@ mod tests {
         assert_eq!(localized("检查更新"), "Check for updates");
         assert_eq!(localized("加速站前缀"), "Accelerator prefix");
         assert_eq!(localized("当前配置文件"), "Current config file");
+        assert_eq!(localized("检查配置"), "Check configuration");
+        assert_eq!(
+            localized(
+                "缓存总目录；浏览器缓存会在此目录下按 Profile 存放。已安装的浏览器修改路径后，请在“检查配置”中修正。"
+            ),
+            "Cache root. Browser cache is stored here by Profile. For an installed browser, use Check configuration after changing this path."
+        );
         assert_eq!(
             localized("代理请求超时（秒）"),
             "Proxy request timeout (seconds)"

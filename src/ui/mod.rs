@@ -1438,8 +1438,11 @@ impl BrowserHarborApp {
         });
 
         ui.add_space(4.0);
-        let (path_changed, check_configuration) =
-            section_with_action(ui, "路径与用户数据", "检查配置", |ui| {
+        let (path_changed, check_configuration) = section_with_action(
+            ui,
+            "路径与用户数据",
+            "检查配置",
+            |ui| {
                 let shortcut_toggle_label = if config.auto_create_shortcut {
                     "快捷方式：开"
                 } else {
@@ -1497,9 +1500,9 @@ impl BrowserHarborApp {
                 }
                 if target.supports_custom_cache() {
                     let cache_hint = if target.family() == BrowserFamily::Firefox {
-                        "缓存根；留空跟随 Profile；修改后运行“检查配置”应用到现有安装"
+                        "缓存总目录；留空时跟随 Profile。已安装的浏览器修改路径后，请在“检查配置”中修正。"
                     } else {
-                        "缓存根，最终通常为 <此目录>\\<Profile>\\Cache；修改后运行“检查配置”应用"
+                        "缓存总目录；浏览器缓存会在此目录下按 Profile 存放。已安装的浏览器修改路径后，请在“检查配置”中修正。"
                     };
                     changed |= path_field(ui, "缓存目录", &mut config.cache_directory, cache_hint);
                 } else {
@@ -1515,7 +1518,8 @@ impl BrowserHarborApp {
                     );
                 }
                 changed
-            });
+            },
+        );
         changed |= path_changed;
         if check_configuration {
             self.open_health_dialog();
@@ -2478,7 +2482,7 @@ impl BrowserHarborApp {
             )
             .show(ctx, |ui| {
                 ui.set_width(430.0);
-                ui.heading("配置检查");
+                ui.heading("检查配置");
                 ui.localized_label(
                     RichText::new(dialog.target.display_name())
                         .size(11.0)
@@ -5557,7 +5561,7 @@ mod tests {
             .click();
         harness.run();
 
-        assert!(harness.query_by_label("配置检查").is_some());
+        harness.get_by_role_and_label(Role::Label, "检查配置");
         assert!(harness.query_by_label("检查结果：正常").is_some());
         assert!(harness.query_by_label("Profile 位置").is_none());
     }

@@ -2,6 +2,13 @@
 
 [简体中文](CHANGELOG.zh-CN.md) · English
 
+## v0.5.3 — 2026-10-28
+
+### Changed
+
+- Rewrote the cache-directory hint in plain language without exposing a raw path template.
+- The configuration dialog now uses the same “Check configuration” name as the button that opens it.
+
 ## v0.5.2 — 2026-10-28
 
 ### Changed
