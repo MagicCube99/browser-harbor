@@ -2,6 +2,13 @@
 
 [简体中文](CHANGELOG.zh-CN.md) · English
 
+## v0.5.1 — 2026-10-28
+
+### Changed
+
+- Proxy/timeout settings and download-cache controls now share one two-column row in global settings.
+- This reduces vertical scrolling and brings Configuration location into view sooner.
+
 ## v0.5.0 — 2026-10-28
 
 ### Added

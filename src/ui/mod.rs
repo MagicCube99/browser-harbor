@@ -1674,32 +1674,32 @@ impl BrowserHarborApp {
         }
 
         ui.add_space(7.0);
-        changed |= section(ui, "代理与超时", |ui| {
-            let mut section_changed = false;
-            let mut proxy = network.proxy.clone().unwrap_or_default();
-            let proxy_changed =
-                text_field(ui, "代理地址", &mut proxy, "留空时使用系统代理").changed();
-            if proxy_changed {
-                network.proxy = (!proxy.trim().is_empty()).then(|| proxy.trim().to_owned());
-                section_changed = true;
-            }
-            let label = field_label(ui, "超时", FIELD_LABEL_WIDTH);
-            section_changed |= ui
-                .add_sized(
-                    [110.0, 24.0],
-                    egui::DragValue::new(&mut network.timeout_seconds)
-                        .range(5..=300)
-                        .speed(1.0)
-                        .suffix(format!(" {}", localized("秒"))),
-                )
-                .labelled_by(label.id)
-                .changed();
-            section_changed
-        });
+        let mut proxy_changed = false;
+        ui.columns(2, |columns| {
+            proxy_changed = section(&mut columns[0], "代理与超时", |ui| {
+                let mut section_changed = false;
+                let mut proxy = network.proxy.clone().unwrap_or_default();
+                let changed =
+                    text_field(ui, "代理地址", &mut proxy, "留空时使用系统代理").changed();
+                if changed {
+                    network.proxy = (!proxy.trim().is_empty()).then(|| proxy.trim().to_owned());
+                    section_changed = true;
+                }
+                let label = field_label(ui, "超时", FIELD_LABEL_WIDTH);
+                section_changed |= ui
+                    .add_sized(
+                        [110.0, 24.0],
+                        egui::DragValue::new(&mut network.timeout_seconds)
+                            .range(5..=300)
+                            .speed(1.0)
+                            .suffix(format!(" {}", localized("秒"))),
+                    )
+                    .labelled_by(label.id)
+                    .changed();
+                section_changed
+            });
 
-        ui.add_space(7.0);
-        section(ui, "下载缓存", |ui| {
-            ui.horizontal(|ui| {
+            section(&mut columns[1], "下载缓存", |ui| {
                 let usage = cache_usage.map_or_else(
                     || "无法读取缓存目录".to_owned(),
                     |usage| {
@@ -1711,24 +1711,38 @@ impl BrowserHarborApp {
                         )
                     },
                 );
-                ui.localized_label(RichText::new(usage).size(11.0).color(palette.muted));
-                ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                    clear_cache = ui
-                        .add_enabled(
-                            self.operation.is_none()
-                                && cache_usage.is_some_and(|usage| usage.files > 0),
-                            localized_button("清理下载缓存"),
-                        )
-                        .localized_hover(cache_dir.display().to_string())
-                        .clicked();
-                });
+                egui::Sides::new()
+                    .height(24.0)
+                    .spacing(6.0)
+                    .shrink_left()
+                    .truncate()
+                    .show(
+                        ui,
+                        |ui| {
+                            ui.localized_label(
+                                RichText::new(&usage).size(11.0).color(palette.muted),
+                            )
+                            .localized_hover(&usage);
+                        },
+                        |ui| {
+                            clear_cache = ui
+                                .add_enabled(
+                                    self.operation.is_none()
+                                        && cache_usage.is_some_and(|usage| usage.files > 0),
+                                    localized_button("清理下载缓存"),
+                                )
+                                .localized_hover(cache_dir.display().to_string())
+                                .clicked();
+                        },
+                    );
+                ui.localized_label(
+                    RichText::new("仅删除可重新下载的安装包，不影响浏览器数据。")
+                        .size(10.5)
+                        .color(palette.muted),
+                );
             });
-            ui.localized_label(
-                RichText::new("仅删除可重新下载的安装包，不影响浏览器数据。")
-                    .size(10.5)
-                    .color(palette.muted),
-            );
         });
+        changed |= proxy_changed;
 
         ui.add_space(7.0);
         section(ui, "配置位置", |ui| {
@@ -4707,7 +4721,12 @@ mod tests {
             .rect();
         assert!(accelerators.min.y < custom.min.y);
         assert!(custom.min.y < proxy.min.y);
-        harness.get_by_label("下载缓存");
+        let proxy_section = harness.get_by_label("代理与超时").rect();
+        let cache_section = harness.get_by_label("下载缓存").rect();
+        assert!((proxy_section.min.y - cache_section.min.y).abs() < 0.5);
+        assert!(proxy_section.max.x < cache_section.min.x);
+        let config_section = harness.get_by_label("配置位置").rect();
+        assert!(config_section.min.y > proxy_section.max.y.max(cache_section.max.y));
         harness.get_by_label("清理下载缓存");
         harness
             .get_by_role_and_label(Role::TextInput, "HTTPS 前缀")
