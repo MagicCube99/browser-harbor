@@ -1900,6 +1900,7 @@ impl BrowserHarborApp {
                                         },
                                     ),
                                 )
+                                .show_tooltip_when_elided(false)
                                 .truncate(),
                             )
                             .localized_hover("已安装的 Chrome++ 版本");
@@ -2873,9 +2874,13 @@ impl BrowserHarborApp {
                             );
                             if let Some((text, color)) = &status {
                                 ui.separator();
+                                let display_text = localized(text);
                                 ui.add(
-                                    egui::Label::new(RichText::new(text).size(11.5).color(*color))
-                                        .truncate(),
+                                    egui::Label::new(
+                                        RichText::new(display_text).size(11.5).color(*color),
+                                    )
+                                    .show_tooltip_when_elided(false)
+                                    .truncate(),
                                 )
                                 .localized_hover(text);
                             }
