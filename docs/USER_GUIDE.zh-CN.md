@@ -13,7 +13,9 @@ Browser Harbor 是单 EXE 便携程序，不需要安装，也不需要管理员
 
 ## 首次启动
 
-1. 从 GitHub Releases 下载 `BrowserHarbor-0.4.1-x64.exe`。
+1. 从 [GitHub Releases](https://github.com/MagicCube99/browser-harbor/releases/latest)
+   或 [Gitee 镜像](https://gitee.com/MagicCube99/browser-harbor/releases)下载
+   `BrowserHarbor-0.4.1-x64.exe`。
 2. 放到可写目录后直接运行。
 3. 选择浏览器。
 4. 检查程序、数据、Profile 和缓存目录。
@@ -118,7 +120,7 @@ Edge 会使用同版本 `setdll` 添加 `version.dll` 导入。Brave、Helium �
 
 ### Windows 对 EXE 发出警告
 
-EXE 尚未做 Authenticode 代码签名。请只从 GitHub Releases 获取，并与发布说明中的 SHA-256 核对。
+EXE 尚未做 Authenticode 代码签名。请只从 GitHub Releases 或项目提供的 Gitee 镜像获取，并与发布说明中的 SHA-256 核对。
 
 ## 卸载
 

@@ -34,7 +34,7 @@
 
 ## 发布校验
 
-只从 GitHub Releases 获取二进制文件，并与对应发布说明中的 SHA-256 核对。Release 同时提供 `trusted-metadata.json`、`trusted-metadata.sig` 和 `metadata-public-key.hex`。
+只从 GitHub Releases 或项目提供的 Gitee 镜像获取二进制文件，并与对应发布说明中的 SHA-256 核对。两个发布位置都会提供 `trusted-metadata.json`、`trusted-metadata.sig` 和 `metadata-public-key.hex`。
 
 当前 EXE 未做 Authenticode 代码签名。Ed25519 签名保护的是发布元数据，不是 EXE 本身。SHA-256 只能证明下载内容与发布内容一致，不等同于代码签名所提供的发布者身份和信誉。
 

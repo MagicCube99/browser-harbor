@@ -67,7 +67,7 @@ The public key is not redistributable software and grants no signing capability.
 Licenses below were read from the exact packages resolved in `Cargo.lock`; transitive dependencies retain their own licenses.
 
 - GUI and UI tests: eframe, egui and egui_kittest 0.37.0 (`MIT OR Apache-2.0`).
-- External browser links: webbrowser 1.2.5 (`MIT OR Apache-2.0`).
+- External browser links: webbrowser 1.2.5 (`MIT OR Apache-2.0`), resolved transitively through egui-winit; the project does not depend on it directly.
 - Native directory selection: rfd 0.17.2 (`MIT`), using the Windows `IFileOpenDialog` folder picker without Linux backend features.
 - Windows icon resources: winresource 0.1.34 (`MIT`), build-time only.
 - Networking and runtime: reqwest 0.13.5 (`MIT OR Apache-2.0`), tokio 1.54.1 (`MIT`), futures-util 0.3.34 (`MIT OR Apache-2.0`).
@@ -86,7 +86,7 @@ Do not generate this list from `Cargo.toml` alone; it must reflect the resolved 
 
 Browser packages, launchers, and bundled runtimes downloaded by the manager are not redistributed with this project. Each package retains its own license, notices, and signatures. The manager must not remove license files from extracted browser packages.
 
-Floorp Portable uses a Portapps-based launcher, and LibreWolf uses its official portable package. Their respective package licenses and notices remain in force for those downloaded artifacts.
+Floorp's portable release is used as the upstream browser payload, but its launcher is removed after installation. LibreWolf's official portable package is likewise used as a payload; its launcher, updater, and task scripts are removed. Browser Harbor makes both executables directly portable through Libportable. The respective package licenses and notices remain in force for the downloaded artifacts.
 
 ## Application Icon
 

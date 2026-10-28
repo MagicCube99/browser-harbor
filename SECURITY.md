@@ -34,7 +34,7 @@ If private reporting is unavailable, open a minimal issue asking the maintainer 
 
 ## Release verification
 
-Only obtain binaries from GitHub Releases. Compare the downloaded EXE with the SHA-256 shown in the corresponding release notes. Release assets also include `trusted-metadata.json`, `trusted-metadata.sig`, and `metadata-public-key.hex`.
+Only obtain binaries from GitHub Releases or the project's linked Gitee mirror. Compare the downloaded EXE with the SHA-256 shown in the corresponding release notes. Both release locations provide `trusted-metadata.json`, `trusted-metadata.sig`, and `metadata-public-key.hex`.
 
 The executable is not Authenticode-signed. The Ed25519 signature authenticates release metadata, not the EXE itself. A valid EXE SHA-256 proves the downloaded bytes match the published release; it does not provide identity or reputation like a code-signing certificate.
 
