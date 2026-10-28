@@ -176,7 +176,10 @@ fn exact_translation(text: &str) -> Option<&'static str> {
         "下载加速" => "Download acceleration",
         "启用内置下载加速站" => "Enable built-in accelerators",
         "添加额外的自定义加速站（可选）" => "Add custom accelerators (optional)",
-        "HTTPS 前缀" => "HTTPS prefix",
+        "加速站前缀" => "Accelerator prefix",
+        "加速站 URL 前缀；程序会在原始下载地址前拼接此文本" => {
+            "Accelerator URL prefix; prepended to the original download URL"
+        }
         "添加" => "Add",
         "删除" => "Delete",
         "选择" => "Select",
@@ -636,6 +639,7 @@ mod tests {
         assert_eq!(translate("当前浏览器：Firefox"), "Current browser: Firefox");
         assert_eq!(translate("159.0（上次安装）"), "159.0 (last install)");
         assert_eq!(localized("检查更新"), "Check for updates");
+        assert_eq!(localized("加速站前缀"), "Accelerator prefix");
         assert_eq!(localized("当前配置文件"), "Current config file");
         assert_eq!(
             localized("代理请求超时（秒）"),

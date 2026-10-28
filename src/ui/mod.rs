@@ -1575,7 +1575,8 @@ impl BrowserHarborApp {
                     .color(palette.muted),
             );
             ui.horizontal(|ui| {
-                let label = field_label(ui, "HTTPS 前缀", FIELD_LABEL_WIDTH);
+                let label = field_label(ui, "加速站前缀", FIELD_LABEL_WIDTH)
+                    .localized_hover("加速站 URL 前缀；程序会在原始下载地址前拼接此文本");
                 let response = ui
                     .add_sized(
                         [(ui.available_width() - 52.0).max(80.0), 24.0],
@@ -4753,7 +4754,7 @@ mod tests {
         );
         let accelerators = harness.get_by_label("启用内置下载加速站").rect();
         let custom = harness
-            .get_by_role_and_label(Role::TextInput, "HTTPS 前缀")
+            .get_by_role_and_label(Role::TextInput, "加速站前缀")
             .rect();
         let proxy = harness
             .get_by_role_and_label(Role::TextInput, "代理地址")
@@ -4806,7 +4807,7 @@ mod tests {
             "current configuration path must not be confined to a narrow column"
         );
         harness
-            .get_by_role_and_label(Role::TextInput, "HTTPS 前缀")
+            .get_by_role_and_label(Role::TextInput, "加速站前缀")
             .set_text_value_accesskit("https://mirror.example/");
         harness.run();
         harness.get_by_label("添加").click();
