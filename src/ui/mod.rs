@@ -3872,7 +3872,12 @@ fn path_field_impl(
             text = selected.display().to_string();
             changed = true;
         }
-        action.map(|(label, enabled)| ui.add_enabled(enabled, localized_button(label)))
+        action.map(|(label, enabled)| {
+            ui.add_enabled(
+                enabled,
+                localized_button(label).min_size(egui::vec2(104.0, 24.0)),
+            )
+        })
     });
     if changed {
         *path = (!text.trim().is_empty()).then(|| PathBuf::from(text.trim()));
@@ -5075,6 +5080,20 @@ mod tests {
         );
         let shortcut = harness.get_by_label("快捷方式：开");
         assert!(!shortcut.accesskit_node().is_disabled());
+        let input_right = labels.map(|label| {
+            harness
+                .get_by_role_and_label(Role::TextInput, label)
+                .rect()
+                .max
+                .x
+        });
+        assert!(
+            input_right[1..]
+                .iter()
+                .all(|right| (right - shortcut.rect().max.x).abs() < 1.0),
+            "shortcut action must share lower directory fields' right edge: shortcut={}, inputs={input_right:?}",
+            shortcut.rect().max.x
+        );
     }
 
     #[test]
