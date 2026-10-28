@@ -1575,7 +1575,8 @@ impl BrowserHarborApp {
                     .color(palette.muted),
             );
             ui.horizontal(|ui| {
-                let label = field_label(ui, "HTTPS 前缀", FIELD_LABEL_WIDTH);
+                let label = field_label(ui, "加速站前缀", FIELD_LABEL_WIDTH)
+                    .localized_hover("加速站 URL 前缀；程序会在原始下载地址前拼接此文本");
                 let response = ui
                     .add_sized(
                         [(ui.available_width() - 52.0).max(80.0), 24.0],
@@ -1676,99 +1677,147 @@ impl BrowserHarborApp {
         ui.add_space(7.0);
         let mut proxy_changed = false;
         ui.columns(2, |columns| {
-            proxy_changed = section(&mut columns[0], "代理与超时", |ui| {
-                let mut section_changed = false;
-                let mut proxy = network.proxy.clone().unwrap_or_default();
-                let changed =
-                    text_field(ui, "代理地址", &mut proxy, "留空时使用系统代理").changed();
-                if changed {
-                    network.proxy = (!proxy.trim().is_empty()).then(|| proxy.trim().to_owned());
-                    section_changed = true;
-                }
-                let label = field_label(ui, "超时", FIELD_LABEL_WIDTH);
-                section_changed |= ui
-                    .add_sized(
-                        [110.0, 24.0],
-                        egui::DragValue::new(&mut network.timeout_seconds)
-                            .range(5..=300)
-                            .speed(1.0)
-                            .suffix(format!(" {}", localized("秒"))),
-                    )
-                    .labelled_by(label.id)
-                    .changed();
-                section_changed
-            });
-
-            section(&mut columns[1], "下载缓存", |ui| {
-                let usage = cache_usage.map_or_else(
-                    || "无法读取缓存目录".to_owned(),
-                    |usage| {
-                        format!(
-                            "{} {}，{}",
-                            usage.files,
-                            localized("个文件"),
-                            format_bytes(usage.bytes)
-                        )
-                    },
-                );
-                egui::Sides::new()
-                    .height(24.0)
-                    .spacing(6.0)
-                    .shrink_left()
-                    .truncate()
-                    .show(
-                        ui,
-                        |ui| {
-                            ui.localized_label(
-                                RichText::new(&usage).size(11.0).color(palette.muted),
+            let mut timeout_changed = false;
+            proxy_changed = Frame::new()
+                .fill(palette.surface)
+                .stroke(Stroke::new(1.0, palette.border))
+                .corner_radius(CornerRadius::same(4))
+                .inner_margin(Margin::symmetric(9, 4))
+                .show(&mut columns[0], |ui| {
+                    ui.set_width(ui.available_width());
+                    ui.horizontal(|ui| {
+                        let (title_rect, _) = ui.allocate_exact_size(
+                            egui::vec2(FIELD_LABEL_WIDTH, 24.0),
+                            egui::Sense::hover(),
+                        );
+                        let mut title_ui = ui.new_child(
+                            egui::UiBuilder::new()
+                                .max_rect(title_rect)
+                                .layout(Layout::left_to_right(Align::Center)),
+                        );
+                        title_ui.localized_label(
+                            RichText::new("代理与超时")
+                                .size(12.0)
+                                .strong()
+                                .color(palette.text),
+                        );
+                        let timeout = ui
+                            .add_sized(
+                                [76.0, 24.0],
+                                egui::DragValue::new(&mut network.timeout_seconds)
+                                    .range(5..=300)
+                                    .speed(1.0)
+                                    .suffix(format!(" {}", localized("秒"))),
                             )
-                            .localized_hover(&usage);
-                        },
-                        |ui| {
-                            clear_cache = ui
-                                .add_enabled(
-                                    self.operation.is_none()
-                                        && cache_usage.is_some_and(|usage| usage.files > 0),
-                                    localized_button("清理下载缓存"),
-                                )
-                                .localized_hover(cache_dir.display().to_string())
-                                .clicked();
+                            .on_hover_text(localized("代理请求超时（秒）"));
+                        timeout.widget_info(|| {
+                            egui::WidgetInfo::labeled(
+                                egui::Role::SpinButton,
+                                true,
+                                localized("超时"),
+                            )
+                        });
+                        timeout_changed = timeout.changed();
+                    });
+                    ui.add_space(1.0);
+                    let mut section_changed = false;
+                    let mut proxy = network.proxy.clone().unwrap_or_default();
+                    let changed =
+                        text_field(ui, "代理地址", &mut proxy, "留空时使用系统代理").changed();
+                    if changed {
+                        network.proxy = (!proxy.trim().is_empty()).then(|| proxy.trim().to_owned());
+                        section_changed = true;
+                    }
+                    section_changed
+                })
+                .inner;
+            proxy_changed |= timeout_changed;
+
+            section_with_header(
+                &mut columns[1],
+                "下载缓存",
+                |_| {},
+                |ui| {
+                    let usage = cache_usage.map_or_else(
+                        || "无法读取缓存目录".to_owned(),
+                        |usage| {
+                            format!(
+                                "{} {}，{}",
+                                usage.files,
+                                localized("个文件"),
+                                format_bytes(usage.bytes)
+                            )
                         },
                     );
-                ui.localized_label(
-                    RichText::new("仅删除可重新下载的安装包，不影响浏览器数据。")
-                        .size(10.5)
-                        .color(palette.muted),
-                );
-            });
+                    egui::Sides::new()
+                        .height(24.0)
+                        .spacing(6.0)
+                        .shrink_left()
+                        .truncate()
+                        .show(
+                            ui,
+                            |ui| {
+                                ui.localized_label(
+                                    RichText::new(&usage).size(11.0).color(palette.muted),
+                                )
+                                .localized_hover(&usage);
+                            },
+                            |ui| {
+                                let detail = format!(
+                                    "{}\n{}",
+                                    cache_dir.display(),
+                                    localized("仅删除可重新下载的安装包，不影响浏览器数据。")
+                                );
+                                clear_cache = ui
+                                    .add_enabled(
+                                        self.operation.is_none()
+                                            && cache_usage.is_some_and(|usage| usage.files > 0),
+                                        localized_button("清理下载缓存"),
+                                    )
+                                    .on_hover_text(detail)
+                                    .clicked();
+                            },
+                        );
+                },
+            );
         });
         changed |= proxy_changed;
 
         ui.add_space(7.0);
         section(ui, "配置位置", |ui| {
             let mut portable = self.state.is_portable_config();
-            let user = ui.radio_value(&mut portable, false, localized("系统用户目录（默认）"));
-            let user_changed = user.changed();
-            user.localized_hover("保存在 %LOCALAPPDATA%\\browser-harbor\\manager.json");
-            let portable_response =
-                ui.radio_value(&mut portable, true, localized("程序目录（便携）"));
-            let portable_changed = portable_response.changed();
-            portable_response
-                .localized_hover("将 manager.json 保存在 Browser Harbor EXE 旁，可随程序一起带走");
-            if user_changed || portable_changed {
-                requested_config_location = Some(portable);
-            }
-            let path = self.state.config_path().display().to_string();
-            ui.add(
-                egui::Label::new(
-                    RichText::new(&path)
+            ui.horizontal(|ui| {
+                let user = ui.radio_value(&mut portable, false, localized("系统用户目录（默认）"));
+                let user_changed = user.changed();
+                user.localized_hover("保存在 %LOCALAPPDATA%\\browser-harbor\\manager.json");
+                let portable_response =
+                    ui.radio_value(&mut portable, true, localized("程序目录（便携）"));
+                let portable_changed = portable_response.changed();
+                portable_response.localized_hover(
+                    "将 manager.json 保存在 Browser Harbor EXE 旁，可随程序一起带走",
+                );
+                if user_changed || portable_changed {
+                    requested_config_location = Some(portable);
+                }
+            });
+            ui.horizontal(|ui| {
+                ui.localized_label(
+                    RichText::new("当前配置文件")
                         .size(10.5)
-                        .monospace()
                         .color(palette.muted),
+                );
+                let path = self.state.config_path().display().to_string();
+                ui.add(
+                    egui::Label::new(
+                        RichText::new(&path)
+                            .size(10.5)
+                            .monospace()
+                            .color(palette.text),
+                    )
+                    .truncate(),
                 )
-                .truncate(),
-            )
-            .localized_hover(path);
+                .localized_hover(path);
+            });
             ui.localized_label(
                 RichText::new(
                     "便携模式要求 EXE 所在目录可写；浏览器绝对路径在新电脑上仍需重新定位。",
@@ -3783,20 +3832,11 @@ fn section_with_header<R>(
         .inner_margin(Margin::symmetric(9, 4))
         .show(ui, |ui| {
             ui.set_width(ui.available_width());
-            egui::Sides::new()
-                .height(24.0)
-                .spacing(6.0)
-                .shrink_left()
-                .truncate()
-                .show(
-                    ui,
-                    |ui| {
-                        ui.localized_label(
-                            RichText::new(title).size(12.0).strong().color(palette.text),
-                        );
-                    },
-                    add_header,
-                );
+            ui.horizontal(|ui| {
+                ui.spacing_mut().item_spacing.x = 6.0;
+                ui.localized_label(RichText::new(title).size(12.0).strong().color(palette.text));
+                ui.with_layout(Layout::right_to_left(Align::Center), add_header);
+            });
             ui.add_space(1.0);
             add_contents(ui)
         })
@@ -4714,7 +4754,7 @@ mod tests {
         );
         let accelerators = harness.get_by_label("启用内置下载加速站").rect();
         let custom = harness
-            .get_by_role_and_label(Role::TextInput, "HTTPS 前缀")
+            .get_by_role_and_label(Role::TextInput, "加速站前缀")
             .rect();
         let proxy = harness
             .get_by_role_and_label(Role::TextInput, "代理地址")
@@ -4722,14 +4762,52 @@ mod tests {
         assert!(accelerators.min.y < custom.min.y);
         assert!(custom.min.y < proxy.min.y);
         let proxy_section = harness.get_by_label("代理与超时").rect();
+        assert!(
+            proxy_section.width() >= 60.0,
+            "proxy title must not be squeezed by its header control"
+        );
+        let timeout = harness
+            .get_by_role_and_label(Role::SpinButton, "超时")
+            .rect();
+        assert!(
+            (timeout.center().y - proxy_section.center().y).abs() < 8.0,
+            "timeout must share the proxy card header row"
+        );
+        assert!(
+            (timeout.min.x - proxy.min.x).abs() < 0.5,
+            "timeout and proxy inputs must share the same left edge: {} vs {}",
+            timeout.min.x,
+            proxy.min.x
+        );
         let cache_section = harness.get_by_label("下载缓存").rect();
         assert!((proxy_section.min.y - cache_section.min.y).abs() < 0.5);
         assert!(proxy_section.max.x < cache_section.min.x);
+        let clear_cache = harness.get_by_label("清理下载缓存").rect();
+        assert!(
+            (proxy.max.y - clear_cache.max.y).abs() < 0.5,
+            "proxy and cache cards must keep equal content heights"
+        );
         let config_section = harness.get_by_label("配置位置").rect();
         assert!(config_section.min.y > proxy_section.max.y.max(cache_section.max.y));
-        harness.get_by_label("清理下载缓存");
+        let user_config = harness.get_by_label("系统用户目录（默认）").rect();
+        let portable_config = harness.get_by_label("程序目录（便携）").rect();
+        assert!(
+            (user_config.center().y - portable_config.center().y).abs() < 8.0,
+            "configuration location choices must share one row"
+        );
+        let config_file_label = harness.get_by_label("当前配置文件").rect();
+        let config_path = harness.state().state.config_path().display().to_string();
+        let config_path_label = harness.get_by_label(&config_path).rect();
+        assert!(
+            config_path_label.min.x > config_file_label.max.x,
+            "current configuration path must use the remaining row width"
+        );
+        assert!(
+            config_path_label.width() > 300.0,
+            "current configuration path must not be confined to a narrow column"
+        );
         harness
-            .get_by_role_and_label(Role::TextInput, "HTTPS 前缀")
+            .get_by_role_and_label(Role::TextInput, "加速站前缀")
             .set_text_value_accesskit("https://mirror.example/");
         harness.run();
         harness.get_by_label("添加").click();
@@ -4747,6 +4825,32 @@ mod tests {
         harness.run();
         harness.get_by_role_and_label(Role::Button, "浏览器");
         harness.get_by_label("Chrome++");
+    }
+
+    #[test]
+    fn global_settings_fit_and_align_in_english() {
+        let mut harness = harness();
+        harness
+            .state_mut()
+            .state
+            .update_draft(|settings| settings.language = Language::English);
+        harness.run();
+        harness.get_by_label("Global settings").click();
+        harness.run();
+
+        assert!(
+            harness.query_by_role(Role::ScrollBar).is_none(),
+            "English global settings must fit without scrolling"
+        );
+        let timeout = harness
+            .get_by_role_and_label(Role::SpinButton, "Timeout")
+            .rect();
+        let proxy = harness
+            .get_by_role_and_label(Role::TextInput, "Proxy address")
+            .rect();
+        assert!((timeout.min.x - proxy.min.x).abs() < 0.5);
+        harness.get_by_label("Current config file");
+        set_language(Language::Chinese);
     }
 
     #[test]
