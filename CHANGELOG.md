@@ -2,6 +2,17 @@
 
 [简体中文](CHANGELOG.zh-CN.md) · English
 
+## v0.4.1 — 2026-10-28
+
+### Fixed
+
+- A deleted Browser Root or Program Directory is now shown as “Directory missing” instead of reusing the last-install receipt as the current version.
+- An existing Program Directory without the expected browser executable is shown as “Installation incomplete”.
+- Install paths and the last-install receipt remain preserved, so the user can reinstall in place or reconnect removable storage.
+- An uninstalled Chrome++ runtime no longer displays its previous stored version as the current version.
+- Truncated footer and Chrome++ version labels show only one tooltip on hover.
+- The shortcut toggle now shares the same right edge as the directory fields.
+
 ## v0.4.0 — 2026-10-27
 
 ### Added

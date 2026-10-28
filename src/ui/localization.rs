@@ -175,7 +175,13 @@ fn exact_translation(text: &str) -> Option<&'static str> {
         "版本" => "Version",
         "已安装" => "Installed",
         "尚未安装" => "Not installed",
+        "Chrome++ 尚未安装" => "Chrome++ is not installed",
         "尚未检测" => "Not detected",
+        "目录不存在" => "Directory missing",
+        "安装不完整" => "Installation incomplete",
+        "版本未知" => "Version unknown",
+        "未检测到本地浏览器版本" => "Local browser version was not detected",
+        "重新下载并安装" => "Download and reinstall",
         "更新 Chrome++" => "Update Chrome++",
         "取消" => "Cancel",
         "将只替换 Chrome++ 文件，保留浏览器程序、Data、Profile 和缓存；旧 INI 会先备份。" => {
@@ -368,8 +374,8 @@ fn exact_translation(text: &str) -> Option<&'static str> {
         }
         "刚刚" => "just now",
         "不足 1 分钟前" => "less than a minute ago",
-        "完整模式：以下选项对应 Chrome++ 1.18.2 的全部公开配置。" => {
-            "Full mode: these options cover all public Chrome++ 1.18.2 settings."
+        "完整模式：以下选项对应 Chrome++ 的全部公开配置。" => {
+            "Full mode: these options cover all public Chrome++ settings."
         }
         "实验性 DataOnly 只写入数据目录与缓存目录，不开放标签或策略补丁。" => {
             "Experimental DataOnly writes only data and cache paths; tab and policy patches are disabled."
@@ -456,6 +462,9 @@ fn dynamic_translation(text: &str) -> String {
         ("目录中的程序：", "Program in directory: "),
         ("目录中的程序是 ", "Directory contains "),
         ("版本来源：", "Version source: "),
+        ("目录不存在：", "Directory missing: "),
+        ("未找到浏览器程序：", "Browser executable not found: "),
+        ("上次安装记录：", "Last install receipt: "),
         ("检查结果：", "Result: "),
         ("外观：", "Appearance: "),
         ("更新来源：", "Update source: "),
