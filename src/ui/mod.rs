@@ -603,6 +603,7 @@ impl BrowserHarborApp {
         target: TargetId,
         config: &crate::domain::settings::TargetConfig,
     ) -> Option<(String, String)> {
+        chrome_plus_ini_path(target, config, self.state.tool_root())?;
         let current = self
             .chrome_plus_versions
             .get(&target)
@@ -4789,6 +4790,13 @@ mod tests {
         harness.get_by_label("—");
         assert!(harness.query_by_label("v1.18.2").is_none());
         assert!(harness.query_by_label("更新 Chrome++ 到 1.18.3").is_none());
+        let config = &harness.state().state().draft().targets[&TargetId::Chrome];
+        assert!(
+            harness
+                .state()
+                .chrome_plus_pending_update(TargetId::Chrome, config)
+                .is_none()
+        );
     }
 
     #[test]
