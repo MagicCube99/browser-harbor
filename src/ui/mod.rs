@@ -1753,12 +1753,13 @@ impl BrowserHarborApp {
                 });
             self.chrome_plus_versions.insert(target, detected);
         }
-        let installed_version = self
-            .chrome_plus_versions
-            .get(&target)
-            .cloned()
-            .flatten()
-            .or_else(|| config.chrome_plus_version.clone());
+        let detected_version = self.chrome_plus_versions.get(&target).cloned().flatten();
+        let installed = ini_path.is_some();
+        let installed_version = if installed {
+            detected_version.or_else(|| config.chrome_plus_version.clone())
+        } else {
+            None
+        };
         let stored_chrome_plus_version = config.chrome_plus_version.clone();
         if installed_version.is_some() {
             config.chrome_plus_version = installed_version.clone();
@@ -1768,7 +1769,6 @@ impl BrowserHarborApp {
             .as_deref()
             .and_then(|root| resolve_preview_path(self.state.tool_root(), root))
             .map(|root| root.join("backups"));
-        let installed = ini_path.is_some();
         let latest_version = self.chrome_plus_latest.get(&target).cloned();
         let update_label = chrome_plus_update_button_label(
             installed_version.as_deref(),
@@ -1903,7 +1903,11 @@ impl BrowserHarborApp {
                                 .show_tooltip_when_elided(false)
                                 .truncate(),
                             )
-                            .localized_hover("已安装的 Chrome++ 版本");
+                            .localized_hover(if installed {
+                                "已安装的 Chrome++ 版本"
+                            } else {
+                                "Chrome++ 尚未安装"
+                            });
                         },
                     );
                 },
@@ -2006,7 +2010,7 @@ impl BrowserHarborApp {
         ui.add_space(4.0);
         if mode == ChromePlusMode::Full {
             ui.localized_label(
-                RichText::new("完整模式：以下选项对应 Chrome++ 1.18.2 的全部公开配置。")
+                RichText::new("完整模式：以下选项对应 Chrome++ 的全部公开配置。")
                     .size(11.0)
                     .color(palette.muted),
             );
@@ -4752,6 +4756,39 @@ mod tests {
         assert!((integration.center().y - configuration.center().y).abs() < 1.0);
 
         set_language(Language::Chinese);
+    }
+
+    #[test]
+    fn uninstalled_chromeplus_does_not_show_stored_version() {
+        let directory = tempdir().unwrap();
+        let browser = directory.path().join("Chrome");
+        let program = browser.join("App");
+        fs::create_dir_all(&program).unwrap();
+        fs::copy(std::env::current_exe().unwrap(), program.join("chrome.exe")).unwrap();
+        let mut settings = Settings {
+            selected_browser: TargetId::Chrome,
+            ..Settings::default()
+        };
+        let config = settings.targets.get_mut(&TargetId::Chrome).unwrap();
+        config.browser_root = Some(browser);
+        config.browser_directory = Some(program);
+        config.chrome_plus_version = Some("1.18.2".to_owned());
+        let state = AppState::new(
+            settings,
+            ConfigStore::new(directory.path().join("manager.json")),
+        );
+        let mut harness = harness_for(BrowserHarborApp::new(state));
+        harness.state_mut().active_tab = DetailTab::ChromePlus;
+        harness
+            .state_mut()
+            .chrome_plus_latest
+            .insert(TargetId::Chrome, "1.18.3".to_owned());
+        harness.run();
+
+        harness.get_by_label("尚未安装");
+        harness.get_by_label("—");
+        assert!(harness.query_by_label("v1.18.2").is_none());
+        assert!(harness.query_by_label("更新 Chrome++ 到 1.18.3").is_none());
     }
 
     #[test]

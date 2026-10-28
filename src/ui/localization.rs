@@ -175,6 +175,7 @@ fn exact_translation(text: &str) -> Option<&'static str> {
         "版本" => "Version",
         "已安装" => "Installed",
         "尚未安装" => "Not installed",
+        "Chrome++ 尚未安装" => "Chrome++ is not installed",
         "尚未检测" => "Not detected",
         "目录不存在" => "Directory missing",
         "安装不完整" => "Installation incomplete",
@@ -373,8 +374,8 @@ fn exact_translation(text: &str) -> Option<&'static str> {
         }
         "刚刚" => "just now",
         "不足 1 分钟前" => "less than a minute ago",
-        "完整模式：以下选项对应 Chrome++ 1.18.2 的全部公开配置。" => {
-            "Full mode: these options cover all public Chrome++ 1.18.2 settings."
+        "完整模式：以下选项对应 Chrome++ 的全部公开配置。" => {
+            "Full mode: these options cover all public Chrome++ settings."
         }
         "实验性 DataOnly 只写入数据目录与缓存目录，不开放标签或策略补丁。" => {
             "Experimental DataOnly writes only data and cache paths; tab and policy patches are disabled."
