@@ -1439,7 +1439,7 @@ impl BrowserHarborApp {
 
         ui.add_space(4.0);
         let (path_changed, check_configuration) =
-            section_with_action(ui, "路径与数据", "检查配置", |ui| {
+            section_with_action(ui, "路径与用户数据", "检查配置", |ui| {
                 let shortcut_toggle_label = if config.auto_create_shortcut {
                     "快捷方式：开"
                 } else {
@@ -1479,21 +1479,21 @@ impl BrowserHarborApp {
                 ui.separator();
                 changed |= path_field(
                     ui,
-                    "数据目录",
+                    "用户数据目录",
                     &mut config.data_directory,
-                    r"留空时由便携运行时决定",
+                    "书签、历史、Cookie、登录状态和浏览器设置所在的总目录",
                 );
                 changed |= path_field(
                     ui,
                     "Profile 目录",
                     &mut config.profile_directory,
-                    "可单独覆盖",
+                    "高级：具体 Profile 子目录；通常无需修改，留空会按浏览器布局自动恢复",
                 );
                 if target.supports_custom_cache() {
                     let cache_hint = if target.family() == BrowserFamily::Firefox {
-                        "留空跟随 Profile；自定义会同时移动临时文件"
+                        "缓存根；留空跟随 Profile；修改后运行“检查配置”应用到现有安装"
                     } else {
-                        "留空跟随 Profile（推荐）"
+                        "缓存根，最终通常为 <此目录>\\<Profile>\\Cache；修改后运行“检查配置”应用"
                     };
                     changed |= path_field(ui, "缓存目录", &mut config.cache_directory, cache_hint);
                 } else {
@@ -1929,6 +1929,11 @@ impl BrowserHarborApp {
                             "已安装"
                         } else {
                             "尚未安装"
+                        })
+                        .localized_hover(if installed {
+                            "Chrome++ 文件位于浏览器程序目录"
+                        } else {
+                            "浏览器安装或升级时会自动下载、校验并放置 Chrome++，无需手工下载"
                         });
                     });
                     ui.horizontal(|ui| {
@@ -2017,7 +2022,7 @@ impl BrowserHarborApp {
             );
         } else if mode == ChromePlusMode::DataOnly {
             ui.localized_label(
-                RichText::new("实验性 DataOnly 只写入数据目录与缓存目录，不开放标签或策略补丁。")
+                RichText::new("实验性 DataOnly 只写入用户数据与缓存路径，不开放标签或策略补丁。")
                     .size(11.5)
                     .color(palette.muted),
             );
@@ -2455,7 +2460,7 @@ impl BrowserHarborApp {
                     for (label, path) in [
                         ("浏览器根目录", pending.browser_root.as_deref()),
                         ("程序目录", pending.browser_directory.as_deref()),
-                        ("数据目录", pending.data_directory.as_deref()),
+                        ("用户数据目录", pending.data_directory.as_deref()),
                         ("Profile 目录", pending.profile_directory.as_deref()),
                         ("缓存目录", pending.cache_directory.as_deref()),
                     ] {
@@ -2578,7 +2583,7 @@ impl BrowserHarborApp {
                 ui.add_space(8.0);
                 ui.localized_label(
                     RichText::new(
-                        "继续将重新下载并替换浏览器程序目录。Data、Profile、缓存和可按规则恢复的 Chrome++ 配置会保留。",
+                        "继续将重新下载并替换浏览器程序目录。用户数据、缓存和可按规则恢复的 Chrome++ 配置会保留。",
                     )
                     .color(palette.muted),
                 );
@@ -2640,7 +2645,7 @@ impl BrowserHarborApp {
                 ui.add_space(8.0);
                 ui.localized_label(
                     RichText::new(
-                        "将只替换 Chrome++ 文件，保留浏览器程序、Data、Profile 和缓存；旧 INI 会先备份。",
+                        "将只替换 Chrome++ 文件，保留浏览器程序、用户数据和缓存；旧 INI 会先备份。",
                     )
                     .color(palette.muted),
                 );
@@ -2718,7 +2723,7 @@ impl BrowserHarborApp {
                 );
                 ui.localized_label(
                     RichText::new(
-                        "Data、Profile、缓存和可恢复的 Chrome++ 配置会保留；请先关闭当前浏览器的所有实例。",
+                        "用户数据、缓存和可恢复的 Chrome++ 配置会保留；请先关闭当前浏览器的所有实例。",
                     )
                     .color(palette.warning),
                 );
@@ -3171,7 +3176,7 @@ fn health_aspect_label(aspect: HealthAspect) -> &'static str {
         HealthAspect::Program => "程序",
         HealthAspect::Version => "版本",
         HealthAspect::Runtime => "便携运行时",
-        HealthAspect::Data => "数据目录",
+        HealthAspect::Data => "用户数据目录",
         HealthAspect::Profile => "Profile 目录",
         HealthAspect::Cache => "缓存目录",
         HealthAspect::PortableConfig => "便携配置",
@@ -3473,10 +3478,12 @@ fn chrome_plus_update_action_label(language: Language, latest: &str) -> String {
 fn chrome_plus_update_hover(language: Language, current: &str, latest: &str) -> String {
     match language {
         Language::Chinese => {
-            format!("{current} → {latest}；更新前请手工关闭所有当前浏览器实例")
+            format!(
+                "发现 {current} → {latest}；点击后才会下载并替换，完成后版本才会变化；请先手工关闭所有当前浏览器实例"
+            )
         }
         Language::English => format!(
-            "{current} → {latest}; close every instance of the current browser before updating"
+            "Found {current} → {latest}; the version changes only after the confirmed download and replacement finishes. Close every instance of the current browser first"
         ),
     }
 }
@@ -3827,7 +3834,8 @@ fn path_field_impl(
         .map_or_else(String::new, |path| path.display().to_string());
     let mut changed = false;
     let action_response = ui.horizontal(|ui| {
-        let field_label = field_label(ui, label, FIELD_LABEL_WIDTH);
+        let field_label =
+            field_label(ui, label, FIELD_LABEL_WIDTH).localized_hover(localized(hint));
         let action_width = action.map_or(0.0, |_| 104.0 + ui.spacing().item_spacing.x);
         let text_width = (ui.available_width() - action_width).max(100.0);
         let response = ui
@@ -3930,8 +3938,8 @@ mod tests {
 
     use super::{
         BODY_FONT_SIZE, BrowserHarborApp, DetailTab, LIGHT_PALETTE, ProgramIdentity, StatusTone,
-        chrome_plus_update_button_label, configure_context, create_auto_shortcut, relation_status,
-        set_language,
+        chrome_plus_update_button_label, chrome_plus_update_hover, configure_context,
+        create_auto_shortcut, relation_status, set_language,
     };
     use crate::{
         app::{
@@ -5078,6 +5086,13 @@ mod tests {
     }
 
     #[test]
+    fn chromeplus_update_hover_separates_detection_from_installation() {
+        let hover = chrome_plus_update_hover(Language::Chinese, "1.18.2", "1.18.3");
+        assert!(hover.contains("点击后才会下载并替换"));
+        assert!(hover.contains("完成后版本才会变化"));
+    }
+
+    #[test]
     fn every_directory_field_has_a_folder_picker() {
         let mut harness = harness();
         harness.run();
@@ -5085,7 +5100,7 @@ mod tests {
         let labels = [
             "浏览器根目录",
             "程序目录",
-            "数据目录",
+            "用户数据目录",
             "Profile 目录",
             "缓存目录",
         ];
@@ -5595,7 +5610,7 @@ mod tests {
         let labels = [
             "Browser root",
             "Program directory",
-            "Data directory",
+            "User data directory",
             "Profile directory",
             "Cache directory",
         ];

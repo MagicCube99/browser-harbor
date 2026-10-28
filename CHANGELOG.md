@@ -2,6 +2,20 @@
 
 [简体中文](CHANGELOG.zh-CN.md) · English
 
+## v0.4.2 — 2026-10-28
+
+### Changed
+
+- Renamed the ambiguous “Data directory” field to “User data directory” and added explanations to every directory label.
+- Clarified that Profile is an advanced per-profile subdirectory and that clearing a required derived path restores its default.
+- Clarified that the custom cache field is a cache root; Chromium commonly stores HTTP cache under `<cache root>\<Profile>\Cache\Cache_Data`.
+- Documented that path changes for an existing browser are applied through **Check configuration** and its portable INI repair.
+
+### Fixed
+
+- The Chrome++ page now explains that browser installation or upgrade downloads and installs Chrome++ automatically.
+- The Chrome++ update tooltip now states that a detected version changes only after the confirmed replacement finishes.
+
 ## v0.4.1 — 2026-10-28
 
 ### Fixed
