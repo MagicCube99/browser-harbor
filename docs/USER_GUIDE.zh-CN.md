@@ -15,7 +15,7 @@ Browser Harbor 是单 EXE 便携程序，不需要安装，也不需要管理员
 
 1. 从 [GitHub Releases](https://github.com/MagicCube99/browser-harbor/releases/latest)
    或 [Gitee 镜像](https://gitee.com/MagicCube99/browser-harbor/releases)下载
-   `BrowserHarbor-0.4.2-x64.exe`。
+   `BrowserHarbor-0.5.0-x64.exe`。
 2. 放到可写目录后直接运行。
 3. 选择浏览器。
 4. 检查程序、数据、Profile 和缓存目录。
@@ -28,6 +28,11 @@ Browser Harbor 是单 EXE 便携程序，不需要安装，也不需要管理员
 ```text
 %LOCALAPPDATA%\browser-harbor\manager.json
 ```
+
+在全局设置中可以把管理器配置切换为“程序目录（便携）”，将
+`manager.json` 保存在 Browser Harbor EXE 旁。EXE 所在目录必须可写。
+配置文件中的浏览器路径仍是绝对路径，复制到另一台电脑后可能需要运行
+“检查配置”和“重新定位…”。持久配置不会放入临时目录。
 
 使用底栏的 `中` / `EN` 控件切换语言，选择会立即保存。
 
@@ -54,9 +59,9 @@ Browser Harbor 会在修改安装前检查浏览器版本和下载完整性。�
 - Profile 目录
 - 可选缓存目录
 
-用户数据目录是书签、历史、Cookie、登录状态和浏览器设置所在的总目录；
-Profile 是其中具体的浏览器用户配置。Profile 属于高级设置，Chromium 系通常
-不需要单独覆盖；清空必填的派生路径后，程序会按目标布局恢复默认值。
+用户数据目录是书签、历史、Cookie、登录状态和浏览器设置所在的总目录。
+大多数浏览器会在其中自动管理 Profile；只有 Floorp 和 LibreWolf 的发行包
+需要独立 Profile 位置时，界面才显示“Profile 位置”。
 
 缓存字段填写的是缓存**根**，不一定就是文件最终所在目录。Chromium 系通常会在
 `<缓存根>\<Profile>\Cache\Cache_Data` 下保存 HTTP 缓存；代码缓存、GPU
@@ -141,7 +146,10 @@ EXE 尚未做 Authenticode 代码签名。请只从 GitHub Releases 或项目提
 
 ## 卸载
 
-删除 Browser Harbor EXE 和 `%LOCALAPPDATA%\browser-harbor\manager.json`。浏览器及其用户数据仍保留在各自的 Browser Root 中。也可以删除 `%TEMP%\browser-harbor\cache` 和 Browser Root 中的快捷方式。
+删除 Browser Harbor EXE 和当前使用的 `manager.json`（位于
+`%LOCALAPPDATA%\browser-harbor` 或 EXE 旁）。浏览器及其用户数据仍保留在
+各自的 Browser Root 中。也可以删除 `%TEMP%\browser-harbor\cache` 和
+Browser Root 中的快捷方式。
 
 ## 相关文档
 

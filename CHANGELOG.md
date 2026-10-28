@@ -2,6 +2,22 @@
 
 [简体中文](CHANGELOG.zh-CN.md) · English
 
+## v0.5.0 — 2026-10-28
+
+### Added
+
+- `manager.json` can now live in the per-user configuration directory or beside the Browser Harbor EXE for portable use.
+- Switching configuration locations writes the current settings to the selected location; portable mode requires a writable EXE directory.
+
+### Changed
+
+- Most targets now expose one **User data directory** instead of separate User data and Profile fields. The interface keeps the internal Profile path synchronized automatically.
+- The separate **Profile location** field is shown only for Floorp and LibreWolf, where the distribution needs an explicit profile location.
+
+### Fixed
+
+- “Data directory” and “Profile directory” no longer appear as two equivalent editable fields for browsers that use the same root.
+
 ## v0.4.2 — 2026-10-28
 
 ### Changed

@@ -2,7 +2,10 @@
 
 pub mod operation;
 
-use std::path::{Component, Path, PathBuf};
+use std::{
+    fs,
+    path::{Component, Path, PathBuf},
+};
 
 use thiserror::Error;
 
@@ -27,6 +30,8 @@ pub struct AppState {
     saved: Settings,
     draft: Settings,
     store: ConfigStore,
+    user_config_path: PathBuf,
+    portable_config_path: PathBuf,
     tool_root: PathBuf,
     last_error: Option<String>,
 }
@@ -42,10 +47,38 @@ impl AppState {
     }
 
     pub fn with_tool_root(saved: Settings, store: ConfigStore, tool_root: PathBuf) -> Self {
+        let portable_config_path = tool_root.join("manager.json");
+        let user_config_path = if store.path() == portable_config_path {
+            std::env::var_os("LOCALAPPDATA")
+                .map(PathBuf::from)
+                .unwrap_or_else(|| tool_root.clone())
+                .join("browser-harbor")
+                .join("manager.json")
+        } else {
+            store.path().to_path_buf()
+        };
+        Self::with_config_paths(
+            saved,
+            store,
+            tool_root,
+            user_config_path,
+            portable_config_path,
+        )
+    }
+
+    pub fn with_config_paths(
+        saved: Settings,
+        store: ConfigStore,
+        tool_root: PathBuf,
+        user_config_path: PathBuf,
+        portable_config_path: PathBuf,
+    ) -> Self {
         Self {
             draft: saved.clone(),
             saved,
             store,
+            user_config_path,
+            portable_config_path,
             tool_root,
             last_error: None,
         }
@@ -73,6 +106,43 @@ impl AppState {
 
     pub fn tool_root(&self) -> &Path {
         &self.tool_root
+    }
+
+    pub fn config_path(&self) -> &Path {
+        self.store.path()
+    }
+
+    pub fn is_portable_config(&self) -> bool {
+        self.store.path() == self.portable_config_path
+    }
+
+    pub fn switch_config_location(&mut self, portable: bool) -> Result<(), ConfigError> {
+        let target_path = if portable {
+            self.portable_config_path.clone()
+        } else {
+            self.user_config_path.clone()
+        };
+        if self.store.path() == target_path {
+            return Ok(());
+        }
+
+        let mut next = self.draft.clone();
+        normalize_settings_paths(&mut next, &self.tool_root)?;
+        let target = ConfigStore::new(target_path);
+        target.save(&next)?;
+
+        if !portable {
+            fs::remove_file(&self.portable_config_path).map_err(|source| ConfigError::Write {
+                path: self.portable_config_path.clone(),
+                source,
+            })?;
+        }
+
+        self.store = target;
+        self.saved = next.clone();
+        self.draft = next;
+        self.last_error = None;
+        Ok(())
     }
 
     pub fn resolve_operation_paths(
@@ -459,6 +529,39 @@ mod tests {
         assert!(state.save_if_dirty().unwrap());
         assert!(path.exists());
         assert!(!state.save_if_dirty().unwrap());
+    }
+
+    #[test]
+    fn switches_between_user_and_portable_configuration_files() {
+        let directory = tempdir().unwrap();
+        let tool_root = directory.path().join("Tool");
+        fs::create_dir_all(&tool_root).unwrap();
+        let user_path = directory.path().join("Local/browser-harbor/manager.json");
+        let portable_path = tool_root.join("manager.json");
+        let mut state = AppState::with_config_paths(
+            Settings::default(),
+            ConfigStore::new(user_path.clone()),
+            tool_root,
+            user_path.clone(),
+            portable_path.clone(),
+        );
+
+        state.switch_config_location(true).unwrap();
+
+        assert!(state.is_portable_config());
+        assert_eq!(state.config_path(), portable_path);
+        assert!(portable_path.is_file());
+        assert_eq!(
+            ConfigStore::new(portable_path.clone()).load().unwrap(),
+            state.saved().clone()
+        );
+
+        state.switch_config_location(false).unwrap();
+
+        assert!(!state.is_portable_config());
+        assert_eq!(state.config_path(), user_path);
+        assert!(user_path.is_file());
+        assert!(!portable_path.exists());
     }
 
     #[test]

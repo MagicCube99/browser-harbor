@@ -1477,18 +1477,24 @@ impl BrowserHarborApp {
                     r"例如 .\Chrome\App",
                 );
                 ui.separator();
-                changed |= path_field(
+                let data_changed = path_field(
                     ui,
                     "用户数据目录",
                     &mut config.data_directory,
                     "书签、历史、Cookie、登录状态和浏览器设置所在的总目录",
                 );
-                changed |= path_field(
-                    ui,
-                    "Profile 目录",
-                    &mut config.profile_directory,
-                    "高级：具体 Profile 子目录；通常无需修改，留空会按浏览器布局自动恢复",
-                );
+                if data_changed && target.spec().layout.data == target.spec().layout.profile {
+                    config.profile_directory = config.data_directory.clone();
+                }
+                changed |= data_changed;
+                if target.spec().layout.data != target.spec().layout.profile {
+                    changed |= path_field(
+                        ui,
+                        "Profile 位置",
+                        &mut config.profile_directory,
+                        "该浏览器发行包使用独立 Profile 位置；通常无需修改",
+                    );
+                }
                 if target.supports_custom_cache() {
                     let cache_hint = if target.family() == BrowserFamily::Firefox {
                         "缓存根；留空跟随 Profile；修改后运行“检查配置”应用到现有安装"
@@ -1557,6 +1563,7 @@ impl BrowserHarborApp {
         let mut add_requested = false;
         let mut validation_error = None;
         let mut clear_cache = false;
+        let mut requested_config_location = None;
 
         changed |= section(ui, "下载加速", |ui| {
             let mut section_changed = ui
@@ -1723,6 +1730,40 @@ impl BrowserHarborApp {
             );
         });
 
+        ui.add_space(7.0);
+        section(ui, "配置位置", |ui| {
+            let mut portable = self.state.is_portable_config();
+            let user = ui.radio_value(&mut portable, false, localized("系统用户目录（默认）"));
+            let user_changed = user.changed();
+            user.localized_hover("保存在 %LOCALAPPDATA%\\browser-harbor\\manager.json");
+            let portable_response =
+                ui.radio_value(&mut portable, true, localized("程序目录（便携）"));
+            let portable_changed = portable_response.changed();
+            portable_response
+                .localized_hover("将 manager.json 保存在 Browser Harbor EXE 旁，可随程序一起带走");
+            if user_changed || portable_changed {
+                requested_config_location = Some(portable);
+            }
+            let path = self.state.config_path().display().to_string();
+            ui.add(
+                egui::Label::new(
+                    RichText::new(&path)
+                        .size(10.5)
+                        .monospace()
+                        .color(palette.muted),
+                )
+                .truncate(),
+            )
+            .localized_hover(path);
+            ui.localized_label(
+                RichText::new(
+                    "便携模式要求 EXE 所在目录可写；浏览器绝对路径在新电脑上仍需重新定位。",
+                )
+                .size(10.5)
+                .color(palette.muted),
+            );
+        });
+
         self.accelerator_input = accelerator_input;
         if clear_cache {
             self.status_message = Some(match clear_download_cache(&cache_dir) {
@@ -1738,6 +1779,21 @@ impl BrowserHarborApp {
             self.state
                 .update_draft(|settings| settings.network = network);
             self.auto_save();
+        }
+        if let Some(portable) = requested_config_location {
+            match self.state.switch_config_location(portable) {
+                Ok(()) => {
+                    self.status_message = Some(format!(
+                        "{}：{}",
+                        localized("配置位置已切换"),
+                        self.state.config_path().display()
+                    ));
+                }
+                Err(error) => {
+                    self.status_message =
+                        Some(format!("{}：{error}", localized("切换配置位置失败")));
+                }
+            }
         }
     }
 
@@ -4665,6 +4721,52 @@ mod tests {
     }
 
     #[test]
+    fn global_settings_switches_manager_config_between_user_and_program_directories() {
+        let directory = tempdir().unwrap();
+        let tool_root = directory.path().join("Tool");
+        fs::create_dir_all(&tool_root).unwrap();
+        let user_path = directory.path().join("Local/browser-harbor/manager.json");
+        let portable_path = tool_root.join("manager.json");
+        let state = AppState::with_config_paths(
+            Settings::default(),
+            ConfigStore::new(user_path.clone()),
+            tool_root,
+            user_path.clone(),
+            portable_path.clone(),
+        );
+        let mut harness = harness_for(BrowserHarborApp::new(state));
+        harness.run();
+        harness.get_by_label("全局设置").click();
+        harness.run();
+
+        harness
+            .get_by_role_and_label(Role::RadioButton, "程序目录（便携）")
+            .scroll_to_me();
+        harness.run();
+        harness
+            .get_by_role_and_label(Role::RadioButton, "程序目录（便携）")
+            .click();
+        harness.run();
+
+        assert!(portable_path.is_file());
+        assert!(harness.state().state().is_portable_config());
+        harness.get_by_label_contains("配置位置已切换");
+
+        harness
+            .get_by_role_and_label(Role::RadioButton, "系统用户目录（默认）")
+            .scroll_to_me();
+        harness.run();
+        harness
+            .get_by_role_and_label(Role::RadioButton, "系统用户目录（默认）")
+            .click();
+        harness.run();
+
+        assert!(user_path.is_file());
+        assert!(!portable_path.exists());
+        assert!(!harness.state().state().is_portable_config());
+    }
+
+    #[test]
     fn chromeplus_full_exposes_common_ini_controls() {
         let mut harness = harness();
         harness.run();
@@ -5097,13 +5199,7 @@ mod tests {
         let mut harness = harness();
         harness.run();
 
-        let labels = [
-            "浏览器根目录",
-            "程序目录",
-            "用户数据目录",
-            "Profile 目录",
-            "缓存目录",
-        ];
+        let labels = ["浏览器根目录", "程序目录", "用户数据目录", "缓存目录"];
         for label in labels {
             assert_eq!(
                 harness
@@ -5138,6 +5234,7 @@ mod tests {
                 .all(|left| (left - input_left[0]).abs() < 0.5),
             "{input_left:?}"
         );
+        assert!(harness.query_by_label("Profile 位置").is_none());
         let shortcut = harness.get_by_label("快捷方式：开");
         assert!(!shortcut.accesskit_node().is_disabled());
         let input_right = labels.map(|label| {
@@ -5154,6 +5251,45 @@ mod tests {
             "shortcut action must share lower directory fields' right edge: shortcut={}, inputs={input_right:?}",
             shortcut.rect().max.x
         );
+    }
+
+    #[test]
+    fn separate_profile_location_is_shown_only_for_targets_that_need_it() {
+        let directory = tempdir().unwrap();
+        let settings = Settings {
+            selected_browser: TargetId::Floorp,
+            ..Settings::default()
+        };
+        let state = AppState::new(
+            settings,
+            ConfigStore::new(directory.path().join("manager.json")),
+        );
+        let mut harness = harness_for(BrowserHarborApp::new(state));
+        harness.run();
+        harness.get_by_role_and_label(Role::TextInput, "Profile 位置");
+        assert!(harness.query_by_label("Profile 目录").is_none());
+    }
+
+    #[test]
+    fn shared_user_data_edit_updates_the_internal_profile_path() {
+        let directory = tempdir().unwrap();
+        let settings = Settings {
+            selected_browser: TargetId::Chrome,
+            ..Settings::default()
+        };
+        let state = AppState::new(
+            settings,
+            ConfigStore::new(directory.path().join("manager.json")),
+        );
+        let mut harness = harness_for(BrowserHarborApp::new(state));
+        harness.run();
+        harness
+            .get_by_role_and_label(Role::TextInput, "用户数据目录")
+            .set_text_value_accesskit(r"D:\ChromeData");
+        harness.run();
+        let config = &harness.state().state().saved().targets[&TargetId::Chrome];
+        assert_eq!(config.data_directory, Some(r"D:\ChromeData".into()));
+        assert_eq!(config.profile_directory, Some(r"D:\ChromeData".into()));
     }
 
     #[test]
@@ -5611,7 +5747,6 @@ mod tests {
             "Browser root",
             "Program directory",
             "User data directory",
-            "Profile directory",
             "Cache directory",
         ];
         let label_left = labels.map(|label| {

@@ -72,8 +72,9 @@ the current desktop.
   confirmation, a closed browser, and an INI backup.
 - **Keeps the window on a screen that exists.** Saved coordinates are clamped to
   the current virtual desktop.
-- **Saves immediately.** Every valid edit is persisted. No Save button and no
-  doubt about whether the setting took.
+- **Saves immediately.** Every valid edit is persisted. Keep manager state in
+  the per-user configuration directory or move `manager.json` beside the EXE
+  for a portable setup.
 - **Looks at home on Windows.** Follow the system theme or choose light/dark;
   switch between Chinese and English when required.
 - **Deletes only rebuildable downloads.** Cache cleanup leaves programs, profiles,
@@ -91,7 +92,7 @@ builds for SSE3, SSE4, AVX, AVX2, and AVX512.
 
 ## 🚀 Quick start
 
-1. Download `BrowserHarbor-0.4.2-x64.exe` from
+1. Download `BrowserHarbor-0.5.0-x64.exe` from
    [GitHub Releases](https://github.com/MagicCube99/browser-harbor/releases/latest).
    If GitHub is unreachable, use the [Gitee mirror](https://gitee.com/MagicCube99/browser-harbor/releases).
 2. Put it in any writable folder and run it.

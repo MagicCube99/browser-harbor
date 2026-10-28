@@ -11,25 +11,33 @@ use thiserror::Error;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AppStorage {
     pub config_path: PathBuf,
+    pub user_config_path: PathBuf,
+    pub portable_config_path: PathBuf,
     pub legacy_dirs: Vec<PathBuf>,
 }
 
 pub fn resolve(executable: &Path, local_app_data: Option<&std::ffi::OsStr>) -> AppStorage {
-    let local_app_base = local_app_data
-        .map(PathBuf::from)
-        .unwrap_or_else(std::env::temp_dir);
-    let data_dir = local_app_base.join("browser-harbor");
     let executable_dir = executable
         .parent()
         .unwrap_or_else(|| Path::new("."))
         .to_path_buf();
-    let mut legacy_dirs = vec![
-        local_app_base.join("portable-browser-manager"),
-        executable_dir,
-    ];
+    let local_app_base = local_app_data
+        .map(PathBuf::from)
+        .unwrap_or_else(|| executable_dir.clone());
+    let data_dir = local_app_base.join("browser-harbor");
+    let user_config_path = data_dir.join("manager.json");
+    let portable_config_path = executable_dir.join("manager.json");
+    let config_path = if portable_config_path.is_file() {
+        portable_config_path.clone()
+    } else {
+        user_config_path.clone()
+    };
+    let mut legacy_dirs = vec![local_app_base.join("portable-browser-manager")];
     legacy_dirs.dedup();
     AppStorage {
-        config_path: data_dir.join("manager.json"),
+        config_path,
+        user_config_path,
+        portable_config_path,
         legacy_dirs,
     }
 }
@@ -193,16 +201,23 @@ mod tests {
             std::path::PathBuf::from(r"C:\Users\me\AppData\Local\browser-harbor\manager.json")
         );
         assert_eq!(
+            storage.user_config_path,
+            std::path::PathBuf::from(r"C:\Users\me\AppData\Local\browser-harbor\manager.json")
+        );
+        assert_eq!(
+            storage.portable_config_path,
+            std::path::PathBuf::from(r"D:\Tools\manager.json")
+        );
+        assert_eq!(
             storage.legacy_dirs,
-            vec![
-                std::path::PathBuf::from(r"C:\Users\me\AppData\Local\portable-browser-manager"),
-                std::path::PathBuf::from(r"D:\Tools")
-            ]
+            vec![std::path::PathBuf::from(
+                r"C:\Users\me\AppData\Local\portable-browser-manager"
+            )]
         );
     }
 
     #[test]
-    fn migrates_legacy_config_and_removes_legacy_log() {
+    fn portable_manager_config_takes_precedence() {
         let executable_dir = tempdir().unwrap();
         let local_app_data = tempdir().unwrap();
         let executable = executable_dir.path().join("browser-harbor.exe");
@@ -212,17 +227,16 @@ mod tests {
             b"{\"schemaVersion\":5}",
         )
         .unwrap();
-        fs::write(executable_dir.path().join("manager.log"), b"legacy log\n").unwrap();
         let storage = resolve(&executable, Some(local_app_data.path().as_os_str()));
 
-        migrate_legacy(&storage).unwrap();
-
         assert_eq!(
-            fs::read(&storage.config_path).unwrap(),
-            b"{\"schemaVersion\":5}"
+            storage.config_path,
+            executable_dir.path().join("manager.json")
         );
-        assert!(!executable_dir.path().join("manager.json").exists());
-        assert!(!executable_dir.path().join("manager.log").exists());
+        assert_eq!(
+            storage.user_config_path,
+            local_app_data.path().join("browser-harbor/manager.json")
+        );
     }
 
     #[test]
@@ -253,7 +267,9 @@ mod tests {
         let local_app_data = tempdir().unwrap();
         let executable = executable_dir.path().join("browser-harbor.exe");
         fs::write(&executable, b"fixture").unwrap();
-        fs::write(executable_dir.path().join("manager.json"), b"legacy").unwrap();
+        let old_data_dir = local_app_data.path().join("portable-browser-manager");
+        fs::create_dir_all(&old_data_dir).unwrap();
+        fs::write(old_data_dir.join("manager.json"), b"legacy").unwrap();
         let storage = resolve(&executable, Some(local_app_data.path().as_os_str()));
         fs::create_dir_all(storage.config_path.parent().unwrap()).unwrap();
         fs::write(&storage.config_path, b"current").unwrap();
@@ -272,6 +288,6 @@ mod tests {
             .unwrap(),
             b"legacy"
         );
-        assert!(!executable_dir.path().join("manager.json").exists());
+        assert!(!old_data_dir.join("manager.json").exists());
     }
 }

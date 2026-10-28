@@ -132,9 +132,13 @@ fn exact_translation(text: &str) -> Option<&'static str> {
         "数据目录" => "Data directory",
         "用户数据目录" => "User data directory",
         "Profile 目录" => "Profile directory",
+        "Profile 位置" => "Profile location",
         "缓存目录" => "Cache directory",
         "书签、历史、Cookie、登录状态和浏览器设置所在的总目录" => {
             "The root containing bookmarks, history, cookies, sign-in state, and browser settings"
+        }
+        "该浏览器发行包使用独立 Profile 位置；通常无需修改" => {
+            "This browser distribution needs a separate Profile location; usually no change is needed"
         }
         "高级：具体 Profile 子目录；通常无需修改，留空会按浏览器布局自动恢复" => {
             "Advanced: the specific Profile subdirectory. Usually no change is needed; leaving it empty restores the browser-layout default"
@@ -186,6 +190,20 @@ fn exact_translation(text: &str) -> Option<&'static str> {
         "个文件" => "files",
         "下载缓存" => "Download cache",
         "清理下载缓存" => "Clear download cache",
+        "配置位置" => "Configuration location",
+        "系统用户目录（默认）" => "User configuration directory (default)",
+        "程序目录（便携）" => "Program directory (portable)",
+        "保存在 %LOCALAPPDATA%\\browser-harbor\\manager.json" => {
+            "Stored at %LOCALAPPDATA%\\browser-harbor\\manager.json"
+        }
+        "将 manager.json 保存在 Browser Harbor EXE 旁，可随程序一起带走" => {
+            "Keep manager.json beside the Browser Harbor EXE so it can travel with the program"
+        }
+        "便携模式要求 EXE 所在目录可写；浏览器绝对路径在新电脑上仍需重新定位。" => {
+            "Portable mode requires a writable EXE directory. Absolute browser paths still require relocation on another computer."
+        }
+        "配置位置已切换" => "Configuration location changed",
+        "切换配置位置失败" => "Could not change configuration location",
         "Chrome++ 集成" => "Chrome++ integration",
         "配置文件" => "Configuration file",
         "模式" => "Mode",

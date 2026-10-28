@@ -18,7 +18,12 @@ $manifestVersion = [regex]::Match(
 if ($manifestVersion -ne $version) {
     throw "Tag version '$version' does not match Cargo.toml version '$manifestVersion'."
 }
-$executable = Join-Path $repoRoot "target\release\browser-harbor.exe"
+$targetDir = if ($env:CARGO_TARGET_DIR) {
+    [System.IO.Path]::GetFullPath($env:CARGO_TARGET_DIR)
+} else {
+    Join-Path $repoRoot "target"
+}
+$executable = Join-Path $targetDir "release\browser-harbor.exe"
 if (-not (Test-Path -LiteralPath $executable -PathType Leaf)) {
     throw "Release executable is missing. Run scripts/check.ps1 first."
 }
