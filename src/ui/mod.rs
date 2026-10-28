@@ -2434,7 +2434,11 @@ impl BrowserHarborApp {
                     .id_salt("configuration_health_items")
                     .max_height(230.0)
                     .show(ui, |ui| {
-                        for item in &dialog.report.items {
+                        for item in dialog.report.items.iter().filter(|item| {
+                            item.aspect != HealthAspect::Profile
+                                || dialog.target.spec().layout.data
+                                    != dialog.target.spec().layout.profile
+                        }) {
                             ui.horizontal_wrapped(|ui| {
                                 ui.localized_label(
                                     RichText::new(health_aspect_label(item.aspect))
@@ -2517,7 +2521,13 @@ impl BrowserHarborApp {
                         ("浏览器根目录", pending.browser_root.as_deref()),
                         ("程序目录", pending.browser_directory.as_deref()),
                         ("用户数据目录", pending.data_directory.as_deref()),
-                        ("Profile 目录", pending.profile_directory.as_deref()),
+                        (
+                            "Profile 位置",
+                            (dialog.target.spec().layout.data
+                                != dialog.target.spec().layout.profile)
+                                .then_some(pending.profile_directory.as_deref())
+                                .flatten(),
+                        ),
                         ("缓存目录", pending.cache_directory.as_deref()),
                     ] {
                         if let Some(path) = path {
@@ -3233,7 +3243,7 @@ fn health_aspect_label(aspect: HealthAspect) -> &'static str {
         HealthAspect::Version => "版本",
         HealthAspect::Runtime => "便携运行时",
         HealthAspect::Data => "用户数据目录",
-        HealthAspect::Profile => "Profile 目录",
+        HealthAspect::Profile => "Profile 位置",
         HealthAspect::Cache => "缓存目录",
         HealthAspect::PortableConfig => "便携配置",
     }
@@ -5426,6 +5436,7 @@ mod tests {
 
         assert!(harness.query_by_label("配置检查").is_some());
         assert!(harness.query_by_label("检查结果：正常").is_some());
+        assert!(harness.query_by_label("Profile 位置").is_none());
     }
 
     #[test]

@@ -13,6 +13,7 @@
 
 - Most targets now expose one **User data directory** instead of separate User data and Profile fields. The interface keeps the internal Profile path synchronized automatically.
 - The separate **Profile location** field is shown only for Floorp and LibreWolf, where the distribution needs an explicit profile location.
+- Configuration diagnostics and relocation previews follow the same visibility rule, avoiding duplicate Profile rows for targets that share one data root.
 
 ### Fixed
 
