@@ -123,15 +123,34 @@ fn exact_translation(text: &str) -> Option<&'static str> {
         "清除本地包" => "Clear local package",
         "选择本地安装包（可选）" => "Choose a local package (optional)",
         "选择本地安装包" => "Choose local package",
-        "路径与数据" => "Paths and data",
+        "路径与用户数据" => "Paths and user data",
         "检查配置" => "Check configuration",
         "快捷方式：开" => "Shortcut: On",
         "快捷方式：关" => "Shortcut: Off",
         "浏览器根目录" => "Browser root",
         "程序目录" => "Program directory",
         "数据目录" => "Data directory",
+        "用户数据目录" => "User data directory",
         "Profile 目录" => "Profile directory",
         "缓存目录" => "Cache directory",
+        "书签、历史、Cookie、登录状态和浏览器设置所在的总目录" => {
+            "The root containing bookmarks, history, cookies, sign-in state, and browser settings"
+        }
+        "高级：具体 Profile 子目录；通常无需修改，留空会按浏览器布局自动恢复" => {
+            "Advanced: the specific Profile subdirectory. Usually no change is needed; leaving it empty restores the browser-layout default"
+        }
+        "缓存根；留空跟随 Profile；修改后运行“检查配置”应用到现有安装" => {
+            "Cache root; leave empty to follow Profile. Run Check configuration after changing it to apply the path to an existing installation"
+        }
+        "缓存根，最终通常为 <此目录>\\<Profile>\\Cache；修改后运行“检查配置”应用" => {
+            "Cache root; files usually end up under <this directory>\\<Profile>\\Cache. Run Check configuration after changing it"
+        }
+        "Chrome++ 文件位于浏览器程序目录" => {
+            "Chrome++ files are stored in the browser program directory"
+        }
+        "浏览器安装或升级时会自动下载、校验并放置 Chrome++，无需手工下载" => {
+            "Installing or upgrading the browser automatically downloads, verifies, and installs Chrome++; no manual download is needed"
+        }
         "例如 .\\Helium 或 D:\\Tools\\Browser\\Helium" => {
             "Example: .\\Helium or D:\\Tools\\Browser\\Helium"
         }
@@ -184,8 +203,8 @@ fn exact_translation(text: &str) -> Option<&'static str> {
         "重新下载并安装" => "Download and reinstall",
         "更新 Chrome++" => "Update Chrome++",
         "取消" => "Cancel",
-        "将只替换 Chrome++ 文件，保留浏览器程序、Data、Profile 和缓存；旧 INI 会先备份。" => {
-            "Only Chrome++ files will be replaced. The browser program, Data, Profile and cache are preserved; the previous INI is backed up first."
+        "将只替换 Chrome++ 文件，保留浏览器程序、用户数据和缓存；旧 INI 会先备份。" => {
+            "Only Chrome++ files will be replaced. The browser program, user data and cache are preserved; the previous INI is backed up first."
         }
         "请保持所有当前浏览器实例关闭。点击更新后会再次检测；仍在运行的实例不会被强制结束。" => {
             "Keep every current browser instance closed. Running instances are checked again after confirmation and are never terminated."
@@ -200,8 +219,8 @@ fn exact_translation(text: &str) -> Option<&'static str> {
         "浏览器升级会替换程序目录，因此本次操作也会安装已检测到的 Chrome++ 新版本。" => {
             "Browser upgrade replaces the program directory, so this operation will also install the detected Chrome++ version."
         }
-        "Data、Profile、缓存和可恢复的 Chrome++ 配置会保留；请先关闭当前浏览器的所有实例。" => {
-            "Data, Profile, cache and recoverable Chrome++ settings are preserved. Close every instance of the current browser first."
+        "用户数据、缓存和可恢复的 Chrome++ 配置会保留；请先关闭当前浏览器的所有实例。" => {
+            "User data, cache and recoverable Chrome++ settings are preserved. Close every instance of the current browser first."
         }
         "检查 Bush2021/chrome_plus 的最新正式版本" => {
             "Check the latest stable Bush2021/chrome_plus release"
@@ -298,8 +317,8 @@ fn exact_translation(text: &str) -> Option<&'static str> {
         "重新定位…" => "Relocate…",
         "选择移动后的浏览器根目录" => "Choose relocated browser root",
         "版本与上游相同" => "Same version as upstream",
-        "继续将重新下载并替换浏览器程序目录。Data、Profile、缓存和可按规则恢复的 Chrome++ 配置会保留。" => {
-            "Continuing will download and replace the browser program. Data, Profile, cache, and recoverable Chrome++ settings are preserved."
+        "继续将重新下载并替换浏览器程序目录。用户数据、缓存和可按规则恢复的 Chrome++ 配置会保留。" => {
+            "Continuing will download and replace the browser program. User data, cache, and recoverable Chrome++ settings are preserved."
         }
         "继续替换" => "Continue replacement",
         "保留当前版本" => "Keep current version",
@@ -377,7 +396,7 @@ fn exact_translation(text: &str) -> Option<&'static str> {
         "完整模式：以下选项对应 Chrome++ 的全部公开配置。" => {
             "Full mode: these options cover all public Chrome++ settings."
         }
-        "实验性 DataOnly 只写入数据目录与缓存目录，不开放标签或策略补丁。" => {
+        "实验性 DataOnly 只写入用户数据与缓存路径，不开放标签或策略补丁。" => {
             "Experimental DataOnly writes only data and cache paths; tab and policy patches are disabled."
         }
         "该浏览器的 Chrome++ 兼容性仍为实验性；完整功能已开放，若启动异常请关闭相关选项。" => {

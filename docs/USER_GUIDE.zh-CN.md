@@ -15,7 +15,7 @@ Browser Harbor 是单 EXE 便携程序，不需要安装，也不需要管理员
 
 1. 从 [GitHub Releases](https://github.com/MagicCube99/browser-harbor/releases/latest)
    或 [Gitee 镜像](https://gitee.com/MagicCube99/browser-harbor/releases)下载
-   `BrowserHarbor-0.4.1-x64.exe`。
+   `BrowserHarbor-0.4.2-x64.exe`。
 2. 放到可写目录后直接运行。
 3. 选择浏览器。
 4. 检查程序、数据、Profile 和缓存目录。
@@ -50,11 +50,23 @@ Browser Harbor 会在修改安装前检查浏览器版本和下载完整性。�
 
 - Browser Root
 - 程序目录
-- 数据目录
+- 用户数据目录
 - Profile 目录
 - 可选缓存目录
 
+用户数据目录是书签、历史、Cookie、登录状态和浏览器设置所在的总目录；
+Profile 是其中具体的浏览器用户配置。Profile 属于高级设置，Chromium 系通常
+不需要单独覆盖；清空必填的派生路径后，程序会按目标布局恢复默认值。
+
+缓存字段填写的是缓存**根**，不一定就是文件最终所在目录。Chromium 系通常会在
+`<缓存根>\<Profile>\Cache\Cache_Data` 下保存 HTTP 缓存；代码缓存、GPU
+缓存等其他浏览器缓存仍可能留在用户数据目录内。
+
 修改 Browser Root 会重新计算标准子目录。运行时支持时，可以单独覆盖某个目录。
+
+已安装浏览器修改用户数据、Profile 或缓存目录后，请先关闭浏览器，再运行
+“检查配置”更新便携运行时 INI。只修改管理器字段不会在浏览器运行时自动改写
+其配置文件。
 
 `.\Helium` 这样的输入按 Browser Harbor EXE 所在目录解析；`manager.json` 保存解析后的绝对路径。浏览器运行时的程序与数据位于同一磁盘时，会优先使用相对路径。
 
@@ -84,6 +96,11 @@ Chrome++ 仍保存旧绝对路径时，可以在确认后修复。修复前会�
 ## Chrome++
 
 Chrome++ 支持 Brave、Chrome、Edge、Helium、Thorium 和 Ungoogled Chromium。Chrome++ 页面显示已安装版本、源码/GPL 许可证入口和全部公开配置。
+
+安装或升级浏览器时，Browser Harbor 会自动下载、校验并放置 Chrome++，
+不需要用户手工下载 `version.dll` 或 `chrome++.ini`。Chrome++ 自身设置保存
+在浏览器 EXE 旁的 `chrome++.ini`；浏览器自己的设置保存在便携用户数据
+Profile 中，不使用注册表。
 
 刷新按钮只检查上游版本；发现新版本后，它会变成更新按钮。更新 Chrome++ 时只替换 Chrome++ 文件，保留浏览器数据与 Profile 设置，并先备份旧 INI。检测范围仅限当前目标的程序目录，其他浏览器品牌继续运行不会阻止操作。当前目标只要仍有任一实例运行，就必须由用户手工关闭全部实例；Browser Harbor 不会强制结束进程。
 

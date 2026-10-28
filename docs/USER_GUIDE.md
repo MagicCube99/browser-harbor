@@ -13,7 +13,7 @@ Browser Harbor is a portable single EXE. It does not require installation or adm
 
 ## First launch
 
-1. Download `BrowserHarbor-0.4.1-x64.exe` from
+1. Download `BrowserHarbor-0.4.2-x64.exe` from
    [GitHub Releases](https://github.com/MagicCube99/browser-harbor/releases/latest)
    or the [Gitee mirror](https://gitee.com/MagicCube99/browser-harbor/releases).
 2. Run it from a writable folder.
@@ -50,11 +50,26 @@ Each Browser Target has its own:
 
 - Browser Root
 - Program directory
-- Data directory
+- User data directory
 - Profile directory
 - Optional cache directory
 
+The user data directory is the root for bookmarks, history, cookies, sign-in
+state, and browser settings. A Profile is one browser profile inside that
+user-data model. Profile is an advanced field; Chromium-family targets usually
+need no separate Profile override, and clearing a required derived path restores
+the target’s default layout.
+
+The cache field is a cache **root**, not necessarily the final directory. A
+Chromium target commonly places HTTP cache files under
+`<cache root>\<Profile>\Cache\Cache_Data`. Code cache, GPU cache, and other
+browser-managed caches may still remain inside the user data directory.
+
 Changing Browser Root recalculates the standard child directories. Individual directories can be overridden when the browser runtime supports it.
+
+After changing User data, Profile, or Cache for an already installed browser, close
+the browser and run **Check configuration** so the portable runtime INI can be
+updated. Editing the manager fields alone does not rewrite a running browser.
 
 Input such as `.\Helium` is resolved from the Browser Harbor EXE folder. `manager.json` stores resolved absolute paths. Browser runtime files use relative paths when program and data are on the same volume.
 
@@ -84,6 +99,12 @@ Paths inside the old Browser Root are remapped. Explicit paths outside it are pr
 ## Chrome++
 
 Chrome++ is available for Brave, Chrome, Edge, Helium, Thorium, and Ungoogled Chromium. The Chrome++ page shows the installed version, the integrated source/license link, and the complete public configuration set.
+
+Browser installation or upgrade downloads, verifies, and installs Chrome++
+automatically; users do not need to download `version.dll` or
+`chrome++.ini` manually. Chrome++ settings are stored in `chrome++.ini` beside
+the browser executable. The browser’s own preferences are stored in its
+portable user-data profile, not in the Windows registry.
 
 The refresh control only checks upstream. When a newer version is available it becomes an update control. Updating Chrome++ replaces only Chrome++ files, preserves browser data and profile settings, and backs up the previous INI. Only the selected target’s program directory is checked: other running browser brands do not block it. If any instance of the selected target is running, close every instance manually; Browser Harbor never terminates it.
 
