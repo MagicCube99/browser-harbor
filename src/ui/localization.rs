@@ -186,6 +186,7 @@ fn exact_translation(text: &str) -> Option<&'static str> {
         "代理地址" => "Proxy address",
         "留空时使用系统代理" => "Leave empty to use the system proxy",
         "超时" => "Timeout",
+        "代理请求超时（秒）" => "Proxy request timeout (seconds)",
         "秒" => "seconds",
         "个文件" => "files",
         "下载缓存" => "Download cache",
@@ -193,6 +194,7 @@ fn exact_translation(text: &str) -> Option<&'static str> {
         "配置位置" => "Configuration location",
         "系统用户目录（默认）" => "User configuration directory (default)",
         "程序目录（便携）" => "Program directory (portable)",
+        "当前配置文件" => "Current config file",
         "保存在 %LOCALAPPDATA%\\browser-harbor\\manager.json" => {
             "Stored at %LOCALAPPDATA%\\browser-harbor\\manager.json"
         }
@@ -200,7 +202,7 @@ fn exact_translation(text: &str) -> Option<&'static str> {
             "Keep manager.json beside the Browser Harbor EXE so it can travel with the program"
         }
         "便携模式要求 EXE 所在目录可写；浏览器绝对路径在新电脑上仍需重新定位。" => {
-            "Portable mode requires a writable EXE directory. Absolute browser paths still require relocation on another computer."
+            "Portable mode needs a writable EXE folder; moved browser paths may need relocation."
         }
         "配置位置已切换" => "Configuration location changed",
         "切换配置位置失败" => "Could not change configuration location",
@@ -441,7 +443,7 @@ fn exact_translation(text: &str) -> Option<&'static str> {
         "最多添加 20 个加速站" => "At most 20 accelerators are allowed",
         "加速站已经存在" => "This accelerator already exists",
         "仅删除可重新下载的安装包，不影响浏览器数据。" => {
-            "Deletes only re-downloadable packages; browser data is not affected."
+            "Cached installers only; browser data stays."
         }
         "无法读取缓存目录" => "Cannot read the cache directory",
         "以下网络设置应用于全部浏览器，不属于当前选中的单个浏览器。" => {
@@ -634,6 +636,11 @@ mod tests {
         assert_eq!(translate("当前浏览器：Firefox"), "Current browser: Firefox");
         assert_eq!(translate("159.0（上次安装）"), "159.0 (last install)");
         assert_eq!(localized("检查更新"), "Check for updates");
+        assert_eq!(localized("当前配置文件"), "Current config file");
+        assert_eq!(
+            localized("代理请求超时（秒）"),
+            "Proxy request timeout (seconds)"
+        );
         assert_eq!(translate("签名发布清单"), "Signed release manifest");
         assert_eq!(
             translate("官方元数据不可用，使用签名发布清单"),

@@ -2,6 +2,15 @@
 
 [简体中文](CHANGELOG.zh-CN.md) · English
 
+## v0.5.2 — 2026-10-28
+
+### Changed
+
+- The timeout and proxy inputs now share one left edge in global settings.
+- The current configuration path uses the full remaining row width and remains visible without a narrow side column.
+- Proxy and cache cards now keep equal height; the cache cleanup explanation is available on hover.
+- English global settings now fit without scrolling, with complete localized labels for the configuration path.
+
 ## v0.5.1 — 2026-10-28
 
 ### Changed
