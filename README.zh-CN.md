@@ -55,7 +55,7 @@
   放到 EXE 旁，随程序一起带走；旧 `manager.json` 会自动迁移。
 - **只清理可重建内容。** 清理下载缓存不会动已安装程序、Profile、书签或登录状态。
 - **外观和语言可调。** 支持跟随系统、浅色、深色，以及中英文界面。
-- **能发现自身更新。** 有新稳定版时，底栏版本号旁会出现轻量提示，并直接链接到发布页。
+- **能发现自身更新。** 有新稳定版时，底栏版本号会突出显示；点击后可选择 GitHub 或 Gitee 发布页。
 
 ## 支持的浏览器
 
@@ -71,7 +71,7 @@ Thorium 提供面向 SSE3、SSE4、AVX、AVX2 和 AVX512 的 CPU 构建。
 ## 开始使用
 
 1. 从 [GitHub Releases](https://github.com/MagicCube99/browser-harbor/releases/latest)
-   下载 `BrowserHarbor-0.6.3-x64.exe`。
+   下载 `BrowserHarbor-0.6.4-x64.exe`。
    无法访问 GitHub 时，可从 [Gitee 镜像](https://gitee.com/MagicCube99/browser-harbor/releases)下载。
 2. 放进任意可写目录，直接运行。
 3. 选择浏览器，确认 Browser Root 和数据路径。

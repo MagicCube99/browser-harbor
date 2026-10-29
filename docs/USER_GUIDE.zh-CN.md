@@ -15,7 +15,7 @@ Browser Harbor 是单 EXE 便携程序，不需要安装，也不需要管理员
 
 1. 从 [GitHub Releases](https://github.com/MagicCube99/browser-harbor/releases/latest)
    或 [Gitee 镜像](https://gitee.com/MagicCube99/browser-harbor/releases)下载
-   `BrowserHarbor-0.6.3-x64.exe`。
+   `BrowserHarbor-0.6.4-x64.exe`。
 2. 放到可写目录后直接运行。
 3. 选择浏览器。
 4. 检查程序、数据、Profile 和缓存目录。
@@ -37,8 +37,8 @@ Browser Harbor 是单 EXE 便携程序，不需要安装，也不需要管理员
 
 使用底栏的 `中` / `EN` 控件切换语言，选择会立即保存。
 
-程序启动时会轻量检查一次最新稳定版。若发现新版本，底栏版本链接会显示 `↑`，
-点击可打开发布页。Browser Harbor 不会在运行时自行替换当前 EXE。
+程序启动时会轻量检查一次最新稳定版。若发现新版本，底栏版本入口会突出显示 `↑`；
+点击后可在紧凑菜单中选择 GitHub 或 Gitee 发布页。Browser Harbor 不会在运行时自行替换当前 EXE。
 
 ## 下载与更新
 
