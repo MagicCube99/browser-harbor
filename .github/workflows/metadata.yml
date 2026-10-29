@@ -7,7 +7,6 @@ on:
 
 permissions:
   contents: write
-  pull-requests: write
 
 concurrency:
   group: signed-metadata
@@ -29,6 +28,20 @@ jobs:
         run: |
           rustup toolchain install 1.99.1 --profile minimal
           rustup default 1.99.1
+
+      - name: Load current signed metadata
+        shell: pwsh
+        run: |
+          git fetch origin metadata-live
+          if ($LASTEXITCODE -eq 0) {
+            git restore --source=FETCH_HEAD -- assets/trusted-metadata.json assets/trusted-metadata.sig
+            if ($LASTEXITCODE -ne 0) {
+              exit $LASTEXITCODE
+            }
+            Write-Host "Loaded the current metadata-live baseline."
+          } else {
+            Write-Host "metadata-live does not exist yet; using the embedded baseline."
+          }
 
       - name: Refresh official metadata
         shell: pwsh
@@ -62,13 +75,9 @@ jobs:
             --signature .\assets\trusted-metadata.sig `
             --public-key .\assets\metadata-public-key.hex
 
-      - name: Commit changed metadata
+      - name: Publish signed metadata
         shell: pwsh
-        env:
-          GH_TOKEN: ${{ github.token }}
         run: |
-          git config user.name "Browser Harbor Metadata Bot"
-          git config user.email "metadata-bot@users.noreply.github.com"
           git add assets/trusted-metadata.json assets/trusted-metadata.sig
           git diff --cached --quiet
           if ($LASTEXITCODE -eq 0) {
@@ -78,18 +87,24 @@ jobs:
           if ($LASTEXITCODE -ne 1) {
             exit $LASTEXITCODE
           }
-          git commit -m "chore(metadata): refresh signed browser releases"
-          $branch = "metadata/refresh-${{ github.run_id }}"
-          git switch -c $branch
-          git push origin "HEAD:refs/heads/$branch"
-          $pr = gh pr create `
-            --base main `
-            --head $branch `
-            --title "chore(metadata): refresh signed browser releases" `
-            --body "Automated signed release metadata refresh."
-          gh pr checks $pr --watch --interval 10
-          if ($LASTEXITCODE -ne 0) {
-            exit $LASTEXITCODE
+
+          $metadata = Join-Path $env:RUNNER_TEMP "trusted-metadata.json"
+          $signature = Join-Path $env:RUNNER_TEMP "trusted-metadata.sig"
+          Copy-Item -LiteralPath assets/trusted-metadata.json -Destination $metadata
+          Copy-Item -LiteralPath assets/trusted-metadata.sig -Destination $signature
+
+          git fetch origin metadata-live
+          if ($LASTEXITCODE -eq 0) {
+            git switch -C metadata-live FETCH_HEAD
+          } else {
+            git switch --orphan metadata-live
           }
-          gh pr merge $pr --squash
-          git push origin --delete $branch
+
+          New-Item -ItemType Directory -Force -Path assets | Out-Null
+          Copy-Item -LiteralPath $metadata -Destination assets/trusted-metadata.json -Force
+          Copy-Item -LiteralPath $signature -Destination assets/trusted-metadata.sig -Force
+          git add assets/trusted-metadata.json assets/trusted-metadata.sig
+          git config user.name "Browser Harbor Metadata Bot"
+          git config user.email "metadata-bot@users.noreply.github.com"
+          git commit -m "chore(metadata): refresh signed browser releases"
+          git push origin HEAD:refs/heads/metadata-live

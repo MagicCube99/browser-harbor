@@ -31,9 +31,8 @@ use crate::{
     },
 };
 
-const SIGNED_METADATA_URL: &str = "https://raw.githubusercontent.com/MagicCube99/browser-harbor/main/assets/trusted-metadata.json";
-const SIGNED_METADATA_SIGNATURE_URL: &str =
-    "https://raw.githubusercontent.com/MagicCube99/browser-harbor/main/assets/trusted-metadata.sig";
+const SIGNED_METADATA_URL: &str = "https://raw.githubusercontent.com/MagicCube99/browser-harbor/metadata-live/assets/trusted-metadata.json";
+const SIGNED_METADATA_SIGNATURE_URL: &str = "https://raw.githubusercontent.com/MagicCube99/browser-harbor/metadata-live/assets/trusted-metadata.sig";
 const TRUSTED_METADATA_CACHE_MAX_AGE_SECONDS: u64 = 24 * 60 * 60;
 pub const UPSTREAM_REUSE_SECONDS: u64 = 10 * 60;
 
