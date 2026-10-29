@@ -2,6 +2,15 @@
 
 [简体中文](CHANGELOG.zh-CN.md) · English
 
+## v0.6.4 — 2026-10-29
+
+### Changed
+
+- A newer Browser Harbor release now turns the footer version control into a
+  highlighted update chip.
+- Clicking the version control opens a compact release-site menu with GitHub
+  and Gitee. No full URLs or imitation brand icons are shown.
+
 ## v0.6.3 — 2026-10-29
 
 ### Fixed

@@ -52,6 +52,7 @@ pub const APP_TITLE: &str = "Browser Harbor";
 pub const BODY_FONT_SIZE: f32 = 12.5;
 const FIELD_LABEL_WIDTH: f32 = 116.0;
 const RELEASES_URL: &str = "https://github.com/MagicCube99/browser-harbor/releases";
+const GITEE_RELEASES_URL: &str = "https://gitee.com/MagicCube99/browser-harbor/releases";
 const CHROME_PLUS_SOURCE_URL: &str = "https://github.com/Bush2021/chrome_plus";
 
 #[derive(Clone, Copy)]
@@ -3184,28 +3185,60 @@ impl BrowserHarborApp {
                                 |_latest| format!("ver {} ↑", env!("CARGO_PKG_VERSION")),
                             );
                             let version_hover = available_app_update.as_ref().map_or_else(
-                                || localized("查看发布版本"),
+                                || localized("查看发布站点"),
                                 |latest| {
                                     if current_language == Language::English {
-                                        format!(
-                                            "Browser Harbor {latest} is available; click to view releases"
-                                        )
+                                        format!("Browser Harbor {latest} is available; choose a release site")
                                     } else {
-                                        format!("发现 Browser Harbor 新版 {latest}；点击查看发布版本")
+                                        format!("发现 Browser Harbor 新版 {latest}；点击选择发布站点")
                                     }
                                 },
                             );
-                            ui.hyperlink_to(
-                                RichText::new(version_label)
+                            let mut version_button = egui::Button::new(
+                                RichText::new(version_label.clone())
                                     .size(10.5)
                                     .color(if available_app_update.is_some() {
                                         palette.accent
                                     } else {
                                         palette.muted
-                                    }),
-                                RELEASES_URL,
+                                    })
+                                    .strong(),
                             )
-                            .on_hover_text(version_hover);
+                            .min_size(egui::vec2(0.0, 24.0));
+                            if available_app_update.is_some() {
+                                version_button = version_button
+                                    .fill(palette.accent_soft)
+                                    .stroke(Stroke::new(1.0, palette.accent));
+                            } else {
+                                version_button = version_button.frame(false);
+                            }
+                            let version_response = ui.add(version_button);
+                            egui::Popup::menu(&version_response).gap(-4.0).show(|ui| {
+                                ui.set_min_width(128.0);
+                                ui.horizontal(|ui| {
+                                    for site in [ReleaseSite::GitHub, ReleaseSite::Gitee] {
+                                        if release_site_button(
+                                            ui,
+                                            site,
+                                            current_language,
+                                            palette,
+                                        )
+                                        .clicked()
+                                        {
+                                            ui.ctx().open_url(egui::OpenUrl::new_tab(site.url()));
+                                            ui.close();
+                                        }
+                                    }
+                                });
+                            });
+                            version_response.widget_info(|| {
+                                egui::WidgetInfo::labeled(
+                                    egui::Role::Button,
+                                    true,
+                                        version_label.clone(),
+                                )
+                            });
+                            version_response.on_hover_text(version_hover);
                             ui.add_space(5.0);
 
                             let language_menu = egui::containers::menu::MenuButton::from_button(
@@ -3591,6 +3624,76 @@ fn paint_update_icon(painter: &egui::Painter, center: egui::Pos2, color: Color32
         ],
         stroke,
     );
+}
+
+#[derive(Clone, Copy)]
+enum ReleaseSite {
+    GitHub,
+    Gitee,
+}
+
+impl ReleaseSite {
+    fn label(self) -> &'static str {
+        match self {
+            Self::GitHub => "GitHub",
+            Self::Gitee => "Gitee",
+        }
+    }
+
+    fn url(self) -> &'static str {
+        match self {
+            Self::GitHub => RELEASES_URL,
+            Self::Gitee => GITEE_RELEASES_URL,
+        }
+    }
+}
+
+fn release_site_button(
+    ui: &mut egui::Ui,
+    site: ReleaseSite,
+    language: Language,
+    palette: ThemePalette,
+) -> egui::Response {
+    let (rect, response) = ui.allocate_exact_size(egui::vec2(60.0, 24.0), egui::Sense::click());
+    let active = response.hovered() || response.has_focus();
+    ui.painter().rect_filled(
+        rect,
+        CornerRadius::same(6),
+        if active {
+            palette.hover
+        } else {
+            ui.visuals().window_fill
+        },
+    );
+    if active {
+        ui.painter().rect_stroke(
+            rect,
+            CornerRadius::same(6),
+            Stroke::new(1.0, palette.accent),
+            egui::StrokeKind::Inside,
+        );
+        ui.ctx().set_cursor_icon(egui::CursorIcon::PointingHand);
+    }
+
+    ui.painter().text(
+        rect.center(),
+        egui::Align2::CENTER_CENTER,
+        site.label(),
+        FontId::new(10.5, FontFamily::Proportional),
+        if active {
+            palette.accent_text
+        } else {
+            palette.text
+        },
+    );
+
+    let accessible = if language == Language::English {
+        format!("{} Releases", site.label())
+    } else {
+        format!("{} 发布页", site.label())
+    };
+    response.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Link, true, accessible.clone()));
+    response.on_hover_text(accessible)
 }
 
 fn browser_selector(ui: &mut egui::Ui, selected: TargetId, width: f32) -> Option<TargetId> {
@@ -4834,21 +4937,30 @@ mod tests {
     }
 
     #[test]
-    fn footer_shows_version_link_at_the_right_edge() {
+    fn footer_shows_release_menu_at_the_right_edge() {
         assert_eq!(
             super::RELEASES_URL,
             "https://github.com/MagicCube99/browser-harbor/releases"
+        );
+        assert_eq!(
+            super::GITEE_RELEASES_URL,
+            "https://gitee.com/MagicCube99/browser-harbor/releases"
         );
         let mut harness = harness();
         harness.run();
 
         let version_label = format!("ver {}", env!("CARGO_PKG_VERSION"));
-        let version = harness.get_by_role_and_label(Role::Link, &version_label);
+        let version = harness.get_by_role_and_label(Role::Button, &version_label);
         let network = harness.get_by_label("全局设置");
         let theme = harness.get_by_label("外观：跟随系统");
 
         assert!(version.rect().min.x > network.rect().max.x);
         assert!(version.rect().min.x > theme.rect().max.x);
+
+        version.click();
+        harness.run();
+        harness.get_by_role_and_label(Role::Link, "GitHub 发布页");
+        harness.get_by_role_and_label(Role::Link, "Gitee 发布页");
     }
 
     #[test]
@@ -4859,7 +4971,10 @@ mod tests {
         });
         harness.run();
 
-        harness.get_by_role_and_label(Role::Link, &format!("ver {} ↑", env!("CARGO_PKG_VERSION")));
+        harness.get_by_role_and_label(
+            Role::Button,
+            &format!("ver {} ↑", env!("CARGO_PKG_VERSION")),
+        );
     }
 
     #[test]
@@ -4878,7 +4993,7 @@ mod tests {
         let theme = harness.get_by_label("外观：跟随系统");
         let language = harness.get_by_role_and_label(Role::Button, "界面语言: 中文");
         let version_label = format!("ver {}", env!("CARGO_PKG_VERSION"));
-        let version = harness.get_by_role_and_label(Role::Link, &version_label);
+        let version = harness.get_by_role_and_label(Role::Button, &version_label);
 
         assert!(status.rect().max.x < network.rect().min.x);
         assert!(status.rect().max.x < theme.rect().min.x);
