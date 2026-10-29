@@ -2,6 +2,17 @@
 
 [简体中文](CHANGELOG.zh-CN.md) · English
 
+## v0.6.1 — 2026-10-29
+
+### Fixed
+
+- Daily signed release metadata now refreshes reliably for browsers that require
+  Browser Harbor to calculate their artifact hash, including Catsxp.
+- If one browser source fails to refresh, Browser Harbor keeps that browser's
+  previous signed entry and continues refreshing the rest of the manifest.
+- The Browser Root example now names the currently selected browser instead of
+  always showing Helium.
+
 ## v0.6.0 — 2026-10-29
 
 ### Added

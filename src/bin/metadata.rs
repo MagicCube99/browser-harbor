@@ -208,11 +208,28 @@ async fn refresh(
                     channel.display_name(),
                     cpu_build.display_name()
                 );
-                let descriptor = resolve_target(&provider, target, *channel, *cpu_build).await?;
-                if let Some(descriptor) =
-                    ensure_release_integrity(descriptor, &baseline, &downloader, &network).await?
-                {
-                    releases.push(descriptor);
+                let refreshed = async {
+                    let descriptor =
+                        resolve_target(&provider, target, *channel, *cpu_build).await?;
+                    ensure_release_integrity(descriptor, &baseline, &downloader, &network).await
+                }
+                .await;
+                match refreshed {
+                    Ok(Some(descriptor)) => releases.push(descriptor),
+                    Ok(None) => {}
+                    Err(error) => {
+                        if let Some(previous) = baseline.release(target, *channel, *cpu_build) {
+                            eprintln!(
+                                "{} / {} / {} refresh failed; keeping baseline: {error}",
+                                target.display_name(),
+                                channel.display_name(),
+                                cpu_build.display_name()
+                            );
+                            releases.push(previous.clone());
+                        } else {
+                            return Err(error);
+                        }
+                    }
                 }
             }
         }
@@ -380,10 +397,22 @@ async fn ensure_release_integrity(
         descriptor.artifact.integrity = previous.artifact.integrity.clone();
         return Ok(Some(descriptor));
     }
+    println!(
+        "No trusted digest for {} {} {}; downloading {} to calculate SHA-256",
+        descriptor.target.display_name(),
+        descriptor.channel.display_name(),
+        descriptor.cpu_build.display_name(),
+        descriptor.artifact.file_name
+    );
     let path = downloader
         .download(&descriptor.artifact, network, |_| {})
         .await?;
+    println!(
+        "Downloaded {} bytes; calculating SHA-256",
+        fs::metadata(&path)?.len()
+    );
     descriptor.artifact.integrity = Some(Integrity::Sha256(sha256_file(&path)?));
+    println!("Calculated SHA-256 for {}", descriptor.artifact.file_name);
     Ok(Some(descriptor))
 }
 
@@ -467,7 +496,7 @@ async fn ensure_runtime_artifact(
 fn sha256_file(path: &Path) -> Result<String, Box<dyn std::error::Error>> {
     let mut file = fs::File::open(path)?;
     let mut hasher = Sha256::new();
-    let mut buffer = [0u8; 1024 * 1024];
+    let mut buffer = vec![0u8; 1024 * 1024];
     loop {
         let read = file.read(&mut buffer)?;
         if read == 0 {
@@ -505,5 +534,33 @@ impl TempDirectory {
 impl Drop for TempDirectory {
     fn drop(&mut self) {
         let _ = fs::remove_dir_all(&self.path);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::{fs, thread};
+
+    use sha2::{Digest, Sha256};
+
+    use super::sha256_file;
+
+    #[test]
+    fn hashing_large_artifacts_does_not_require_a_large_stack() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("artifact.bin");
+        let bytes = vec![0x42; 2 * 1024 * 1024];
+        fs::write(&path, &bytes).unwrap();
+        let expected = hex::encode(Sha256::digest(&bytes));
+
+        let actual = thread::Builder::new()
+            .stack_size(128 * 1024)
+            .spawn(move || sha256_file(&path).map_err(|error| error.to_string()))
+            .unwrap()
+            .join()
+            .unwrap()
+            .unwrap();
+
+        assert_eq!(actual, expected);
     }
 }
