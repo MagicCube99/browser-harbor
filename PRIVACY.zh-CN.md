@@ -8,7 +8,7 @@ Browser Harbor 是本地 Windows 工具，不包含遥测、分析、账号系�
 
 程序会保存：
 
-- 管理器设置在 `%LOCALAPPDATA%\browser-harbor\manager.json`；
+- 管理器设置在 `%LOCALAPPDATA%\browser-harbor\BrowserHarbor.json`；
 - 可重建下载缓存在 `%TEMP%\browser-harbor\cache`；
 - 浏览器程序与用户数据只保存在用户选择的 Browser Root 和路径覆盖中。
 
@@ -33,4 +33,4 @@ Browser Harbor 不创建常驻应用日志。配置检查只在界面中显示�
 
 ## 删除数据
 
-删除 `%LOCALAPPDATA%\browser-harbor\manager.json` 可清除管理器设置。若要同时删除浏览器程序与用户数据，请手工删除对应 Browser Root。
+删除 `%LOCALAPPDATA%\browser-harbor\BrowserHarbor.json` 可清除管理器设置。若要同时删除浏览器程序与用户数据，请手工删除对应 Browser Root。

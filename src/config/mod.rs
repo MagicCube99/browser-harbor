@@ -410,7 +410,7 @@ mod tests {
     use crate::domain::target::TargetId;
 
     fn temp_path(directory: &tempfile::TempDir) -> std::path::PathBuf {
-        directory.path().join("manager.json")
+        directory.path().join("BrowserHarbor.json")
     }
 
     #[test]
@@ -790,7 +790,7 @@ mod tests {
         store.save(&settings).unwrap();
 
         assert_eq!(store.load().unwrap(), settings);
-        assert!(!directory.path().join("manager.json.tmp").exists());
+        assert!(!directory.path().join("BrowserHarbor.json.tmp").exists());
         let raw = fs::read_to_string(&path).unwrap();
         assert!(raw.contains("\"schemaVersion\": 11"));
         assert!(raw.contains("\"selectedBrowser\": \"firefox\""));
@@ -874,7 +874,7 @@ mod tests {
         store.save(&settings).unwrap();
 
         assert_eq!(store.load().unwrap(), settings);
-        assert!(!directory.path().join("manager.json.tmp").exists());
+        assert!(!directory.path().join("BrowserHarbor.json.tmp").exists());
     }
 
     #[test]
@@ -1042,7 +1042,7 @@ mod tests {
         let settings = Settings::default();
         store.save(&settings).unwrap();
         let previous = fs::read(&path).unwrap();
-        fs::create_dir(directory.path().join("manager.json.tmp")).unwrap();
+        fs::create_dir(directory.path().join("BrowserHarbor.json.tmp")).unwrap();
 
         let error = store.save(&settings).unwrap_err();
 

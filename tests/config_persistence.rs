@@ -10,7 +10,7 @@ use tempfile::tempdir;
 #[test]
 fn legacy_config_compacts_then_persists_a_target_switch() {
     let directory = tempdir().unwrap();
-    let path = directory.path().join("manager.json");
+    let path = directory.path().join("BrowserHarbor.json");
     let mut settings = Settings {
         schema_version: 5,
         selected_browser: TargetId::Edge,

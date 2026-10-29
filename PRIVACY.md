@@ -8,7 +8,7 @@ Browser Harbor is a local Windows utility. It has no telemetry, analytics, accou
 
 The application stores:
 
-- manager settings in `%LOCALAPPDATA%\browser-harbor\manager.json`;
+- manager settings in `%LOCALAPPDATA%\browser-harbor\BrowserHarbor.json`;
 - rebuildable download cache in `%TEMP%\browser-harbor\cache`;
 - browser program and user data only in the Browser Roots and overrides selected by the user.
 
@@ -33,4 +33,4 @@ Browser Harbor does not create a persistent application log. The configuration c
 
 ## Data deletion
 
-Delete `%LOCALAPPDATA%\browser-harbor\manager.json` to remove manager settings. Delete Browser Roots manually if you also want to remove browser programs and user data.
+Delete `%LOCALAPPDATA%\browser-harbor\BrowserHarbor.json` to remove manager settings. Delete Browser Roots manually if you also want to remove browser programs and user data.

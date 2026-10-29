@@ -198,11 +198,11 @@ fn exact_translation(text: &str) -> Option<&'static str> {
         "系统用户目录（默认）" => "User configuration directory (default)",
         "程序目录（便携）" => "Program directory (portable)",
         "当前配置文件" => "Current config file",
-        "保存在 %LOCALAPPDATA%\\browser-harbor\\manager.json" => {
-            "Stored at %LOCALAPPDATA%\\browser-harbor\\manager.json"
+        "保存在 %LOCALAPPDATA%\\browser-harbor\\BrowserHarbor.json" => {
+            "Stored at %LOCALAPPDATA%\\browser-harbor\\BrowserHarbor.json"
         }
-        "将 manager.json 保存在 Browser Harbor EXE 旁，可随程序一起带走" => {
-            "Keep manager.json beside the Browser Harbor EXE so it can travel with the program"
+        "将 BrowserHarbor.json 保存在 Browser Harbor EXE 旁，可随程序一起带走" => {
+            "Keep BrowserHarbor.json beside the Browser Harbor EXE so it can travel with the program"
         }
         "便携模式要求 EXE 所在目录可写；浏览器绝对路径在新电脑上仍需重新定位。" => {
             "Portable mode needs a writable EXE folder; moved browser paths may need relocation."

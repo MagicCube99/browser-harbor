@@ -8,6 +8,13 @@ use std::{
 
 use thiserror::Error;
 
+pub const CONFIG_FILE_NAME: &str = "BrowserHarbor.json";
+pub const LEGACY_CONFIG_FILE_NAME: &str = "manager.json";
+
+pub fn config_path(directory: &Path) -> PathBuf {
+    directory.join(CONFIG_FILE_NAME)
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AppStorage {
     pub config_path: PathBuf,
@@ -25,9 +32,10 @@ pub fn resolve(executable: &Path, local_app_data: Option<&std::ffi::OsStr>) -> A
         .map(PathBuf::from)
         .unwrap_or_else(|| executable_dir.clone());
     let data_dir = local_app_base.join("browser-harbor");
-    let user_config_path = data_dir.join("manager.json");
-    let portable_config_path = executable_dir.join("manager.json");
-    let config_path = if portable_config_path.is_file() {
+    let user_config_path = config_path(&data_dir);
+    let portable_config_path = config_path(&executable_dir);
+    let legacy_portable_config_path = executable_dir.join(LEGACY_CONFIG_FILE_NAME);
+    let config_path = if portable_config_path.is_file() || legacy_portable_config_path.is_file() {
         portable_config_path.clone()
     } else {
         user_config_path.clone()
@@ -43,12 +51,25 @@ pub fn resolve(executable: &Path, local_app_data: Option<&std::ffi::OsStr>) -> A
 }
 
 pub fn migrate_legacy(storage: &AppStorage) -> Result<(), StorageError> {
-    let Some(parent) = storage.config_path.parent() else {
+    let Some(user_directory) = storage.user_config_path.parent() else {
         return Ok(());
     };
-    fs::create_dir_all(parent).map_err(StorageError::Create)?;
+    fs::create_dir_all(user_directory).map_err(StorageError::Create)?;
+    migrate_config(
+        &user_directory.join(LEGACY_CONFIG_FILE_NAME),
+        &storage.user_config_path,
+    )?;
+    if let Some(portable_directory) = storage.portable_config_path.parent() {
+        migrate_config(
+            &portable_directory.join(LEGACY_CONFIG_FILE_NAME),
+            &storage.portable_config_path,
+        )?;
+    }
     for directory in &storage.legacy_dirs {
-        migrate_config(&directory.join("manager.json"), &storage.config_path)?;
+        migrate_config(
+            &directory.join(LEGACY_CONFIG_FILE_NAME),
+            &storage.user_config_path,
+        )?;
         remove_legacy_log(&directory.join("manager.log"))?;
     }
     Ok(())
@@ -124,7 +145,7 @@ fn backup_conflicting_config(legacy: &Path, destination: &Path) -> Result<(), St
     })?;
     let mut index = 1;
     let backup = loop {
-        let candidate = parent.join(format!("manager.legacy-{index}.json"));
+        let candidate = parent.join(format!("BrowserHarbor.legacy-{index}.json"));
         if !candidate.exists() {
             break candidate;
         }
@@ -198,15 +219,19 @@ mod tests {
 
         assert_eq!(
             storage.config_path,
-            std::path::PathBuf::from(r"C:\Users\me\AppData\Local\browser-harbor\manager.json")
+            std::path::PathBuf::from(
+                r"C:\Users\me\AppData\Local\browser-harbor\BrowserHarbor.json"
+            )
         );
         assert_eq!(
             storage.user_config_path,
-            std::path::PathBuf::from(r"C:\Users\me\AppData\Local\browser-harbor\manager.json")
+            std::path::PathBuf::from(
+                r"C:\Users\me\AppData\Local\browser-harbor\BrowserHarbor.json"
+            )
         );
         assert_eq!(
             storage.portable_config_path,
-            std::path::PathBuf::from(r"D:\Tools\manager.json")
+            std::path::PathBuf::from(r"D:\Tools\BrowserHarbor.json")
         );
         assert_eq!(
             storage.legacy_dirs,
@@ -217,7 +242,52 @@ mod tests {
     }
 
     #[test]
-    fn portable_manager_config_takes_precedence() {
+    fn portable_browser_harbor_config_takes_precedence() {
+        let executable_dir = tempdir().unwrap();
+        let local_app_data = tempdir().unwrap();
+        let executable = executable_dir.path().join("browser-harbor.exe");
+        fs::write(&executable, b"fixture").unwrap();
+        fs::write(
+            executable_dir.path().join("BrowserHarbor.json"),
+            b"{\"schemaVersion\":5}",
+        )
+        .unwrap();
+        let storage = resolve(&executable, Some(local_app_data.path().as_os_str()));
+
+        assert_eq!(
+            storage.config_path,
+            executable_dir.path().join("BrowserHarbor.json")
+        );
+        assert_eq!(
+            storage.user_config_path,
+            local_app_data
+                .path()
+                .join("browser-harbor/BrowserHarbor.json")
+        );
+    }
+
+    #[test]
+    fn migrates_legacy_user_manager_json() {
+        let executable_dir = tempdir().unwrap();
+        let local_app_data = tempdir().unwrap();
+        let executable = executable_dir.path().join("browser-harbor.exe");
+        fs::write(&executable, b"fixture").unwrap();
+        let data_dir = local_app_data.path().join("browser-harbor");
+        fs::create_dir_all(&data_dir).unwrap();
+        fs::write(data_dir.join("manager.json"), b"{\"schemaVersion\":5}").unwrap();
+        let storage = resolve(&executable, Some(local_app_data.path().as_os_str()));
+
+        migrate_legacy(&storage).unwrap();
+
+        assert_eq!(
+            fs::read(&storage.config_path).unwrap(),
+            b"{\"schemaVersion\":5}"
+        );
+        assert!(!data_dir.join("manager.json").exists());
+    }
+
+    #[test]
+    fn migrates_legacy_portable_manager_json() {
         let executable_dir = tempdir().unwrap();
         let local_app_data = tempdir().unwrap();
         let executable = executable_dir.path().join("browser-harbor.exe");
@@ -231,12 +301,15 @@ mod tests {
 
         assert_eq!(
             storage.config_path,
-            executable_dir.path().join("manager.json")
+            executable_dir.path().join("BrowserHarbor.json")
         );
+        migrate_legacy(&storage).unwrap();
+
         assert_eq!(
-            storage.user_config_path,
-            local_app_data.path().join("browser-harbor/manager.json")
+            fs::read(&storage.config_path).unwrap(),
+            b"{\"schemaVersion\":5}"
         );
+        assert!(!executable_dir.path().join("manager.json").exists());
     }
 
     #[test]
@@ -283,7 +356,7 @@ mod tests {
                     .config_path
                     .parent()
                     .unwrap()
-                    .join("manager.legacy-1.json")
+                    .join("BrowserHarbor.legacy-1.json")
             )
             .unwrap(),
             b"legacy"

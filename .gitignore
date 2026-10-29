@@ -4,6 +4,7 @@
 
 # Local runtime data
 manager.json
+BrowserHarbor.json
 *.log
 downloads/
 cache/

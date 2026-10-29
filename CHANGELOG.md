@@ -2,6 +2,13 @@
 
 [简体中文](CHANGELOG.zh-CN.md) · English
 
+## v0.5.4 — 2026-10-29
+
+### Changed
+
+- The manager configuration file is now named `BrowserHarbor.json` in both user and portable modes.
+- Existing `manager.json` files are migrated automatically on startup. A conflicting older file is preserved as a numbered backup.
+
 ## v0.5.3 — 2026-10-28
 
 ### Changed

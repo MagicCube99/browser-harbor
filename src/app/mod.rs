@@ -15,6 +15,7 @@ use crate::{
         settings::{Settings, TargetConfig},
         target::TargetId,
     },
+    infra::storage,
 };
 
 #[derive(Debug, Error, PartialEq, Eq)]
@@ -47,13 +48,13 @@ impl AppState {
     }
 
     pub fn with_tool_root(saved: Settings, store: ConfigStore, tool_root: PathBuf) -> Self {
-        let portable_config_path = tool_root.join("manager.json");
+        let portable_config_path = storage::config_path(&tool_root);
         let user_config_path = if store.path() == portable_config_path {
             std::env::var_os("LOCALAPPDATA")
                 .map(PathBuf::from)
                 .unwrap_or_else(|| tool_root.clone())
                 .join("browser-harbor")
-                .join("manager.json")
+                .join(storage::CONFIG_FILE_NAME)
         } else {
             store.path().to_path_buf()
         };
@@ -323,7 +324,7 @@ mod tests {
     fn state_in(directory: &tempfile::TempDir) -> AppState {
         AppState::new(
             Settings::default(),
-            ConfigStore::new(directory.path().join("manager.json")),
+            ConfigStore::new(directory.path().join("BrowserHarbor.json")),
         )
     }
 
@@ -338,7 +339,7 @@ mod tests {
             .browser_root = Some(PathBuf::from(r"D:\Browsers\Chrome"));
         let mut state = AppState::new(
             settings,
-            ConfigStore::new(directory.path().join("manager.json")),
+            ConfigStore::new(directory.path().join("BrowserHarbor.json")),
         );
 
         state.select(TargetId::Chrome);
@@ -354,7 +355,7 @@ mod tests {
     #[test]
     fn save_commits_the_draft_to_saved_state_and_disk() {
         let directory = tempdir().unwrap();
-        let store = ConfigStore::new(directory.path().join("manager.json"));
+        let store = ConfigStore::new(directory.path().join("BrowserHarbor.json"));
         let mut state = AppState::new(Settings::default(), store);
         state.select(TargetId::Zen);
         state.update_draft(|settings| {
@@ -397,10 +398,10 @@ mod tests {
     #[test]
     fn failed_save_preserves_draft_and_previous_saved_state() {
         let directory = tempdir().unwrap();
-        let path = directory.path().join("manager.json");
+        let path = directory.path().join("BrowserHarbor.json");
         let store = ConfigStore::new(path.clone());
         store.save(&Settings::default()).unwrap();
-        fs::create_dir(directory.path().join("manager.json.tmp")).unwrap();
+        fs::create_dir(directory.path().join("BrowserHarbor.json.tmp")).unwrap();
         let mut state = AppState::new(store.load().unwrap(), ConfigStore::new(path));
         state.update_draft(|settings| {
             settings
@@ -423,7 +424,7 @@ mod tests {
     #[test]
     fn successful_install_receipt_is_persisted_atomically() {
         let directory = tempdir().unwrap();
-        let store = ConfigStore::new(directory.path().join("manager.json"));
+        let store = ConfigStore::new(directory.path().join("BrowserHarbor.json"));
         let mut state = AppState::new(Settings::default(), store);
         let receipt = crate::services::install::InstallReceipt {
             version: "1.2.3".to_owned(),
@@ -454,7 +455,7 @@ mod tests {
         let tool_directory = tempdir().unwrap();
         let state = AppState::with_tool_root(
             Settings::default(),
-            ConfigStore::new(data_directory.path().join("manager.json")),
+            ConfigStore::new(data_directory.path().join("BrowserHarbor.json")),
             tool_directory.path().to_path_buf(),
         );
         let mut config = TargetConfig::for_target(TargetId::Helium);
@@ -489,7 +490,7 @@ mod tests {
         let browser_root = tool_directory.path().join("Thorium_AVX512");
         let mut state = AppState::with_tool_root(
             Settings::default(),
-            ConfigStore::new(data_directory.path().join("manager.json")),
+            ConfigStore::new(data_directory.path().join("BrowserHarbor.json")),
             tool_directory.path().to_path_buf(),
         );
         let mut config = TargetConfig::for_target(TargetId::Thorium);
@@ -518,7 +519,7 @@ mod tests {
     #[test]
     fn save_if_dirty_only_writes_after_a_change() {
         let directory = tempdir().unwrap();
-        let path = directory.path().join("manager.json");
+        let path = directory.path().join("BrowserHarbor.json");
         let mut state = AppState::new(Settings::default(), ConfigStore::new(path.clone()));
 
         assert!(!state.save_if_dirty().unwrap());
@@ -536,8 +537,10 @@ mod tests {
         let directory = tempdir().unwrap();
         let tool_root = directory.path().join("Tool");
         fs::create_dir_all(&tool_root).unwrap();
-        let user_path = directory.path().join("Local/browser-harbor/manager.json");
-        let portable_path = tool_root.join("manager.json");
+        let user_path = directory
+            .path()
+            .join("Local/browser-harbor/BrowserHarbor.json");
+        let portable_path = tool_root.join("BrowserHarbor.json");
         let mut state = AppState::with_config_paths(
             Settings::default(),
             ConfigStore::new(user_path.clone()),
@@ -569,7 +572,7 @@ mod tests {
         let directory = tempdir().unwrap();
         let state = AppState::new(
             Settings::default(),
-            ConfigStore::new(directory.path().join("manager.json")),
+            ConfigStore::new(directory.path().join("BrowserHarbor.json")),
         );
         for (path, expected) in [
             (
@@ -592,7 +595,7 @@ mod tests {
         let directory = tempdir().unwrap();
         let state = AppState::new(
             Settings::default(),
-            ConfigStore::new(directory.path().join("manager.json")),
+            ConfigStore::new(directory.path().join("BrowserHarbor.json")),
         );
 
         assert_eq!(
