@@ -1793,12 +1793,12 @@ impl BrowserHarborApp {
             ui.horizontal(|ui| {
                 let user = ui.radio_value(&mut portable, false, localized("系统用户目录（默认）"));
                 let user_changed = user.changed();
-                user.localized_hover("保存在 %LOCALAPPDATA%\\browser-harbor\\manager.json");
+                user.localized_hover("保存在 %LOCALAPPDATA%\\browser-harbor\\BrowserHarbor.json");
                 let portable_response =
                     ui.radio_value(&mut portable, true, localized("程序目录（便携）"));
                 let portable_changed = portable_response.changed();
                 portable_response.localized_hover(
-                    "将 manager.json 保存在 Browser Harbor EXE 旁，可随程序一起带走",
+                    "将 BrowserHarbor.json 保存在 Browser Harbor EXE 旁，可随程序一起带走",
                 );
                 if user_changed || portable_changed {
                     requested_config_location = Some(portable);
@@ -4112,7 +4112,7 @@ mod tests {
         let directory = tempdir().unwrap();
         let state = AppState::new(
             Settings::default(),
-            ConfigStore::new(directory.path().join("manager.json")),
+            ConfigStore::new(directory.path().join("BrowserHarbor.json")),
         );
         TestHarness {
             harness: harness_for(BrowserHarborApp::new(state)),
@@ -4143,7 +4143,7 @@ mod tests {
             .unwrap()
             .flatten()
             .filter(|entry| entry.file_name().to_string_lossy().starts_with(".tmp"))
-            .filter_map(|entry| fs::read(entry.path().join("manager.json")).ok())
+            .filter_map(|entry| fs::read(entry.path().join("BrowserHarbor.json")).ok())
             .filter_map(|bytes| serde_json::from_slice::<serde_json::Value>(&bytes).ok())
             .any(|value| {
                 value
@@ -4182,7 +4182,7 @@ mod tests {
         config.browser_directory = Some(program);
         let state = AppState::new(
             settings,
-            ConfigStore::new(directory.path().join("manager.json")),
+            ConfigStore::new(directory.path().join("BrowserHarbor.json")),
         );
         let mut harness = harness_for(BrowserHarborApp::new(state));
         harness.state_mut().latest_versions.insert(
@@ -4286,7 +4286,7 @@ mod tests {
         thorium.cache_directory = None;
         let state = AppState::with_tool_root(
             settings,
-            ConfigStore::new(directory.path().join("manager.json")),
+            ConfigStore::new(directory.path().join("BrowserHarbor.json")),
             tool_root.clone(),
         );
         let mut harness = harness_for(BrowserHarborApp::new(state));
@@ -4341,8 +4341,8 @@ mod tests {
     #[test]
     fn failed_target_switch_keeps_the_previous_browser_selected() {
         let directory = tempdir().unwrap();
-        let config_path = directory.path().join("manager.json");
-        fs::create_dir(directory.path().join("manager.json.tmp")).unwrap();
+        let config_path = directory.path().join("BrowserHarbor.json");
+        fs::create_dir(directory.path().join("BrowserHarbor.json.tmp")).unwrap();
         let state = AppState::new(Settings::default(), ConfigStore::new(config_path));
         let mut harness = harness_for(BrowserHarborApp::new(state));
         harness.run();
@@ -4654,7 +4654,7 @@ mod tests {
         config.browser_directory = Some(program);
         let state = AppState::new(
             settings,
-            ConfigStore::new(directory.path().join("manager.json")),
+            ConfigStore::new(directory.path().join("BrowserHarbor.json")),
         );
         let mut harness = harness_for(BrowserHarborApp::new(state));
         harness.state_mut().latest_versions.insert(
@@ -4695,7 +4695,7 @@ mod tests {
         config.installed_version = Some("157.0.1".to_owned());
         let state = AppState::new(
             settings,
-            ConfigStore::new(directory.path().join("manager.json")),
+            ConfigStore::new(directory.path().join("BrowserHarbor.json")),
         );
         let mut harness = harness_for(BrowserHarborApp::new(state));
         harness.state_mut().latest_versions.insert(
@@ -4729,7 +4729,7 @@ mod tests {
         config.installed_version = Some("157.0.1".to_owned());
         let state = AppState::new(
             settings,
-            ConfigStore::new(directory.path().join("manager.json")),
+            ConfigStore::new(directory.path().join("BrowserHarbor.json")),
         );
         let mut harness = harness_for(BrowserHarborApp::new(state));
         harness.run();
@@ -4862,8 +4862,10 @@ mod tests {
         let directory = tempdir().unwrap();
         let tool_root = directory.path().join("Tool");
         fs::create_dir_all(&tool_root).unwrap();
-        let user_path = directory.path().join("Local/browser-harbor/manager.json");
-        let portable_path = tool_root.join("manager.json");
+        let user_path = directory
+            .path()
+            .join("Local/browser-harbor/BrowserHarbor.json");
+        let portable_path = tool_root.join("BrowserHarbor.json");
         let state = AppState::with_config_paths(
             Settings::default(),
             ConfigStore::new(user_path.clone()),
@@ -4986,7 +4988,7 @@ mod tests {
         };
         let state = AppState::new(
             settings,
-            ConfigStore::new(directory.path().join("manager.json")),
+            ConfigStore::new(directory.path().join("BrowserHarbor.json")),
         );
         let mut harness = harness_for(BrowserHarborApp::new(state));
         harness.run();
@@ -5023,7 +5025,7 @@ mod tests {
         config.chrome_plus_version = Some("1.18.2".to_owned());
         let state = AppState::new(
             settings,
-            ConfigStore::new(directory.path().join("manager.json")),
+            ConfigStore::new(directory.path().join("BrowserHarbor.json")),
         );
         let mut harness = harness_for(BrowserHarborApp::new(state));
         harness.state_mut().active_tab = DetailTab::ChromePlus;
@@ -5095,7 +5097,7 @@ mod tests {
         config.profile_directory = Some(r"D:\Browser\Chrome\Profiles".into());
         let state = AppState::new(
             settings,
-            ConfigStore::new(directory.path().join("manager.json")),
+            ConfigStore::new(directory.path().join("BrowserHarbor.json")),
         );
         let mut harness = harness_for(BrowserHarborApp::new(state));
         let app = harness.state_mut();
@@ -5160,7 +5162,7 @@ mod tests {
         config.profile_directory = Some(r"D:\Browser\Chrome\Profiles".into());
         let state = AppState::new(
             settings,
-            ConfigStore::new(directory.path().join("manager.json")),
+            ConfigStore::new(directory.path().join("BrowserHarbor.json")),
         );
         let mut harness = harness_for(BrowserHarborApp::new(state));
         let app = harness.state_mut();
@@ -5214,7 +5216,7 @@ mod tests {
         config.browser_directory = Some(program);
         let state = AppState::new(
             settings,
-            ConfigStore::new(directory.path().join("manager.json")),
+            ConfigStore::new(directory.path().join("BrowserHarbor.json")),
         );
         let mut harness = harness_for(BrowserHarborApp::new(state));
         harness.run();
@@ -5264,7 +5266,7 @@ mod tests {
         config.browser_directory = Some(program);
         let state = AppState::new(
             settings,
-            ConfigStore::new(directory.path().join("manager.json")),
+            ConfigStore::new(directory.path().join("BrowserHarbor.json")),
         );
         let mut harness = harness_for(BrowserHarborApp::new(state));
         harness.run();
@@ -5399,7 +5401,7 @@ mod tests {
         };
         let state = AppState::new(
             settings,
-            ConfigStore::new(directory.path().join("manager.json")),
+            ConfigStore::new(directory.path().join("BrowserHarbor.json")),
         );
         let mut harness = harness_for(BrowserHarborApp::new(state));
         harness.run();
@@ -5416,7 +5418,7 @@ mod tests {
         };
         let state = AppState::new(
             settings,
-            ConfigStore::new(directory.path().join("manager.json")),
+            ConfigStore::new(directory.path().join("BrowserHarbor.json")),
         );
         let mut harness = harness_for(BrowserHarborApp::new(state));
         harness.run();
@@ -5551,7 +5553,7 @@ mod tests {
         config.derive_paths_from_root(TargetId::Chrome);
         let state = AppState::new(
             settings,
-            ConfigStore::new(directory.path().join("manager.json")),
+            ConfigStore::new(directory.path().join("BrowserHarbor.json")),
         );
         let mut harness = harness_for(BrowserHarborApp::new(state));
         harness.run();
@@ -5596,7 +5598,7 @@ mod tests {
         config.derive_paths_from_root(TargetId::Chrome);
         let state = AppState::new(
             settings,
-            ConfigStore::new(directory.path().join("manager.json")),
+            ConfigStore::new(directory.path().join("BrowserHarbor.json")),
         );
         let mut harness = harness_for(BrowserHarborApp::new(state));
         harness.run();
@@ -5669,7 +5671,7 @@ mod tests {
         config.derive_paths_from_root(TargetId::Iceweasel);
         let state = AppState::new(
             settings,
-            ConfigStore::new(directory.path().join("manager.json")),
+            ConfigStore::new(directory.path().join("BrowserHarbor.json")),
         );
         let mut harness = harness_for(BrowserHarborApp::new(state));
         harness.run();
@@ -5723,7 +5725,7 @@ mod tests {
         config.derive_paths_from_root(TargetId::Chrome);
         let state = AppState::new(
             settings,
-            ConfigStore::new(directory.path().join("manager.json")),
+            ConfigStore::new(directory.path().join("BrowserHarbor.json")),
         );
         let mut harness = harness_for(BrowserHarborApp::new(state));
         harness.run();
@@ -5755,7 +5757,7 @@ mod tests {
     #[test]
     fn derived_paths_survive_configuration_reload() {
         let directory = tempdir().unwrap();
-        let config_path = directory.path().join("manager.json");
+        let config_path = directory.path().join("BrowserHarbor.json");
         let state = AppState::new(Settings::default(), ConfigStore::new(config_path.clone()));
         let mut harness = harness_for(BrowserHarborApp::new(state));
         harness.run();
@@ -5792,7 +5794,7 @@ mod tests {
         let directory = tempdir().unwrap();
         let state = AppState::new(
             Settings::default(),
-            ConfigStore::new(directory.path().join("manager.json")),
+            ConfigStore::new(directory.path().join("BrowserHarbor.json")),
         );
         let mut harness = harness_for(BrowserHarborApp::new(state));
         harness.run();
@@ -5824,7 +5826,7 @@ mod tests {
     #[test]
     fn malformed_config_is_visible_and_autosave_is_blocked() {
         let directory = tempdir().unwrap();
-        let path = directory.path().join("manager.json");
+        let path = directory.path().join("BrowserHarbor.json");
         fs::write(&path, b"{broken").unwrap();
         let store = ConfigStore::new(path);
         let error = store.load().unwrap_err().to_string();
@@ -5839,7 +5841,7 @@ mod tests {
         field.set_text_value_accesskit(r"D:\must-not-overwrite");
         harness.run();
         assert_eq!(
-            fs::read(directory.path().join("manager.json")).unwrap(),
+            fs::read(directory.path().join("BrowserHarbor.json")).unwrap(),
             b"{broken"
         );
     }
@@ -5862,7 +5864,7 @@ mod tests {
     #[test]
     fn language_switch_localizes_ui_and_persists() {
         let directory = tempdir().unwrap();
-        let config_path = directory.path().join("manager.json");
+        let config_path = directory.path().join("BrowserHarbor.json");
         let state = AppState::new(Settings::default(), ConfigStore::new(config_path.clone()));
         let mut harness = harness_for(BrowserHarborApp::new(state));
         harness.run();

@@ -51,8 +51,8 @@
 - **重定位先核对。** 选择新的 Browser Root 后再映射路径；已知属于其他浏览器的 `chrome.exe` 会被拒绝，未知自定义构建会先给出警告。
 - **检查只读，修复留痕。** “检查配置”不会修改文件；修复路径前需要确认、关闭浏览器并备份 INI。
 - **窗口不会留在屏幕外。** 保存的坐标会限制在当前虚拟桌面内。
-- **编辑立即保存。** 管理器配置默认保存在用户目录，也可把 `manager.json`
-  放到 EXE 旁，随程序一起带走。
+- **编辑立即保存。** 管理器配置默认保存在用户目录，也可把 `BrowserHarbor.json`
+  放到 EXE 旁，随程序一起带走；旧 `manager.json` 会自动迁移。
 - **只清理可重建内容。** 清理下载缓存不会动已安装程序、Profile、书签或登录状态。
 - **外观和语言可调。** 支持跟随系统、浅色、深色，以及中英文界面。
 
@@ -69,7 +69,7 @@ SSE3、SSE4、AVX、AVX2 和 AVX512 的 CPU 构建。
 ## 开始使用
 
 1. 从 [GitHub Releases](https://github.com/MagicCube99/browser-harbor/releases/latest)
-   下载 `BrowserHarbor-0.5.3-x64.exe`。
+   下载 `BrowserHarbor-0.5.4-x64.exe`。
    无法访问 GitHub 时，可从 [Gitee 镜像](https://gitee.com/MagicCube99/browser-harbor/releases)下载。
 2. 放进任意可写目录，直接运行。
 3. 选择浏览器，确认 Browser Root 和数据路径。

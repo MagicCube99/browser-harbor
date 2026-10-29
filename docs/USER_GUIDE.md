@@ -13,7 +13,7 @@ Browser Harbor is a portable single EXE. It does not require installation or adm
 
 ## First launch
 
-1. Download `BrowserHarbor-0.5.3-x64.exe` from
+1. Download `BrowserHarbor-0.5.4-x64.exe` from
    [GitHub Releases](https://github.com/MagicCube99/browser-harbor/releases/latest)
    or the [Gitee mirror](https://gitee.com/MagicCube99/browser-harbor/releases).
 2. Run it from a writable folder.
@@ -26,14 +26,16 @@ Settings save immediately after each valid edit. There is no Save or Cancel butt
 The manager configuration is stored at:
 
 ```text
-%LOCALAPPDATA%\browser-harbor\manager.json
+%LOCALAPPDATA%\browser-harbor\BrowserHarbor.json
 ```
 
 The global settings page can switch the manager configuration to portable mode,
-which stores `manager.json` beside the Browser Harbor EXE. The EXE directory
+which stores `BrowserHarbor.json` beside the Browser Harbor EXE. The EXE directory
 must be writable. Browser paths inside the file are still absolute, so copying
 the manager to another computer may require **Check configuration** and
 **Relocate…**. Temporary directories are never used for persistent settings.
+If an older `manager.json` is found, the next launch migrates it to
+`BrowserHarbor.json`; conflicting files are preserved as numbered backups.
 
 Use the `中` / `EN` control in the footer to switch languages. The choice is saved immediately.
 
@@ -76,7 +78,7 @@ After changing User data, Profile, or Cache for an already installed browser, cl
 the browser and run **Check configuration** so the portable runtime INI can be
 updated. Editing the manager fields alone does not rewrite a running browser.
 
-Input such as `.\Helium` is resolved from the Browser Harbor EXE folder. `manager.json` stores resolved absolute paths. Browser runtime files use relative paths when program and data are on the same volume.
+Input such as `.\Helium` is resolved from the Browser Harbor EXE folder. `BrowserHarbor.json` stores resolved absolute paths. Browser runtime files use relative paths when program and data are on the same volume.
 
 ## Check and repair
 
@@ -150,7 +152,7 @@ The executable is not Authenticode-signed. Obtain it only from GitHub Releases o
 
 ## Uninstall
 
-Delete the Browser Harbor EXE and the active `manager.json` (either under
+Delete the Browser Harbor EXE and the active `BrowserHarbor.json` (either under
 `%LOCALAPPDATA%\browser-harbor` or beside the EXE). Browser programs and user
 data remain in their Browser Roots. You can also remove
 `%TEMP%\browser-harbor\cache` and shortcuts created in Browser Roots.

@@ -15,7 +15,7 @@ Browser Harbor 是单 EXE 便携程序，不需要安装，也不需要管理员
 
 1. 从 [GitHub Releases](https://github.com/MagicCube99/browser-harbor/releases/latest)
    或 [Gitee 镜像](https://gitee.com/MagicCube99/browser-harbor/releases)下载
-   `BrowserHarbor-0.5.3-x64.exe`。
+   `BrowserHarbor-0.5.4-x64.exe`。
 2. 放到可写目录后直接运行。
 3. 选择浏览器。
 4. 检查程序、数据、Profile 和缓存目录。
@@ -26,13 +26,14 @@ Browser Harbor 是单 EXE 便携程序，不需要安装，也不需要管理员
 管理器配置位于：
 
 ```text
-%LOCALAPPDATA%\browser-harbor\manager.json
+%LOCALAPPDATA%\browser-harbor\BrowserHarbor.json
 ```
 
 在全局设置中可以把管理器配置切换为“程序目录（便携）”，将
-`manager.json` 保存在 Browser Harbor EXE 旁。EXE 所在目录必须可写。
+`BrowserHarbor.json` 保存在 Browser Harbor EXE 旁。EXE 所在目录必须可写。
 配置文件中的浏览器路径仍是绝对路径，复制到另一台电脑后可能需要运行
-“检查配置”和“重新定位…”。持久配置不会放入临时目录。
+“检查配置”和“重新定位…”。持久配置不会放入临时目录。若检测到旧
+`manager.json`，下次启动会自动迁移为 `BrowserHarbor.json`；内容冲突时会保留编号备份。
 
 使用底栏的 `中` / `EN` 控件切换语言，选择会立即保存。
 
@@ -73,7 +74,7 @@ Browser Harbor 会在修改安装前检查浏览器版本和下载完整性。�
 “检查配置”更新便携运行时 INI。只修改管理器字段不会在浏览器运行时自动改写
 其配置文件。
 
-`.\Helium` 这样的输入按 Browser Harbor EXE 所在目录解析；`manager.json` 保存解析后的绝对路径。浏览器运行时的程序与数据位于同一磁盘时，会优先使用相对路径。
+`.\Helium` 这样的输入按 Browser Harbor EXE 所在目录解析；`BrowserHarbor.json` 保存解析后的绝对路径。浏览器运行时的程序与数据位于同一磁盘时，会优先使用相对路径。
 
 ## 检查与修复
 
@@ -146,7 +147,7 @@ EXE 尚未做 Authenticode 代码签名。请只从 GitHub Releases 或项目提
 
 ## 卸载
 
-删除 Browser Harbor EXE 和当前使用的 `manager.json`（位于
+删除 Browser Harbor EXE 和当前使用的 `BrowserHarbor.json`（位于
 `%LOCALAPPDATA%\browser-harbor` 或 EXE 旁）。浏览器及其用户数据仍保留在
 各自的 Browser Root 中。也可以删除 `%TEMP%\browser-harbor\cache` 和
 Browser Root 中的快捷方式。
