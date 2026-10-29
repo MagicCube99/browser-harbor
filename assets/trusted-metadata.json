@@ -1,50 +1,74 @@
 {
   "schemaVersion": 1,
-  "generatedAt": 1793006981,
+  "generatedAt": 1793250481,
   "expiresAt": 253402300799,
   "releases": [
     {
       "target": "brave",
-      "version": "1.98.60",
+      "version": "1.98.62",
       "channel": "stable",
       "cpuBuild": "x64",
       "provider": "git_hub_release",
       "artifact": {
-        "fileName": "brave-v1.98.60-win32-x64.zip",
+        "fileName": "brave-v1.98.62-win32-x64.zip",
         "format": "zip",
-        "size": 254190053,
+        "size": 253047023,
         "integrity": {
           "algorithm": "sha256",
-          "value": "2c937c91f5061fb1034097c932112b06f429d5bdd08bc5e32921b88609d011e7"
+          "value": "1bd30af14e3026f986a374a4eb2dae7b1f36de01a411fb58ba41adde10032781"
         },
         "urls": [
-          "https://github.com/brave/brave-browser/releases/download/v1.98.60/brave-v1.98.60-win32-x64.zip"
+          "https://github.com/brave/brave-browser/releases/download/v1.98.62/brave-v1.98.62-win32-x64.zip"
         ],
         "signatureUrl": null
       },
       "placement": "native_package",
       "innerArchive": null,
-      "source": "https://github.com/brave/brave-browser/releases/tag/v1.98.60",
-      "publishedAt": "2026-10-21T09:09:05Z"
+      "source": "https://github.com/brave/brave-browser/releases/tag/v1.98.62",
+      "publishedAt": "2026-10-28T03:43:08Z"
+    },
+    {
+      "target": "brave",
+      "version": "1.99.53",
+      "channel": "beta",
+      "cpuBuild": "x64",
+      "provider": "git_hub_release",
+      "artifact": {
+        "fileName": "brave-v1.99.53-win32-x64.zip",
+        "format": "zip",
+        "size": 252985591,
+        "integrity": {
+          "algorithm": "sha256",
+          "value": "e78ead90dc3b24acf5d2802930150c7656eade6d13d15d3b7c8e64271a54625d"
+        },
+        "urls": [
+          "https://github.com/brave/brave-browser/releases/download/v1.99.53/brave-v1.99.53-win32-x64.zip"
+        ],
+        "signatureUrl": null
+      },
+      "placement": "native_package",
+      "innerArchive": null,
+      "source": "https://github.com/brave/brave-browser/releases/tag/v1.99.53",
+      "publishedAt": "2026-10-28T05:21:08Z"
     },
     {
       "target": "catsxp",
-      "version": "156.6.10.4",
+      "version": "156.6.10.5",
       "channel": "stable",
       "cpuBuild": "x64",
       "provider": "catsxp",
       "artifact": {
-        "fileName": "portable_x64_release_156_6_10_4.zip",
+        "fileName": "portable_x64_release_156_6_10_5.zip",
         "format": "zip",
         "size": null,
         "integrity": {
           "algorithm": "sha256",
-          "value": "86f4f27233fd77c976d97ed2dcf3e4f127c948c4555302555ecd2d599df80f0d"
+          "value": "6276ecf305b329a3528d82be0d8969b0a4ccb321329871cbdb808676486d6c3e"
         },
         "urls": [
-          "https://b2.catsxp.com/catsxp_portable/win_x64/portable_x64_release_156_6_10_4.zip",
-          "https://drfs.ctcontents.com/file/2911401/17569907084864/6b15fd/catsxp_portable/win_x64/portable_x64_release_156_6_10_4.zip",
-          "https://r2.catsxp.com/catsxp_portable/win_x64/portable_x64_release_156_6_10_4.zip"
+          "https://b2.catsxp.com/catsxp_portable/win_x64/portable_x64_release_156_6_10_5.zip",
+          "https://drfs.ctcontents.com/file/2911401/17569908722886/3f3753/catsxp_portable/win_x64/portable_x64_release_156_6_10_5.zip",
+          "https://r2.catsxp.com/catsxp_portable/win_x64/portable_x64_release_156_6_10_5.zip"
         ],
         "signatureUrl": null
       },
@@ -55,25 +79,54 @@
     },
     {
       "target": "chrome",
-      "version": "156.0.8078.48",
+      "version": "156.0.8078.74",
       "channel": "stable",
       "cpuBuild": "x64",
       "provider": "chrome_omaha",
       "artifact": {
-        "fileName": "156.0.8078.48_chrome_installer_uncompressed.exe",
+        "fileName": "156.0.8078.74_chrome_installer_uncompressed.exe",
         "format": "sevenzip",
-        "size": 527126440,
+        "size": 525470120,
         "integrity": {
           "algorithm": "sha256",
-          "value": "84e13e72c71a3b7d767c115e8e94ec81cb563f9bf9a782407a54afceaa37f55a"
+          "value": "8783e3a9a3bb263a6b39da9e9ea6bdb7f31bb9dc9806f9b438ae7c1dde0480b0"
         },
         "urls": [
-          "https://edgedl.me.gvt1.com/edgedl/release2/chrome/gqqkrczbgbi6dq5qhgethojfv4_156.0.8078.48/156.0.8078.48_chrome_installer_uncompressed.exe",
-          "https://edgedl.me.gvt1.com/edgedl/release2/chrome/gqqkrczbgbi6dq5qhgethojfv4_156.0.8078.48/156.0.8078.48_chrome_installer_uncompressed.exe",
-          "https://dl.google.com/release2/chrome/gqqkrczbgbi6dq5qhgethojfv4_156.0.8078.48/156.0.8078.48_chrome_installer_uncompressed.exe",
-          "https://dl.google.com/release2/chrome/gqqkrczbgbi6dq5qhgethojfv4_156.0.8078.48/156.0.8078.48_chrome_installer_uncompressed.exe",
-          "https://www.google.com/dl/release2/chrome/gqqkrczbgbi6dq5qhgethojfv4_156.0.8078.48/156.0.8078.48_chrome_installer_uncompressed.exe",
-          "https://www.google.com/dl/release2/chrome/gqqkrczbgbi6dq5qhgethojfv4_156.0.8078.48/156.0.8078.48_chrome_installer_uncompressed.exe"
+          "https://edgedl.me.gvt1.com/edgedl/release2/chrome/adnbzwqfdty3qpprdhwig7aufvyq_156.0.8078.74/156.0.8078.74_chrome_installer_uncompressed.exe",
+          "https://edgedl.me.gvt1.com/edgedl/release2/chrome/adnbzwqfdty3qpprdhwig7aufvyq_156.0.8078.74/156.0.8078.74_chrome_installer_uncompressed.exe",
+          "https://dl.google.com/release2/chrome/adnbzwqfdty3qpprdhwig7aufvyq_156.0.8078.74/156.0.8078.74_chrome_installer_uncompressed.exe",
+          "https://dl.google.com/release2/chrome/adnbzwqfdty3qpprdhwig7aufvyq_156.0.8078.74/156.0.8078.74_chrome_installer_uncompressed.exe",
+          "https://www.google.com/dl/release2/chrome/adnbzwqfdty3qpprdhwig7aufvyq_156.0.8078.74/156.0.8078.74_chrome_installer_uncompressed.exe",
+          "https://www.google.com/dl/release2/chrome/adnbzwqfdty3qpprdhwig7aufvyq_156.0.8078.74/156.0.8078.74_chrome_installer_uncompressed.exe"
+        ],
+        "signatureUrl": null
+      },
+      "placement": "app",
+      "innerArchive": null,
+      "source": "https://tools.google.com/service/update2",
+      "publishedAt": null
+    },
+    {
+      "target": "chrome",
+      "version": "158.0.8127.2",
+      "channel": "beta",
+      "cpuBuild": "x64",
+      "provider": "chrome_omaha",
+      "artifact": {
+        "fileName": "158.0.8127.2_chrome_installer_uncompressed.exe",
+        "format": "sevenzip",
+        "size": 536485288,
+        "integrity": {
+          "algorithm": "sha256",
+          "value": "0b23375926b9f6de49a0f009dd374d6d9a7b900a507b62cfc4bec31db2fd12ca"
+        },
+        "urls": [
+          "https://edgedl.me.gvt1.com/edgedl/release2/chrome/acluhgqwcv7bswtqy52a2zfdb72q_158.0.8127.2/158.0.8127.2_chrome_installer_uncompressed.exe",
+          "https://edgedl.me.gvt1.com/edgedl/release2/chrome/acluhgqwcv7bswtqy52a2zfdb72q_158.0.8127.2/158.0.8127.2_chrome_installer_uncompressed.exe",
+          "https://dl.google.com/release2/chrome/acluhgqwcv7bswtqy52a2zfdb72q_158.0.8127.2/158.0.8127.2_chrome_installer_uncompressed.exe",
+          "https://dl.google.com/release2/chrome/acluhgqwcv7bswtqy52a2zfdb72q_158.0.8127.2/158.0.8127.2_chrome_installer_uncompressed.exe",
+          "https://www.google.com/dl/release2/chrome/acluhgqwcv7bswtqy52a2zfdb72q_158.0.8127.2/158.0.8127.2_chrome_installer_uncompressed.exe",
+          "https://www.google.com/dl/release2/chrome/acluhgqwcv7bswtqy52a2zfdb72q_158.0.8127.2/158.0.8127.2_chrome_installer_uncompressed.exe"
         ],
         "signatureUrl": null
       },
@@ -84,99 +137,147 @@
     },
     {
       "target": "edge",
-      "version": "156.0.4314.42",
+      "version": "156.0.4314.50",
       "channel": "stable",
       "cpuBuild": "x64",
       "provider": "edge_enterprise",
       "artifact": {
         "fileName": "MicrosoftEdgeEnterpriseX64.msi",
         "format": "msi",
-        "size": 215257088,
+        "size": 215318528,
         "integrity": {
           "algorithm": "sha256",
-          "value": "324d226c5ade08c2776645cfc2a7b12af9c08214abf18c6499410cd8ed92d1b3"
+          "value": "f7bc427c4d26aefe12bd492a24959cc6ca328aea2851614637d7133cae329071"
         },
         "urls": [
-          "https://msedge.sf.dl.delivery.mp.microsoft.com/filestreamingservice/files/62209208-6eb6-4f5e-bff5-feb45cfe41d3/MicrosoftEdgeEnterpriseX64.msi"
+          "https://msedge.sf.dl.delivery.mp.microsoft.com/filestreamingservice/files/43a4cadd-6bb0-4325-83ba-ce03006a0b00/MicrosoftEdgeEnterpriseX64.msi"
         ],
         "signatureUrl": null
       },
       "placement": "edge_versioned",
       "innerArchive": null,
       "source": "https://edgeupdates.microsoft.com/api/products?view=enterprise",
-      "publishedAt": "2026-10-22T19:30:00"
+      "publishedAt": "2026-10-26T19:10:00"
     },
     {
       "target": "firefox",
-      "version": "158.0.1",
+      "version": "159.0",
       "channel": "stable",
       "cpuBuild": "x64",
       "provider": "mozilla",
       "artifact": {
-        "fileName": "Firefox Setup 158.0.1.exe",
+        "fileName": "Firefox Setup 159.0.exe",
         "format": "sevenzip",
         "size": null,
         "integrity": {
           "algorithm": "sha256",
-          "value": "b6b75a7cc12adf3c22b93d4f2691e2784024bdb083393df5acce89ae84dee0f6"
+          "value": "70560289d68acaac013da52e5a485d4052783457213b53f4dcb88cfa87da5d07"
         },
         "urls": [
-          "https://download-installer.cdn.mozilla.net/pub/firefox/releases/158.0.1/win64/zh-CN/Firefox%20Setup%20158.0.1.exe"
+          "https://download-installer.cdn.mozilla.net/pub/firefox/releases/159.0/win64/zh-CN/Firefox%20Setup%20159.0.exe"
         ],
         "signatureUrl": null
       },
       "placement": "app",
       "innerArchive": null,
-      "source": "https://download-installer.cdn.mozilla.net/pub/firefox/releases/158.0.1/SHA256SUMS",
+      "source": "https://download-installer.cdn.mozilla.net/pub/firefox/releases/159.0/SHA256SUMS",
+      "publishedAt": null
+    },
+    {
+      "target": "firefox",
+      "version": "153.6.0esr",
+      "channel": "esr",
+      "cpuBuild": "x64",
+      "provider": "mozilla",
+      "artifact": {
+        "fileName": "Firefox Setup 153.6.0esr.exe",
+        "format": "sevenzip",
+        "size": null,
+        "integrity": {
+          "algorithm": "sha256",
+          "value": "bd8b93b0936c2c3505a4ff776bf5f2256e79b9b9c3a100fd0f5ddceafbce5b23"
+        },
+        "urls": [
+          "https://download-installer.cdn.mozilla.net/pub/firefox/releases/153.6.0esr/win64/zh-CN/Firefox%20Setup%20153.6.0esr.exe"
+        ],
+        "signatureUrl": null
+      },
+      "placement": "app",
+      "innerArchive": null,
+      "source": "https://download-installer.cdn.mozilla.net/pub/firefox/releases/153.6.0esr/SHA256SUMS",
+      "publishedAt": null
+    },
+    {
+      "target": "firefox",
+      "version": "160.0b2",
+      "channel": "beta",
+      "cpuBuild": "x64",
+      "provider": "mozilla",
+      "artifact": {
+        "fileName": "Firefox Setup 160.0b2.exe",
+        "format": "sevenzip",
+        "size": null,
+        "integrity": {
+          "algorithm": "sha256",
+          "value": "617fea2a059c87a03929b64fbb648c1a65897886e6bcae5f88ffdb9333f3d941"
+        },
+        "urls": [
+          "https://download-installer.cdn.mozilla.net/pub/firefox/releases/160.0b2/win64/zh-CN/Firefox%20Setup%20160.0b2.exe"
+        ],
+        "signatureUrl": null
+      },
+      "placement": "app",
+      "innerArchive": null,
+      "source": "https://download-installer.cdn.mozilla.net/pub/firefox/releases/160.0b2/SHA256SUMS",
       "publishedAt": null
     },
     {
       "target": "floorp",
-      "version": "12.20.2",
+      "version": "12.21.0",
       "channel": "stable",
       "cpuBuild": "x64",
       "provider": "git_hub_release",
       "artifact": {
         "fileName": "floorp-windows-x86_64.portable.7z",
         "format": "sevenzip",
-        "size": 123217298,
+        "size": 123061591,
         "integrity": {
           "algorithm": "sha256",
-          "value": "c03332a85e25f690b44851195f7ff14d851894b0f3d36f8f5177ef88709e325e"
+          "value": "e944b86da99b5088cde1169e36b5e6c461d9739ad32cab738d118c12aa6c8486"
         },
         "urls": [
-          "https://github.com/Floorp-Projects/Floorp-Portable-v2/releases/download/v12.20.2/floorp-windows-x86_64.portable.7z"
+          "https://github.com/Floorp-Projects/Floorp-Portable-v2/releases/download/v12.21.0/floorp-windows-x86_64.portable.7z"
         ],
         "signatureUrl": null
       },
       "placement": "native_package",
       "innerArchive": null,
-      "source": "https://github.com/Floorp-Projects/Floorp-Portable-v2/releases/tag/v12.20.2",
-      "publishedAt": "2026-10-17T02:50:58Z"
+      "source": "https://github.com/Floorp-Projects/Floorp-Portable-v2/releases/tag/v12.21.0",
+      "publishedAt": "2026-10-27T15:43:45Z"
     },
     {
       "target": "helium",
-      "version": "0.20.1.1",
+      "version": "0.20.2.1",
       "channel": "stable",
       "cpuBuild": "x64",
       "provider": "git_hub_release",
       "artifact": {
-        "fileName": "helium_0.20.1.1_x64-windows.zip",
+        "fileName": "helium_0.20.2.1_x64-windows.zip",
         "format": "zip",
-        "size": 196729515,
+        "size": 195779927,
         "integrity": {
           "algorithm": "sha256",
-          "value": "a8d84cb50a4524eff3ed00983970e7cb49e2688fbc31431445c8efc449101214"
+          "value": "8ea50096f734ac8ffe7f31e4bef4aa18be065b847bf4c34926183180d9e9f5e8"
         },
         "urls": [
-          "https://github.com/imputnet/helium-windows/releases/download/0.20.1.1/helium_0.20.1.1_x64-windows.zip"
+          "https://github.com/imputnet/helium-windows/releases/download/0.20.2.1/helium_0.20.2.1_x64-windows.zip"
         ],
         "signatureUrl": null
       },
       "placement": "native_package",
       "innerArchive": null,
-      "source": "https://github.com/imputnet/helium-windows/releases/tag/0.20.1.1",
-      "publishedAt": "2026-10-21T16:20:29Z"
+      "source": "https://github.com/imputnet/helium-windows/releases/tag/0.20.2.1",
+      "publishedAt": "2026-10-28T12:38:18Z"
     },
     {
       "target": "iceweasel",
@@ -228,44 +329,44 @@
     },
     {
       "target": "libre_wolf",
-      "version": "158.0.1",
+      "version": "159.0",
       "channel": "stable",
       "cpuBuild": "x64",
       "provider": "libre_wolf",
       "artifact": {
-        "fileName": "librewolf-158.0.1-2-windows-x86_64-portable.zip",
+        "fileName": "librewolf-159.0-1-windows-x86_64-portable.zip",
         "format": "zip",
         "size": null,
         "integrity": {
           "algorithm": "sha256",
-          "value": "bb50235e6b54a6b6d7b6dd3e7f4b84b15f09cfaf889f7dcd1f4f5cf79ec8cfca"
+          "value": "24c382200f961898469455d58b844f911d79cd34c473d48713666b7f71adbf13"
         },
         "urls": [
-          "https://dl.librewolf.net/librewolf/158.0.1-2/librewolf-158.0.1-2-windows-x86_64-portable.zip"
+          "https://dl.librewolf.net/librewolf/159.0-1/librewolf-159.0-1-windows-x86_64-portable.zip"
         ],
-        "signatureUrl": "https://dl.librewolf.net/librewolf/158.0.1-2/librewolf-158.0.1-2-windows-x86_64-portable.zip.sig"
+        "signatureUrl": "https://dl.librewolf.net/librewolf/159.0-1/librewolf-159.0-1-windows-x86_64-portable.zip.sig"
       },
       "placement": "native_package",
       "innerArchive": null,
       "source": "https://librewolf.dev/api/v1/repos/librewolf/bsys6/releases?limit=1",
-      "publishedAt": "2026-10-22T06:20:44Z"
+      "publishedAt": "2026-10-27T22:44:28Z"
     },
     {
       "target": "sky_kakapo",
-      "version": "158.0.1",
+      "version": "159.0",
       "channel": "stable",
       "cpuBuild": "sse3",
       "provider": "sky_kakapo",
       "artifact": {
-        "fileName": "skykakapo-158.0.1-2026102011.en-US.win64-sse3-cspgo.7z",
+        "fileName": "skykakapo-159.0-2026102520.en-US.win64-sse3-cspgo.7z",
         "format": "sevenzip",
         "size": null,
         "integrity": {
           "algorithm": "sha256",
-          "value": "2609eea734321e0001fced49895c9d61e366f0410fedc76603a0d74597ae498f"
+          "value": "60aa1463737ebc608f9246ee47e7e578a6cbc9afd8bd62c3eac48bc7094e3880"
         },
         "urls": [
-          "https://sourceforge.net/projects/skykakapo/files/158.0.1/skykakapo-158.0.1-2026102011.en-US.win64-sse3-cspgo.7z/download"
+          "https://sourceforge.net/projects/skykakapo/files/159.0/skykakapo-159.0-2026102520.en-US.win64-sse3-cspgo.7z/download"
         ],
         "signatureUrl": null
       },
@@ -468,30 +569,30 @@
     }
   ],
   "chromePlus": {
-    "version": "1.18.2",
+    "version": "1.18.3",
     "artifact": {
-      "fileName": "Chrome++_v1.18.2_x86_x64_arm64.7z",
+      "fileName": "Chrome++_v1.18.3_x86_x64_arm64.7z",
       "format": "sevenzip",
-      "size": 183612,
+      "size": 181011,
       "integrity": {
         "algorithm": "sha256",
-        "value": "574958acf99488554290dc8219a30a2dff9b56b3050edc394669162e03c49947"
+        "value": "bfcca14dd07fc9823a639f4a46b7c53ce11fc86ef1da19eab818c800cf49a159"
       },
       "urls": [
-        "https://github.com/Bush2021/chrome_plus/releases/download/1.18.2/Chrome%2B%2B_v1.18.2_x86_x64_arm64.7z"
+        "https://github.com/Bush2021/chrome_plus/releases/download/1.18.3/Chrome%2B%2B_v1.18.3_x86_x64_arm64.7z"
       ],
       "signatureUrl": null
     },
     "setdllArtifact": {
       "fileName": "setdll.7z",
       "format": "sevenzip",
-      "size": 274229,
+      "size": 271708,
       "integrity": {
         "algorithm": "sha256",
-        "value": "9287e91aabef08b81dea66a03118e1ee29cecd64f4340e6d210409450f39171e"
+        "value": "07a0dbd78062fdfbeff8806de7ea42e983c287367bd998abec070d600dfaf3f6"
       },
       "urls": [
-        "https://github.com/Bush2021/chrome_plus/releases/download/1.18.2/setdll.7z"
+        "https://github.com/Bush2021/chrome_plus/releases/download/1.18.3/setdll.7z"
       ],
       "signatureUrl": null
     }
