@@ -864,7 +864,14 @@ impl BrowserHarborApp {
         match self.state.save_if_dirty() {
             Ok(_) => true,
             Err(error) => {
-                self.status_message = Some(format!("自动保存失败：{error}"));
+                let message = if error.is_permission_denied() {
+                    localized(
+                        "自动保存失败：当前目录受系统权限保护。请将程序移至普通用户目录，或以管理员身份运行。",
+                    )
+                } else {
+                    format!("{}：{error}", localized("自动保存失败"))
+                };
+                self.status_message = Some(message);
                 false
             }
         }
@@ -1952,7 +1959,7 @@ impl BrowserHarborApp {
             });
             ui.localized_label(
                 RichText::new(
-                    "便携模式要求 EXE 所在目录可写；浏览器绝对路径在新电脑上仍需重新定位。",
+                    "便携模式要求 EXE 所在目录可写（避免放在 C 盘根目录或 Program Files 等受保护位置）；浏览器绝对路径在新电脑上仍需重新定位。",
                 )
                 .size(10.5)
                 .color(palette.muted),
@@ -1985,8 +1992,14 @@ impl BrowserHarborApp {
                     ));
                 }
                 Err(error) => {
-                    self.status_message =
-                        Some(format!("{}：{error}", localized("切换配置位置失败")));
+                    let message = if error.is_permission_denied() {
+                        localized(
+                            "切换配置位置失败：当前目录受系统权限保护（如 C 盘根目录或 Program Files）。请将程序移至普通用户目录（如 D 盘或 C:\\Tools），或右键以管理员身份运行。",
+                        )
+                    } else {
+                        format!("{}：{error}", localized("切换配置位置失败"))
+                    };
+                    self.status_message = Some(message);
                 }
             }
         }
@@ -6487,5 +6500,91 @@ mod tests {
             eframe::egui::FontDefinitions::builtin_font_names().is_empty(),
             "default font assets would regress the release size budget"
         );
+    }
+
+    #[test]
+    fn legacy_mismatched_profile_checks_healthy_without_manual_reselect() {
+        let directory = tempdir().unwrap();
+        let root = directory.path().join("Chrome");
+        let program = root.join("App");
+        fs::create_dir_all(&program).unwrap();
+        fs::create_dir_all(root.join("Profiles")).unwrap();
+        fs::copy(std::env::current_exe().unwrap(), program.join("chrome.exe")).unwrap();
+        fs::copy(
+            std::env::current_exe().unwrap(),
+            program.join("version.dll"),
+        )
+        .unwrap();
+        fs::write(
+            program.join("chrome++.ini"),
+            "[general]\r\ndata_dir=%app%\\..\\Profiles\r\ncache_dir=none\r\n",
+        )
+        .unwrap();
+
+        let config_path = directory.path().join("BrowserHarbor.json");
+        let store = ConfigStore::new(config_path.clone());
+        let mut value = serde_json::to_value(Settings::default()).unwrap();
+        value["schemaVersion"] = serde_json::json!(10);
+        value["selectedBrowser"] = serde_json::json!("chrome");
+        value["targets"]["chrome"]["browserRoot"] = serde_json::json!(root.to_string_lossy());
+        value["targets"]["chrome"]["browserDirectory"] =
+            serde_json::json!(program.to_string_lossy());
+        value["targets"]["chrome"]["dataDirectory"] =
+            serde_json::json!(root.join("Profiles").to_string_lossy());
+        value["targets"]["chrome"]["profileDirectory"] =
+            serde_json::json!(root.join("LegacyProfile").to_string_lossy());
+        fs::write(&config_path, serde_json::to_vec_pretty(&value).unwrap()).unwrap();
+
+        let loaded = store.load().unwrap();
+        let state = AppState::new(loaded, store);
+        let mut harness = harness_for(BrowserHarborApp::new(state));
+        harness.run();
+
+        harness
+            .get_by_role_and_label(Role::Button, "检查配置")
+            .click();
+        harness.run();
+
+        harness.get_by_role_and_label(Role::Label, "检查配置");
+        assert!(harness.query_by_label("检查结果：正常").is_some());
+    }
+
+    #[test]
+    fn global_settings_switch_shows_permission_guidance_when_access_denied() {
+        let directory = tempdir().unwrap();
+        let tool_root = directory.path().join("Tool");
+        fs::create_dir_all(&tool_root).unwrap();
+        let user_path = directory
+            .path()
+            .join("Local/browser-harbor/BrowserHarbor.json");
+        let portable_path = tool_root.join("BrowserHarbor.json");
+        let temp_file = tool_root.join("BrowserHarbor.json.tmp");
+        fs::write(&temp_file, b"read-only-stub").unwrap();
+        let mut permissions = fs::metadata(&temp_file).unwrap().permissions();
+        permissions.set_readonly(true);
+        fs::set_permissions(&temp_file, permissions).unwrap();
+
+        let state = AppState::with_config_paths(
+            Settings::default(),
+            ConfigStore::new(user_path.clone()),
+            tool_root,
+            user_path,
+            portable_path,
+        );
+        let mut harness = harness_for(BrowserHarborApp::new(state));
+        harness.run();
+        harness.get_by_label("全局设置").click();
+        harness.run();
+
+        harness
+            .get_by_role_and_label(Role::RadioButton, "程序目录（便携）")
+            .scroll_to_me();
+        harness.run();
+        harness
+            .get_by_role_and_label(Role::RadioButton, "程序目录（便携）")
+            .click();
+        harness.run();
+
+        harness.get_by_label_contains("当前目录受系统权限保护");
     }
 }
