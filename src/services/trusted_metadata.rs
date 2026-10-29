@@ -318,7 +318,22 @@ mod tests {
     fn embedded_metadata_is_signed_and_covers_every_installable_target() {
         let metadata = TrustedMetadata::load_embedded().unwrap();
 
-        assert_eq!(metadata.releases.len(), 19);
+        for target in TargetId::ALL {
+            let spec = target.spec();
+            for channel in spec.channels {
+                for cpu_build in spec.cpu_builds {
+                    let expected = !(target == TargetId::Edge && *channel == ReleaseChannel::Beta);
+                    assert_eq!(
+                        metadata.release(target, *channel, *cpu_build).is_some(),
+                        expected,
+                        "unexpected metadata coverage for {} / {} / {}",
+                        target.display_name(),
+                        channel.display_name(),
+                        cpu_build.display_name()
+                    );
+                }
+            }
+        }
         assert!(metadata.chrome_plus.is_some());
         assert!(metadata.libportable.is_some());
         assert!(metadata.expires_at > metadata.generated_at);
