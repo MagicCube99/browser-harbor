@@ -42,6 +42,7 @@ jobs:
           } else {
             Write-Host "metadata-live does not exist yet; using the embedded baseline."
           }
+          exit 0
 
       - name: Refresh official metadata
         shell: pwsh
