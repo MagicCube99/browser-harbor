@@ -7,10 +7,11 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write
 
 concurrency:
   group: signed-metadata
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   refresh:
@@ -63,6 +64,8 @@ jobs:
 
       - name: Commit changed metadata
         shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           git config user.name "Browser Harbor Metadata Bot"
           git config user.email "metadata-bot@users.noreply.github.com"
@@ -76,4 +79,17 @@ jobs:
             exit $LASTEXITCODE
           }
           git commit -m "chore(metadata): refresh signed browser releases"
-          git push origin HEAD:main
+          $branch = "metadata/refresh-${{ github.run_id }}"
+          git switch -c $branch
+          git push origin "HEAD:refs/heads/$branch"
+          $pr = gh pr create `
+            --base main `
+            --head $branch `
+            --title "chore(metadata): refresh signed browser releases" `
+            --body "Automated signed release metadata refresh."
+          gh pr checks $pr --watch --interval 10
+          if ($LASTEXITCODE -ne 0) {
+            exit $LASTEXITCODE
+          }
+          gh pr merge $pr --squash
+          git push origin --delete $branch
