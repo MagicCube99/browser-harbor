@@ -1480,11 +1480,12 @@ impl BrowserHarborApp {
                 } else {
                     "快捷方式：关"
                 };
+                let browser_root_hint = browser_root_hint(target);
                 let (root_changed, shortcut_response) = path_field_with_action(
                     ui,
                     "浏览器根目录",
                     &mut config.browser_root,
-                    r"例如 .\Helium 或 D:\Tools\Browser\Helium",
+                    &browser_root_hint,
                     shortcut_toggle_label,
                     true,
                 );
@@ -4057,6 +4058,11 @@ fn path_field(ui: &mut egui::Ui, label: &str, path: &mut Option<PathBuf>, hint: 
     .0
 }
 
+fn browser_root_hint(target: TargetId) -> String {
+    let name = target.display_name();
+    format!(r"例如 .\{name} 或 D:\Tools\Browser\{name}")
+}
+
 fn path_field_with_placeholder(
     ui: &mut egui::Ui,
     label: &str,
@@ -5784,6 +5790,18 @@ mod tests {
         assert_eq!(
             harness.state().state().draft(),
             harness.state().state().saved()
+        );
+    }
+
+    #[test]
+    fn browser_root_hint_follows_the_selected_target() {
+        assert_eq!(
+            super::browser_root_hint(TargetId::Helium),
+            r"例如 .\Helium 或 D:\Tools\Browser\Helium"
+        );
+        assert_eq!(
+            super::browser_root_hint(TargetId::Chrome),
+            r"例如 .\Chrome 或 D:\Tools\Browser\Chrome"
         );
     }
 

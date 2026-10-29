@@ -155,9 +155,6 @@ fn exact_translation(text: &str) -> Option<&'static str> {
         "浏览器安装或升级时会自动下载、校验并放置 Chrome++，无需手工下载" => {
             "Installing or upgrading the browser automatically downloads, verifies, and installs Chrome++; no manual download is needed"
         }
-        "例如 .\\Helium 或 D:\\Tools\\Browser\\Helium" => {
-            "Example: .\\Helium or D:\\Tools\\Browser\\Helium"
-        }
         "例如 .\\Chrome\\App" => "Example: .\\Chrome\\App",
         "可单独覆盖" => "Optional override",
         "留空时由便携运行时决定" => "Leave empty for the portable runtime default",
@@ -614,6 +611,9 @@ fn dynamic_translation(text: &str) -> String {
     if let Some(rest) = text.strip_prefix("将备份 ") {
         return format!("Back up {rest}");
     }
+    if let Some(rest) = text.strip_prefix("例如 ") {
+        return format!("Example: {}", rest.replace(" 或 ", " or "));
+    }
     if let Some(rest) = text.strip_prefix("已恢复默认配置；原文件备份到 ") {
         return format!("Defaults restored; original backed up to {rest}");
     }
@@ -664,6 +664,10 @@ mod tests {
                 "缓存总目录；浏览器缓存会在此目录下按 Profile 存放。已安装的浏览器修改路径后，请在“检查配置”中修正。"
             ),
             "Cache root. Browser cache is stored here by Profile. For an installed browser, use Check configuration after changing this path."
+        );
+        assert_eq!(
+            localized(r"例如 .\Helium 或 D:\Tools\Browser\Helium"),
+            r"Example: .\Helium or D:\Tools\Browser\Helium"
         );
         assert_eq!(
             localized("代理请求超时（秒）"),
