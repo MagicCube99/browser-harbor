@@ -2,6 +2,20 @@
 
 [English](CHANGELOG.md) · 简体中文
 
+## v0.6.0 — 2026-10-29
+
+### 新增
+
+- Chrome 和 Edge 增加 Stable、Beta 渠道。
+- Firefox 增加 Stable、ESR、Beta 渠道。
+- Brave 增加 Stable、Beta 渠道，并改为按官方 Release 名称选择，不再依赖不可靠的 prerelease 标记。
+- 安装前探测本地 EXE 所属渠道；同一 Browser Root 中替换其他渠道时先要求确认。
+
+### 修复
+
+- Libportable 支持已实测的 Firefox 159 与 160 Beta，继续拒绝未验证的 161 Nightly。
+- 缓存目录输入框改为简短的“留空跟随 Profile”，完整说明仍保留在悬停提示中。
+
 ## v0.5.4 — 2026-10-29
 
 ### 调整

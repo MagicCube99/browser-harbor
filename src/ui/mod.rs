@@ -311,6 +311,7 @@ pub struct BrowserHarborApp {
     same_version_prompt: Option<SameVersionPrompt>,
     chrome_plus_update_prompt: Option<ChromePlusUpdatePrompt>,
     browser_upgrade_prompt: Option<BrowserUpgradePrompt>,
+    channel_mismatch_prompt: Option<ChannelMismatchPrompt>,
     program_identity: ProgramIdentity,
     identity_prompt: Option<IdentityPrompt>,
     operation: Option<OperationController>,
@@ -361,6 +362,15 @@ struct IdentityPrompt {
 }
 
 #[derive(Debug, Clone)]
+struct ChannelMismatchPrompt {
+    target: TargetId,
+    current_channel: String,
+    selected_channel: ReleaseChannel,
+    local_version: String,
+    product_name: String,
+}
+
+#[derive(Debug, Clone)]
 struct HealthDialog {
     target: TargetId,
     report: HealthReport,
@@ -389,6 +399,7 @@ impl BrowserHarborApp {
             same_version_prompt: None,
             chrome_plus_update_prompt: None,
             browser_upgrade_prompt: None,
+            channel_mismatch_prompt: None,
             program_identity: ProgramIdentity::NoExecutable,
             identity_prompt: None,
             operation: None,
@@ -738,6 +749,27 @@ impl BrowserHarborApp {
         let current = self.detected_local_version(target).cloned();
         let upstream = self.latest_check(target, &config).cloned();
         let chrome_plus_update = self.chrome_plus_pending_update(target, &config);
+        let product_name = match &self.program_identity {
+            ProgramIdentity::Match { product_name } | ProgramIdentity::Unknown { product_name } => {
+                product_name.as_str()
+            }
+            ProgramIdentity::NoExecutable | ProgramIdentity::Mismatch { .. } => "",
+        };
+        if let Some(current) = &current
+            && let Some(current_channel) =
+                installed_channel_label(target, &current.version, product_name)
+            && current_channel != config.channel.display_name()
+        {
+            self.status_message = Some("现有安装渠道与当前选择不一致，等待确认".to_owned());
+            self.channel_mismatch_prompt = Some(ChannelMismatchPrompt {
+                target,
+                current_channel: current_channel.to_owned(),
+                selected_channel: config.channel,
+                local_version: current.version.clone(),
+                product_name: product_name.to_owned(),
+            });
+            return;
+        }
         if let (Some(current), Some(upstream)) = (current, upstream)
             && compare_versions(&current.version, &upstream.version) == VersionRelation::Same
         {
@@ -1504,7 +1536,13 @@ impl BrowserHarborApp {
                     } else {
                         "缓存总目录；浏览器缓存会在此目录下按 Profile 存放。已安装的浏览器修改路径后，请在“检查配置”中修正。"
                     };
-                    changed |= path_field(ui, "缓存目录", &mut config.cache_directory, cache_hint);
+                    changed |= path_field_with_placeholder(
+                        ui,
+                        "缓存目录",
+                        &mut config.cache_directory,
+                        "留空跟随 Profile",
+                        cache_hint,
+                    );
                 } else {
                     config.cache_directory = None;
                     readonly_field(
@@ -2944,6 +2982,68 @@ impl BrowserHarborApp {
         }
     }
 
+    fn show_channel_mismatch_prompt(&mut self, ctx: &egui::Context) {
+        let Some(prompt) = self.channel_mismatch_prompt.clone() else {
+            return;
+        };
+        if prompt.target != self.state.selected_target() {
+            self.channel_mismatch_prompt = None;
+            return;
+        }
+        let palette = match ctx.theme() {
+            egui::Theme::Light => LIGHT_PALETTE,
+            egui::Theme::Dark => DARK_PALETTE,
+        };
+        let mut confirm = false;
+        let mut cancel = false;
+        let response = egui::Modal::new(egui::Id::unique("channel_mismatch_confirmation"))
+            .frame(
+                Frame::new()
+                    .fill(palette.surface)
+                    .stroke(Stroke::new(1.0, palette.border))
+                    .corner_radius(CornerRadius::same(8))
+                    .inner_margin(16),
+            )
+            .show(ctx, |ui| {
+                ui.set_width(430.0);
+                ui.heading("渠道与现有安装不一致");
+                ui.add_space(7.0);
+                ui.localized_label(format!(
+                    "当前安装：{} {} {}",
+                    prompt.target.display_name(),
+                    prompt.current_channel,
+                    prompt.local_version
+                ));
+                if !prompt.product_name.is_empty() {
+                    ui.localized_label(format!("程序标识：{}", prompt.product_name));
+                }
+                ui.localized_label(format!("本次选择：{}", prompt.selected_channel.display_name()));
+                ui.add_space(8.0);
+                ui.localized_label(
+                    RichText::new(
+                        "继续会替换当前程序目录，但保留用户数据和缓存。若要并行保留两个渠道，请先修改 Browser Root。",
+                    )
+                    .color(palette.warning),
+                );
+                ui.add_space(12.0);
+                ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                    confirm = ui.localized_button("仍然替换").clicked();
+                    cancel = ui.localized_button("返回修改").clicked();
+                });
+            });
+        if response.should_close() {
+            cancel = true;
+        }
+        if confirm {
+            self.channel_mismatch_prompt = None;
+            self.start_operation(OperationMode::Install, false);
+        } else if cancel {
+            self.channel_mismatch_prompt = None;
+            self.operation_phase = None;
+            self.status_message = Some("已取消渠道切换".to_owned());
+        }
+    }
+
     fn show_footer(&mut self, ui: &mut egui::Ui) {
         let palette = palette(ui);
         let operation_active = self.operation.is_some();
@@ -3264,6 +3364,7 @@ impl eframe::App for BrowserHarborApp {
                         });
                 });
             });
+        self.show_channel_mismatch_prompt(ui.ctx());
         self.show_same_version_prompt(ui.ctx());
         self.show_chrome_plus_update_prompt(ui.ctx());
         self.show_browser_upgrade_prompt(ui.ctx());
@@ -3636,6 +3737,52 @@ fn identity_warning(identity: &ProgramIdentity, target: TargetId) -> Option<Stri
     ))
 }
 
+fn installed_channel_label(
+    target: TargetId,
+    version: &str,
+    product_name: &str,
+) -> Option<&'static str> {
+    let product = product_name.to_ascii_lowercase();
+    let version = version.to_ascii_lowercase();
+    match target {
+        TargetId::Chrome if product.contains("chrome") => Some(if product.contains("canary") {
+            "Canary"
+        } else if product.contains("dev") {
+            "Dev"
+        } else if product.contains("beta") {
+            "Beta"
+        } else {
+            "Stable"
+        }),
+        TargetId::Edge if product.contains("edge") => Some(if product.contains("canary") {
+            "Canary"
+        } else if product.contains("dev") {
+            "Dev"
+        } else if product.contains("beta") {
+            "Beta"
+        } else {
+            "Stable"
+        }),
+        TargetId::Brave if product.contains("brave") => Some(if product.contains("nightly") {
+            "Nightly"
+        } else if product.contains("dev") {
+            "Dev"
+        } else if product.contains("beta") {
+            "Beta"
+        } else {
+            "Stable"
+        }),
+        TargetId::Firefox => Some(if version.contains("esr") {
+            "ESR"
+        } else if version.contains('b') {
+            "Beta"
+        } else {
+            "Stable"
+        }),
+        _ => None,
+    }
+}
+
 fn provider_label(provider: ProviderKind) -> &'static str {
     match provider {
         ProviderKind::ChromeOmaha => "Google Omaha",
@@ -3898,7 +4045,35 @@ fn field_label(ui: &mut egui::Ui, text: &str, width: f32) -> egui::Response {
 }
 
 fn path_field(ui: &mut egui::Ui, label: &str, path: &mut Option<PathBuf>, hint: &str) -> bool {
-    path_field_with_picker(ui, label, path, hint, folder_picker::pick_folder)
+    path_field_impl(
+        ui,
+        label,
+        path,
+        hint,
+        hint,
+        folder_picker::pick_folder,
+        None,
+    )
+    .0
+}
+
+fn path_field_with_placeholder(
+    ui: &mut egui::Ui,
+    label: &str,
+    path: &mut Option<PathBuf>,
+    placeholder: &str,
+    hint: &str,
+) -> bool {
+    path_field_impl(
+        ui,
+        label,
+        path,
+        placeholder,
+        hint,
+        folder_picker::pick_folder,
+        None,
+    )
+    .0
 }
 
 fn create_auto_shortcut(
@@ -3917,16 +4092,6 @@ fn create_auto_shortcut(
         .map_err(|error| error.to_string())
 }
 
-fn path_field_with_picker(
-    ui: &mut egui::Ui,
-    label: &str,
-    path: &mut Option<PathBuf>,
-    hint: &str,
-    picker: fn(&str, Option<&Path>) -> Option<PathBuf>,
-) -> bool {
-    path_field_impl(ui, label, path, hint, picker, None).0
-}
-
 fn path_field_with_action(
     ui: &mut egui::Ui,
     label: &str,
@@ -3940,6 +4105,7 @@ fn path_field_with_action(
         label,
         path,
         hint,
+        hint,
         folder_picker::pick_folder,
         Some((action, action_enabled)),
     )
@@ -3949,6 +4115,7 @@ fn path_field_impl(
     ui: &mut egui::Ui,
     label: &str,
     path: &mut Option<PathBuf>,
+    placeholder: &str,
     hint: &str,
     picker: fn(&str, Option<&Path>) -> Option<PathBuf>,
     action: Option<(&str, bool)>,
@@ -3966,7 +4133,7 @@ fn path_field_impl(
             .add_sized(
                 [text_width, 24.0],
                 egui::TextEdit::singleline(&mut text)
-                    .hint_text(localized(hint))
+                    .hint_text(localized(placeholder))
                     .margin(Margin {
                         left: 4,
                         right: 30,
@@ -4063,7 +4230,7 @@ mod tests {
     use super::{
         BODY_FONT_SIZE, BrowserHarborApp, DetailTab, LIGHT_PALETTE, ProgramIdentity, StatusTone,
         chrome_plus_update_button_label, chrome_plus_update_hover, configure_context,
-        create_auto_shortcut, relation_status, set_language,
+        create_auto_shortcut, installed_channel_label, relation_status, set_language,
     };
     use crate::{
         app::{
@@ -4347,7 +4514,9 @@ mod tests {
         let mut harness = harness_for(BrowserHarborApp::new(state));
         harness.run();
 
-        harness.get_by_role(Role::ComboBox).click();
+        harness
+            .get_by_role_and_label(Role::ComboBox, "浏览器")
+            .click();
         harness.run();
         harness
             .get_by_role(Role::ListBox)
@@ -4383,6 +4552,38 @@ mod tests {
     }
 
     #[test]
+    fn installed_channel_is_inferred_before_replacing_program_files() {
+        assert_eq!(
+            installed_channel_label(TargetId::Chrome, "158.0.1", "Google Chrome Beta"),
+            Some("Beta")
+        );
+        assert_eq!(
+            installed_channel_label(TargetId::Edge, "157.0.1", "Microsoft Edge Beta"),
+            Some("Beta")
+        );
+        assert_eq!(
+            installed_channel_label(TargetId::Brave, "1.100.1", "Brave Nightly"),
+            Some("Nightly")
+        );
+        assert_eq!(
+            installed_channel_label(TargetId::Brave, "1.99.1", "Brave Beta"),
+            Some("Beta")
+        );
+        assert_eq!(
+            installed_channel_label(TargetId::Firefox, "153.6.0esr", "Firefox"),
+            Some("ESR")
+        );
+        assert_eq!(
+            installed_channel_label(TargetId::Firefox, "160.0b2", "Firefox"),
+            Some("Beta")
+        );
+        assert_eq!(
+            installed_channel_label(TargetId::Firefox, "159.0", "Firefox"),
+            Some("Stable")
+        );
+    }
+
+    #[test]
     fn chromeplus_tab_is_disabled_for_firefox_and_enabled_for_chrome() {
         let mut harness = harness();
         harness.run();
@@ -4398,7 +4599,9 @@ mod tests {
                 .is_disabled()
         );
 
-        harness.get_by_role(Role::ComboBox).click();
+        harness
+            .get_by_role_and_label(Role::ComboBox, "浏览器")
+            .click();
         harness.run();
         harness
             .get_by_role(Role::ListBox)
@@ -4418,7 +4621,9 @@ mod tests {
     fn overview_integrates_channel_and_build_selectors() {
         let mut harness = harness();
         harness.run();
-        harness.get_by_role(Role::ComboBox).click();
+        harness
+            .get_by_role_and_label(Role::ComboBox, "浏览器")
+            .click();
         harness.run();
         harness
             .get_by_role(Role::ListBox)
@@ -4461,6 +4666,57 @@ mod tests {
         assert_eq!(
             harness.state().state().saved().targets[&TargetId::Thorium].cpu_build,
             CpuBuild::Avx512
+        );
+    }
+
+    #[test]
+    fn beta_channels_are_exposed_for_selected_targets() {
+        let mut harness = harness();
+        harness.run();
+
+        for target in [
+            TargetId::Brave,
+            TargetId::Chrome,
+            TargetId::Edge,
+            TargetId::Firefox,
+        ] {
+            harness
+                .get_by_role_and_label(Role::ComboBox, "浏览器")
+                .click();
+            harness.run();
+            harness
+                .get_by_role(Role::ListBox)
+                .get_by_label(target.display_name())
+                .click();
+            harness.run();
+            harness
+                .get_by_role_and_label(Role::ComboBox, "渠道")
+                .click();
+            harness.run();
+            harness
+                .get_by_role(Role::ListBox)
+                .get_by_label("Beta")
+                .click();
+            harness.run();
+
+            assert_eq!(
+                harness.state().state().saved().targets[&target].channel,
+                ReleaseChannel::Beta
+            );
+        }
+
+        harness
+            .get_by_role_and_label(Role::ComboBox, "渠道")
+            .click();
+        harness.run();
+        harness
+            .get_by_role(Role::ListBox)
+            .get_by_label("ESR")
+            .click();
+        harness.run();
+        assert_eq!(
+            harness.state().state().saved().targets[&TargetId::Firefox].channel,
+            ReleaseChannel::Esr
         );
     }
 
@@ -4909,7 +5165,9 @@ mod tests {
     fn chromeplus_full_exposes_common_ini_controls() {
         let mut harness = harness();
         harness.run();
-        harness.get_by_role(Role::ComboBox).click();
+        harness
+            .get_by_role_and_label(Role::ComboBox, "浏览器")
+            .click();
         harness.run();
         harness
             .get_by_role(Role::ListBox)
@@ -5291,7 +5549,9 @@ mod tests {
         ] {
             let mut harness = harness();
             harness.run();
-            harness.get_by_role(Role::ComboBox).click();
+            harness
+                .get_by_role_and_label(Role::ComboBox, "浏览器")
+                .click();
             harness.run();
             harness
                 .get_by_role(Role::ListBox)
@@ -5447,7 +5707,9 @@ mod tests {
     fn skykakapo_uses_app_and_shows_profile_followed_cache() {
         let mut harness = harness();
         harness.run();
-        harness.get_by_role(Role::ComboBox).click();
+        harness
+            .get_by_role_and_label(Role::ComboBox, "浏览器")
+            .click();
         harness.run();
         harness
             .get_by_role(Role::ListBox)

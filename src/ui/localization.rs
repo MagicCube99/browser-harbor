@@ -167,6 +167,7 @@ fn exact_translation(text: &str) -> Option<&'static str> {
         "留空跟随 Profile（推荐）" => "Leave empty to follow Profile (recommended)",
         "跟随 PortableData" => "Follow PortableData",
         "跟随 Profile" => "Follow Profile",
+        "留空跟随 Profile" => "Leave empty to follow Profile",
         "安装后自动在浏览器根目录创建快捷方式；点击关闭" => {
             "Create a shortcut in the Browser Root after installation; click to disable"
         }
@@ -345,11 +346,21 @@ fn exact_translation(text: &str) -> Option<&'static str> {
         "继续替换" => "Continue replacement",
         "保留当前版本" => "Keep current version",
         "浏览器身份不一致" => "Browser identity mismatch",
+        "渠道与现有安装不一致" => "Installed channel differs",
         "继续安装或替换可能覆盖另一个浏览器的程序文件。建议重新选择目录；只有确认这是自定义构建时才继续。" => {
             "Installing or replacing may overwrite another browser's program files. Choose another directory unless this is an intentional custom build."
         }
+        "继续会替换当前程序目录，但保留用户数据和缓存。若要并行保留两个渠道，请先修改 Browser Root。" => {
+            "Continuing replaces the current program directory while preserving user data and cache. To keep both channels, change Browser Root first."
+        }
         "仍然继续" => "Continue anyway",
+        "仍然替换" => "Replace anyway",
+        "返回修改" => "Go back",
         "重新选择目录" => "Choose another directory",
+        "现有安装渠道与当前选择不一致，等待确认" => {
+            "The installed channel differs from the current selection; waiting for confirmation"
+        }
+        "已取消渠道切换" => "Channel change cancelled",
         "自动保存已开启" => "Autosave on",
         "界面语言" => "Interface language",
         "切换界面语言" => "Switch interface language",
@@ -500,6 +511,9 @@ fn dynamic_translation(text: &str) -> String {
         ("当前浏览器：", "Current browser: "),
         ("浏览器：", "Browser: "),
         ("当前目标：", "Current target: "),
+        ("当前安装：", "Currently installed: "),
+        ("程序标识：", "Program identity: "),
+        ("本次选择：", "Selected for install: "),
         ("目录中的程序：", "Program in directory: "),
         ("目录中的程序是 ", "Directory contains "),
         ("版本来源：", "Version source: "),
@@ -640,6 +654,10 @@ mod tests {
         assert_eq!(localized("检查更新"), "Check for updates");
         assert_eq!(localized("加速站前缀"), "Accelerator prefix");
         assert_eq!(localized("当前配置文件"), "Current config file");
+        assert_eq!(
+            localized("留空跟随 Profile"),
+            "Leave empty to follow Profile"
+        );
         assert_eq!(localized("检查配置"), "Check configuration");
         assert_eq!(
             localized(
@@ -650,6 +668,10 @@ mod tests {
         assert_eq!(
             localized("代理请求超时（秒）"),
             "Proxy request timeout (seconds)"
+        );
+        assert_eq!(
+            localized("渠道与现有安装不一致"),
+            "Installed channel differs"
         );
         assert_eq!(translate("签名发布清单"), "Signed release manifest");
         assert_eq!(

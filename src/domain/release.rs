@@ -23,6 +23,7 @@ pub enum ReleaseChannel {
     Stable,
     Esr,
     Release,
+    Beta,
 }
 
 impl ReleaseChannel {
@@ -31,6 +32,7 @@ impl ReleaseChannel {
             Self::Stable => "Stable",
             Self::Esr => "ESR",
             Self::Release => "Release",
+            Self::Beta => "Beta",
         }
     }
 }
