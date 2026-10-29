@@ -1,5 +1,5 @@
 use browser_harbor::{
-    domain::{release::CpuBuild, settings::NetworkSettings, target::TargetId},
+    domain::{settings::NetworkSettings, target::TargetId},
     providers::ProviderResolver,
     services::http::HttpClient,
 };
@@ -9,18 +9,15 @@ use browser_harbor::{
 async fn resolves_every_supported_browser_target() {
     let http = HttpClient::new(&NetworkSettings::default()).unwrap();
     let resolver = ProviderResolver::new(http);
-    let mut selections = TargetId::ALL
-        .into_iter()
-        .map(|target| {
-            let spec = target.spec();
-            (target, spec.default_channel, spec.default_cpu_build)
-        })
-        .collect::<Vec<_>>();
-    selections.push((
-        TargetId::Iceweasel,
-        browser_harbor::domain::release::ReleaseChannel::Release,
-        CpuBuild::X64,
-    ));
+    let mut selections = Vec::new();
+    for target in TargetId::ALL {
+        let spec = target.spec();
+        for channel in spec.channels {
+            for cpu_build in spec.cpu_builds {
+                selections.push((target, *channel, *cpu_build));
+            }
+        }
+    }
 
     for (target, channel, cpu_build) in selections {
         let release = resolver

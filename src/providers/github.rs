@@ -14,11 +14,13 @@ use crate::{
     services::http::{HttpClient, github_api_candidates},
 };
 
-const RELEASES_PER_PAGE: u32 = 30;
+const RELEASES_PER_PAGE: u32 = 50;
 
 #[derive(Debug, Clone, Deserialize)]
 struct GitHubRelease {
     tag_name: String,
+    #[serde(default)]
+    name: String,
     draft: bool,
     prerelease: bool,
     published_at: Option<String>,
@@ -41,7 +43,7 @@ pub async fn resolve(
     cpu_build: CpuBuild,
 ) -> Result<ReleaseDescriptor, ProviderError> {
     let (owner, repository) = github_repository(target);
-    let releases = if target == TargetId::Iceweasel {
+    let releases = if matches!(target, TargetId::Brave | TargetId::Iceweasel) {
         let url = format!(
             "https://api.github.com/repos/{owner}/{repository}/releases?per_page={RELEASES_PER_PAGE}"
         );
@@ -102,20 +104,39 @@ fn select_release(
 ) -> Result<GitHubRelease, ProviderError> {
     let mut releases = releases
         .into_iter()
-        .filter(|release| !release.draft && !release.prerelease)
+        .filter(|release| !release.draft)
         .collect::<Vec<_>>();
-    if target != TargetId::Iceweasel {
-        return releases.pop().ok_or(ProviderError::NoCompatibleAsset);
+    match target {
+        TargetId::Brave => {
+            let prefix = match channel {
+                ReleaseChannel::Stable => "Release ",
+                ReleaseChannel::Beta => "Beta ",
+                _ => return Err(ProviderError::UnsupportedSelection),
+            };
+            releases
+                .into_iter()
+                .find(|release| release.name.starts_with(prefix))
+                .ok_or(ProviderError::NoCompatibleAsset)
+        }
+        TargetId::Iceweasel => {
+            releases.retain(|release| !release.prerelease);
+            releases.sort_by_key(|release| Reverse(version_key(&release.tag_name)));
+            releases
+                .into_iter()
+                .find(|release| match channel {
+                    ReleaseChannel::Esr => release.tag_name.to_ascii_lowercase().contains("esr"),
+                    ReleaseChannel::Release => {
+                        !release.tag_name.to_ascii_lowercase().contains("esr")
+                    }
+                    _ => false,
+                })
+                .ok_or(ProviderError::NoCompatibleAsset)
+        }
+        _ => releases
+            .into_iter()
+            .rfind(|release| !release.prerelease)
+            .ok_or(ProviderError::NoCompatibleAsset),
     }
-    releases.sort_by_key(|release| Reverse(version_key(&release.tag_name)));
-    releases
-        .into_iter()
-        .find(|release| match channel {
-            ReleaseChannel::Esr => release.tag_name.to_ascii_lowercase().contains("esr"),
-            ReleaseChannel::Release => !release.tag_name.to_ascii_lowercase().contains("esr"),
-            ReleaseChannel::Stable => false,
-        })
-        .ok_or(ProviderError::NoCompatibleAsset)
 }
 
 fn select_asset(
@@ -206,6 +227,7 @@ mod tests {
     fn release(tag: &str, assets: &[&str]) -> GitHubRelease {
         GitHubRelease {
             tag_name: tag.to_owned(),
+            name: tag.to_owned(),
             draft: false,
             prerelease: false,
             published_at: None,
@@ -275,6 +297,31 @@ mod tests {
             select_release(releases, TargetId::Iceweasel, ReleaseChannel::Release).unwrap();
         assert_eq!(esr.tag_name, "v115.44.0esr");
         assert_eq!(mainstream.tag_name, "v158.0.1");
+    }
+
+    #[test]
+    fn brave_channel_selection_uses_release_names_not_prerelease_flags() {
+        let mut nightly = release("v1.101.1", &[]);
+        nightly.name = "Nightly v1.101.1".to_owned();
+        nightly.prerelease = true;
+        let mut beta = release("v1.99.53", &[]);
+        beta.name = "Beta v1.99.53".to_owned();
+        let mut stable = release("v1.98.62", &[]);
+        stable.name = "Release v1.98.62".to_owned();
+        let releases = vec![nightly, beta, stable];
+
+        assert_eq!(
+            select_release(releases.clone(), TargetId::Brave, ReleaseChannel::Stable)
+                .unwrap()
+                .tag_name,
+            "v1.98.62"
+        );
+        assert_eq!(
+            select_release(releases, TargetId::Brave, ReleaseChannel::Beta)
+                .unwrap()
+                .tag_name,
+            "v1.99.53"
+        );
     }
 
     #[test]

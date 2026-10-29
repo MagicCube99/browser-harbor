@@ -1,7 +1,10 @@
 use std::sync::{Arc, atomic::AtomicBool};
 
 use browser_harbor::{
-    domain::{runtime::ChromePlusConfig, settings::NetworkSettings, target::TargetId},
+    domain::{
+        release::ReleaseChannel, runtime::ChromePlusConfig, settings::NetworkSettings,
+        target::TargetId,
+    },
     infra::ini::read_ini,
     providers::ProviderResolver,
     runtime,
@@ -13,6 +16,133 @@ use browser_harbor::{
     },
 };
 use tempfile::tempdir;
+
+#[tokio::test]
+#[ignore = "downloads newly enabled Beta/ESR channels and their portable runtimes"]
+async fn installs_new_release_channels() {
+    let network = NetworkSettings::default();
+    let http = HttpClient::new(&network).unwrap();
+    let resolver = ProviderResolver::new(http.clone());
+    let root = tempdir().unwrap();
+    let browser_downloader = Downloader::new(
+        HttpClient::download_client(&network).unwrap(),
+        std::env::temp_dir().join("pbm-live-channel-cache"),
+        Arc::new(AtomicBool::new(false)),
+    );
+    let runtime_downloader = Downloader::new(
+        HttpClient::download_client(&network).unwrap(),
+        std::env::temp_dir().join("pbm-live-channel-runtime-cache"),
+        Arc::new(AtomicBool::new(false)),
+    );
+    let chrome_plus = runtime::chromeplus::resolve_latest(&http).await.unwrap();
+    let chrome_plus_archive = runtime_downloader
+        .download(&chrome_plus.artifact, &network, |_| {})
+        .await
+        .unwrap();
+    let setdll_archive = runtime_downloader
+        .download(&chrome_plus.setdll_artifact, &network, |_| {})
+        .await
+        .unwrap();
+    let libportable = runtime::libportable::resolve_latest(&http).await.unwrap();
+    let libportable_archive = runtime_downloader
+        .download(&libportable.artifact, &network, |_| {})
+        .await
+        .unwrap();
+
+    for target in [TargetId::Chrome, TargetId::Edge, TargetId::Brave] {
+        let release = resolver
+            .resolve(
+                target,
+                ReleaseChannel::Beta,
+                target.spec().default_cpu_build,
+            )
+            .await
+            .unwrap();
+        assert_eq!(release.channel, ReleaseChannel::Beta);
+        let artifact = browser_downloader
+            .download(&release.artifact, &network, |_| {})
+            .await
+            .unwrap();
+        let receipt = InstallService::install(InstallRequest {
+            release,
+            browser_artifact: artifact,
+            browser_root: root.path().join(target.display_name()),
+            browser_directory: None,
+            data_directory: None,
+            profile_directory: None,
+            cache_directory: None,
+            chrome_plus_config: ChromePlusConfig::default(),
+            chrome_plus_runtime: Some(RuntimeArchive {
+                archive_path: chrome_plus_archive.clone(),
+                version: chrome_plus.version.clone(),
+                artifact: chrome_plus.artifact.clone(),
+                setdll_archive: (target == TargetId::Edge).then(|| setdll_archive.clone()),
+                setdll_artifact: (target == TargetId::Edge)
+                    .then(|| chrome_plus.setdll_artifact.clone()),
+            }),
+            libportable_runtime: None,
+        })
+        .unwrap_or_else(|error| {
+            panic!(
+                "{} Beta install failed: {error}\n{error:?}",
+                target.display_name()
+            )
+        });
+
+        locate_executable(target, &receipt.browser_directory).unwrap_or_else(|error| {
+            panic!("{} Beta executable missing: {error}", target.display_name())
+        });
+        assert!(receipt.data_directory.is_dir());
+        assert_eq!(
+            receipt.chrome_plus_version.as_deref(),
+            Some(chrome_plus.version.as_str())
+        );
+    }
+
+    for channel in [ReleaseChannel::Esr, ReleaseChannel::Beta] {
+        let release = resolver
+            .resolve(
+                TargetId::Firefox,
+                channel,
+                TargetId::Firefox.spec().default_cpu_build,
+            )
+            .await
+            .unwrap();
+        assert_eq!(release.channel, channel);
+        let artifact = browser_downloader
+            .download(&release.artifact, &network, |_| {})
+            .await
+            .unwrap();
+        let browser_root = root
+            .path()
+            .join(format!("Firefox-{}", channel.display_name()));
+        let receipt = InstallService::install(InstallRequest {
+            release,
+            browser_artifact: artifact,
+            browser_root: browser_root.clone(),
+            browser_directory: None,
+            data_directory: None,
+            profile_directory: None,
+            cache_directory: None,
+            chrome_plus_config: ChromePlusConfig::default(),
+            chrome_plus_runtime: None,
+            libportable_runtime: Some(RuntimeArchive {
+                archive_path: libportable_archive.clone(),
+                version: libportable.version.clone(),
+                artifact: libportable.artifact.clone(),
+                setdll_archive: None,
+                setdll_artifact: None,
+            }),
+        })
+        .unwrap_or_else(|error| {
+            panic!("Firefox {} install failed: {error}", channel.display_name())
+        });
+
+        assert_eq!(receipt.browser_directory, browser_root.join("App"));
+        assert!(receipt.browser_directory.join("portable64.dll").is_file());
+        assert!(receipt.browser_directory.join("portable.ini").is_file());
+    }
+}
 
 #[tokio::test]
 #[ignore = "downloads Zen and Libportable, then performs a real injection in a temporary directory"]

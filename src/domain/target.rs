@@ -61,6 +61,12 @@ const APP_PROFILES_LAYOUT: TargetLayout = TargetLayout {
     cache: r"Profiles\Cache",
 };
 const STABLE: &[ReleaseChannel] = &[ReleaseChannel::Stable];
+const BETA: &[ReleaseChannel] = &[ReleaseChannel::Stable, ReleaseChannel::Beta];
+const FIREFOX_CHANNELS: &[ReleaseChannel] = &[
+    ReleaseChannel::Stable,
+    ReleaseChannel::Esr,
+    ReleaseChannel::Beta,
+];
 const ICEWEASEL_CHANNELS: &[ReleaseChannel] = &[ReleaseChannel::Esr, ReleaseChannel::Release];
 const X64_ONLY: &[CpuBuild] = &[CpuBuild::X64];
 const THORIUM_BUILDS: &[CpuBuild] = &[
@@ -86,7 +92,7 @@ const TARGET_SPECS: [TargetSpec; 14] = [
         provider: ProviderKind::GitHubRelease,
         runtime: RuntimeKind::ChromePlusFull,
         default_channel: ReleaseChannel::Stable,
-        channels: STABLE,
+        channels: BETA,
         default_cpu_build: CpuBuild::X64,
         cpu_builds: X64_ONLY,
         placement: ProgramPlacement::NativePackage,
@@ -134,7 +140,7 @@ const TARGET_SPECS: [TargetSpec; 14] = [
         provider: ProviderKind::ChromeOmaha,
         runtime: RuntimeKind::ChromePlusFull,
         default_channel: ReleaseChannel::Stable,
-        channels: STABLE,
+        channels: BETA,
         default_cpu_build: CpuBuild::X64,
         cpu_builds: X64_ONLY,
         placement: ProgramPlacement::App,
@@ -152,7 +158,7 @@ const TARGET_SPECS: [TargetSpec; 14] = [
         provider: ProviderKind::EdgeEnterprise,
         runtime: RuntimeKind::ChromePlusFull,
         default_channel: ReleaseChannel::Stable,
-        channels: STABLE,
+        channels: BETA,
         default_cpu_build: CpuBuild::X64,
         cpu_builds: X64_ONLY,
         placement: ProgramPlacement::EdgeVersioned,
@@ -176,7 +182,7 @@ const TARGET_SPECS: [TargetSpec; 14] = [
         provider: ProviderKind::Mozilla,
         runtime: RuntimeKind::Libportable,
         default_channel: ReleaseChannel::Stable,
-        channels: STABLE,
+        channels: FIREFOX_CHANNELS,
         default_cpu_build: CpuBuild::X64,
         cpu_builds: X64_ONLY,
         placement: ProgramPlacement::App,
@@ -883,6 +889,27 @@ mod tests {
     fn iceweasel_and_thorium_expose_target_specific_choices() {
         use super::ReleaseChannel;
 
+        assert_eq!(
+            TargetId::Chrome.spec().channels,
+            &[ReleaseChannel::Stable, ReleaseChannel::Beta]
+        );
+        assert_eq!(
+            TargetId::Edge.spec().channels,
+            &[ReleaseChannel::Stable, ReleaseChannel::Beta]
+        );
+        assert_eq!(
+            TargetId::Firefox.spec().channels,
+            &[
+                ReleaseChannel::Stable,
+                ReleaseChannel::Esr,
+                ReleaseChannel::Beta
+            ]
+        );
+        assert_eq!(
+            TargetId::Brave.spec().channels,
+            &[ReleaseChannel::Stable, ReleaseChannel::Beta]
+        );
+        assert_eq!(TargetId::Catsxp.spec().channels, &[ReleaseChannel::Stable]);
         assert_eq!(
             TargetId::Iceweasel.spec().channels,
             &[ReleaseChannel::Esr, ReleaseChannel::Release]

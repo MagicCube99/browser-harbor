@@ -2,6 +2,20 @@
 
 [简体中文](CHANGELOG.zh-CN.md) · English
 
+## v0.6.0 — 2026-10-29
+
+### Added
+
+- Chrome and Edge now offer Stable and Beta channels.
+- Firefox now offers Stable, ESR, and Beta channels.
+- Brave now offers Stable and Beta channels, selected by official release names instead of unreliable prerelease flags.
+- Installation now detects the channel of the existing local executable and asks before replacing a different channel in the same Browser Root.
+
+### Fixed
+
+- Libportable now accepts tested Firefox 159 and 160 Beta builds while still rejecting untested 161 Nightly.
+- The cache-directory input now shows a short “Leave empty to follow Profile” placeholder while retaining the full hover explanation.
+
 ## v0.5.4 — 2026-10-29
 
 ### Changed

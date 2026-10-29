@@ -20,8 +20,8 @@ use crate::{
 
 const CHROME_UPDATE_URL: &str = "https://tools.google.com/service/update2";
 const EDGE_UPDATE_URL: &str = "https://edgeupdates.microsoft.com/api/products?view=enterprise";
-const EDGE_CDP_UPDATE_URL: &str = "https://msedge.api.cdp.microsoft.com/api/v2/contents/Browser/namespaces/Default/names/msedge-stable-win-x64/versions/latest?action=select";
-const EDGE_CDP_DOWNLOAD_URL: &str = "https://msedge.api.cdp.microsoft.com/api/v1.1/internal/contents/Browser/namespaces/Default/names/msedge-stable-win-x64/versions/{version}/files?action=GenerateDownloadInfo";
+const EDGE_CDP_UPDATE_URL: &str = "https://msedge.api.cdp.microsoft.com/api/v2/contents/Browser/namespaces/Default/names/{name}/versions/latest?action=select";
+const EDGE_CDP_DOWNLOAD_URL: &str = "https://msedge.api.cdp.microsoft.com/api/v1.1/internal/contents/Browser/namespaces/Default/names/{name}/versions/{version}/files?action=GenerateDownloadInfo";
 const FIREFOX_VERSIONS_URL: &str = "https://product-details.mozilla.org/1.0/firefox_versions.json";
 
 pub async fn resolve_chrome(
@@ -29,11 +29,16 @@ pub async fn resolve_chrome(
     channel: ReleaseChannel,
     cpu_build: CpuBuild,
 ) -> Result<ReleaseDescriptor, ProviderError> {
-    if channel != ReleaseChannel::Stable || cpu_build != CpuBuild::X64 {
+    let channel_tag = match channel {
+        ReleaseChannel::Stable => "x64-stable",
+        ReleaseChannel::Beta => "x64-beta",
+        _ => return Err(ProviderError::UnsupportedSelection),
+    };
+    if cpu_build != CpuBuild::X64 {
         return Err(ProviderError::UnsupportedSelection);
     }
     let xml = http
-        .post_xml(CHROME_UPDATE_URL, chrome_omaha_request())
+        .post_xml(CHROME_UPDATE_URL, chrome_omaha_request(channel_tag))
         .await?;
     let parsed = parse_chrome_omaha(&xml)?;
     Ok(ReleaseDescriptor {
@@ -62,10 +67,18 @@ pub async fn resolve_edge(
     channel: ReleaseChannel,
     cpu_build: CpuBuild,
 ) -> Result<ReleaseDescriptor, ProviderError> {
-    if channel != ReleaseChannel::Stable || cpu_build != CpuBuild::X64 {
+    let cdp_name = match channel {
+        ReleaseChannel::Stable => "msedge-stable-win-x64",
+        ReleaseChannel::Beta => "msedge-beta-win-x64",
+        _ => return Err(ProviderError::UnsupportedSelection),
+    };
+    if cpu_build != CpuBuild::X64 {
         return Err(ProviderError::UnsupportedSelection);
     }
     let enterprise = async {
+        if channel == ReleaseChannel::Beta {
+            return Err(ProviderError::UnsupportedSelection);
+        }
         let value = http.get_json::<Value>(EDGE_UPDATE_URL).await?;
         parse_edge_enterprise(&value)
     }
@@ -73,9 +86,10 @@ pub async fn resolve_edge(
     let parsed = match enterprise {
         Ok(parsed) => parsed,
         Err(_) => {
+            let update_url = EDGE_CDP_UPDATE_URL.replace("{name}", cdp_name);
             let update = http
                 .post_json::<Value>(
-                    EDGE_CDP_UPDATE_URL,
+                    &update_url,
                     &serde_json::json!({
                         "targetingAttributes": {
                             "IsInternalUser": true,
@@ -89,7 +103,9 @@ pub async fn resolve_edge(
                 .as_str()
                 .ok_or(ProviderError::NoCompatibleAsset)?
                 .to_owned();
-            let download_url = EDGE_CDP_DOWNLOAD_URL.replace("{version}", &version);
+            let download_url = EDGE_CDP_DOWNLOAD_URL
+                .replace("{name}", cdp_name)
+                .replace("{version}", &version);
             let items = http
                 .post_json::<Vec<Value>>(&download_url, &serde_json::json!({}))
                 .await?;
@@ -122,13 +138,22 @@ pub async fn resolve_firefox(
     channel: ReleaseChannel,
     cpu_build: CpuBuild,
 ) -> Result<ReleaseDescriptor, ProviderError> {
-    if channel != ReleaseChannel::Stable || cpu_build != CpuBuild::X64 {
+    if !matches!(
+        channel,
+        ReleaseChannel::Stable | ReleaseChannel::Esr | ReleaseChannel::Beta
+    ) || cpu_build != CpuBuild::X64
+    {
         return Err(ProviderError::UnsupportedSelection);
     }
     let versions = http
         .get_json::<FirefoxVersions>(FIREFOX_VERSIONS_URL)
         .await?;
-    let version = versions.latest_firefox_version;
+    let version = match channel {
+        ReleaseChannel::Stable => versions.latest_firefox_version,
+        ReleaseChannel::Beta => versions.latest_firefox_devel_version,
+        ReleaseChannel::Esr => versions.firefox_esr,
+        _ => return Err(ProviderError::UnsupportedSelection),
+    };
     let sums_url = format!(
         "https://download-installer.cdn.mozilla.net/pub/firefox/releases/{version}/SHA256SUMS"
     );
@@ -165,6 +190,10 @@ pub async fn resolve_firefox(
 struct FirefoxVersions {
     #[serde(rename = "LATEST_FIREFOX_VERSION")]
     latest_firefox_version: String,
+    #[serde(rename = "LATEST_FIREFOX_DEVEL_VERSION")]
+    latest_firefox_devel_version: String,
+    #[serde(rename = "FIREFOX_ESR")]
+    firefox_esr: String,
 }
 
 #[derive(Debug)]
@@ -176,17 +205,18 @@ struct ChromeArtifact {
     urls: Vec<String>,
 }
 
-fn chrome_omaha_request() -> String {
-    r#"<?xml version="1.0" encoding="UTF-8"?>
-<request protocol="3.0" updater="Omaha" updaterversion="1.3.36.372" shell_version="1.3.36.352" ismachine="0" sessionid="{11111111-1111-1111-1111-111111111111}" installsource="taggedmi" requestid="{11111111-1111-1111-1111-111111111111}" dedup="cr" domainjoined="0">
+fn chrome_omaha_request(channel_tag: &str) -> String {
+    format!(
+        r#"<?xml version="1.0" encoding="UTF-8"?>
+<request protocol="3.0" updater="Omaha" updaterversion="1.3.36.372" shell_version="1.3.36.352" ismachine="0" sessionid="{{11111111-1111-1111-1111-111111111111}}" installsource="taggedmi" requestid="{{11111111-1111-1111-1111-111111111111}}" dedup="cr" domainjoined="0">
   <hw physmemory="16" sse="1" sse2="1" sse3="1" ssse3="1" sse41="1" sse42="1" avx="1"/>
   <os platform="win" version="10.0.26100.1742" arch="x64"/>
-  <app version="" appid="{8A69D345-D564-463C-AFF1-A69D9E530F96}" ap="x64-stable">
+  <app version="" appid="{{8A69D345-D564-463C-AFF1-A69D9E530F96}}" ap="{channel_tag}">
     <updatecheck/>
     <data name="install" index="empty"/>
   </app>
 </request>"#
-        .to_owned()
+    )
 }
 
 fn parse_chrome_omaha(xml: &str) -> Result<ChromeArtifact, ProviderError> {
@@ -313,7 +343,7 @@ fn parse_edge_cdp(version: &str, items: &[Value]) -> Result<EdgeArtifact, Provid
 }
 
 fn parse_edge_enterprise(value: &Value) -> Result<EdgeArtifact, ProviderError> {
-    let stable = value
+    let product = value
         .as_array()
         .and_then(|products| {
             products
@@ -321,7 +351,7 @@ fn parse_edge_enterprise(value: &Value) -> Result<EdgeArtifact, ProviderError> {
                 .find(|product| product["Product"] == "Stable")
         })
         .ok_or(ProviderError::NoCompatibleAsset)?;
-    let release = stable["Releases"]
+    let release = product["Releases"]
         .as_array()
         .and_then(|releases| {
             releases.iter().find(|release| {
@@ -444,7 +474,10 @@ mod tests {
     use base64::Engine;
     use serde_json::json;
 
-    use super::{parse_chrome_omaha, parse_edge_cdp, parse_edge_enterprise, parse_sha256sums};
+    use super::{
+        chrome_omaha_request, parse_chrome_omaha, parse_edge_cdp, parse_edge_enterprise,
+        parse_sha256sums,
+    };
 
     #[test]
     fn omaha_parser_extracts_version_size_hash_and_official_urls() {
@@ -456,6 +489,7 @@ mod tests {
         assert_eq!(parsed.size, 527_126_440);
         assert_eq!(parsed.sha256.len(), 64);
         assert_eq!(parsed.urls.len(), 1);
+        assert!(chrome_omaha_request("x64-beta").contains(r#"ap="x64-beta""#));
     }
 
     #[test]

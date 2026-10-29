@@ -209,9 +209,11 @@ async fn refresh(
                     cpu_build.display_name()
                 );
                 let descriptor = resolve_target(&provider, target, *channel, *cpu_build).await?;
-                releases.push(
-                    ensure_release_integrity(descriptor, &baseline, &downloader, &network).await?,
-                );
+                if let Some(descriptor) =
+                    ensure_release_integrity(descriptor, &baseline, &downloader, &network).await?
+                {
+                    releases.push(descriptor);
+                }
             }
         }
     }
@@ -352,21 +354,22 @@ async fn ensure_release_integrity(
     baseline: &TrustedMetadata,
     downloader: &Downloader,
     network: &NetworkSettings,
-) -> Result<ReleaseDescriptor, Box<dyn std::error::Error>> {
+) -> Result<Option<ReleaseDescriptor>, Box<dyn std::error::Error>> {
     if descriptor
         .artifact
         .urls
         .iter()
         .any(|url| contains_transient_query(url))
     {
-        return Err(format!(
-            "{} release uses a transient download URL",
-            descriptor.target.display_name()
-        )
-        .into());
+        println!(
+            "Skipping {} / {} because its live CDP URL is transient",
+            descriptor.target.display_name(),
+            descriptor.channel.display_name()
+        );
+        return Ok(None);
     }
     if descriptor.artifact.integrity.is_some() {
-        return Ok(descriptor);
+        return Ok(Some(descriptor));
     }
     if let Some(previous) =
         baseline.release(descriptor.target, descriptor.channel, descriptor.cpu_build)
@@ -375,13 +378,13 @@ async fn ensure_release_integrity(
         && previous.artifact.integrity.is_some()
     {
         descriptor.artifact.integrity = previous.artifact.integrity.clone();
-        return Ok(descriptor);
+        return Ok(Some(descriptor));
     }
     let path = downloader
         .download(&descriptor.artifact, network, |_| {})
         .await?;
     descriptor.artifact.integrity = Some(Integrity::Sha256(sha256_file(&path)?));
-    Ok(descriptor)
+    Ok(Some(descriptor))
 }
 
 fn contains_transient_query(url: &str) -> bool {
