@@ -1304,13 +1304,25 @@ impl BrowserHarborApp {
         } else {
             relation_status(detected_version.is_some(), upstream.is_some(), relation)
         };
-        let install_label = match relation {
-            VersionRelation::Same => "重新下载并替换",
-            VersionRelation::UpstreamNewer => "下载并升级",
-            VersionRelation::UpstreamOlder | VersionRelation::Different => "下载上游版本",
-            VersionRelation::Unknown if incomplete_install => "重新下载并安装",
-            VersionRelation::Unknown if displayed_version.is_some() => "检查并安装/升级",
-            VersionRelation::Unknown => "下载并安装",
+        let local_package_selected = config.local_package.is_some();
+        let install_label = if local_package_selected {
+            match relation {
+                VersionRelation::Same => "使用本地包重新安装",
+                VersionRelation::UpstreamNewer => "使用本地包升级",
+                VersionRelation::UpstreamOlder | VersionRelation::Different => "使用本地包安装",
+                VersionRelation::Unknown if incomplete_install => "使用本地包重新安装",
+                VersionRelation::Unknown if displayed_version.is_some() => "使用本地包安装/升级",
+                VersionRelation::Unknown => "使用本地包安装",
+            }
+        } else {
+            match relation {
+                VersionRelation::Same => "重新下载并替换",
+                VersionRelation::UpstreamNewer => "下载并升级",
+                VersionRelation::UpstreamOlder | VersionRelation::Different => "下载上游版本",
+                VersionRelation::Unknown if incomplete_install => "重新下载并安装",
+                VersionRelation::Unknown if displayed_version.is_some() => "检查并安装/升级",
+                VersionRelation::Unknown => "下载并安装",
+            }
         };
         let can_start = self.operation.is_none()
             && self.startup_error.is_none()
@@ -1322,6 +1334,7 @@ impl BrowserHarborApp {
         let mut requested_action = None;
         let mut requested_target = None;
         let mut create_shortcut = false;
+        let mut local_package_status = None;
         let upstream_color = if upstream.is_some() {
             palette.text
         } else {
@@ -1477,13 +1490,16 @@ impl BrowserHarborApp {
                     requested_action = Some(OperationMode::Install);
                 }
                 let package_label = if config.local_package.is_some() {
-                    "更换本地包"
+                    "更换本地安装包"
                 } else {
-                    "载入本地包"
+                    "选择本地安装包"
                 };
                 let package_hint = config.local_package.as_ref().map_or_else(
-                    || "选择本地安装包（可选）".to_owned(),
-                    |path| format!("当前本地包：{}", path.display()),
+                    || {
+                        "选择当前浏览器、渠道和构建对应的官方安装包；安装时仍会校验版本、大小和摘要，并可能需要联网准备便携运行时"
+                            .to_owned()
+                    },
+                    |path| format!("当前本地安装包：{}；点击更换", path.display()),
                 );
                 let package = ui
                     .localized_button(package_label)
@@ -1492,7 +1508,8 @@ impl BrowserHarborApp {
                     pick_local_package = true;
                 }
                 package.context_menu(|ui| {
-                    if config.local_package.is_some() && ui.localized_button("清除本地包").clicked()
+                    if config.local_package.is_some()
+                        && ui.localized_button("清除本地安装包").clicked()
                     {
                         clear_local_package = true;
                         ui.close();
@@ -1505,15 +1522,41 @@ impl BrowserHarborApp {
                     config.local_package.as_deref(),
                 )
             {
-                config.local_package = Some(selected);
+                config.local_package = Some(selected.clone());
                 local_package_changed = true;
+                local_package_status = Some(if self.state.draft().language == Language::English {
+                    format!(
+                        "Selected {} {} {} local package: {}",
+                        target.display_name(),
+                        config.channel.display_name(),
+                        config.cpu_build.display_name(),
+                        selected.display()
+                    )
+                } else {
+                    format!(
+                        "已选择 {} {} {} 本地安装包：{}",
+                        target.display_name(),
+                        config.channel.display_name(),
+                        config.cpu_build.display_name(),
+                        selected.display()
+                    )
+                });
             }
             if clear_local_package {
                 config.local_package = None;
                 local_package_changed = true;
+                local_package_status = Some(if self.state.draft().language == Language::English {
+                    "Local package cleared; the next install will download the browser package."
+                        .to_owned()
+                } else {
+                    "已清除本地安装包；下次安装将重新下载浏览器安装包。".to_owned()
+                });
             }
             metadata_changed | local_package_changed
         });
+        if let Some(message) = local_package_status {
+            self.status_message = Some(message);
+        }
 
         ui.add_space(4.0);
         let (path_changed, check_configuration) = section_with_action(
@@ -4922,7 +4965,7 @@ mod tests {
 
         let check = harness.get_by_label("检查更新").rect();
         let install = harness.get_by_label("下载并安装").rect();
-        let local = harness.get_by_label("载入本地包").rect();
+        let local = harness.get_by_label("选择本地安装包").rect();
         assert!((check.center().y - install.center().y).abs() < 1.0);
         assert!((install.center().y - local.center().y).abs() < 1.0);
         assert!(check.max.x < install.min.x && install.max.x < local.min.x);
@@ -5011,7 +5054,29 @@ mod tests {
         let mut harness = harness();
         harness.run();
 
-        harness.get_by_label("载入本地包");
+        harness.get_by_label("选择本地安装包");
+    }
+
+    #[test]
+    fn selected_local_package_changes_action_names() {
+        let directory = tempdir().unwrap();
+        let mut settings = Settings::default();
+        settings
+            .targets
+            .get_mut(&TargetId::Firefox)
+            .unwrap()
+            .local_package = Some(directory.path().join("Firefox-package.exe"));
+        let state = AppState::new(
+            settings,
+            ConfigStore::new(directory.path().join("BrowserHarbor.json")),
+        );
+        let mut harness = harness_for(BrowserHarborApp::new(state));
+        harness.run();
+
+        harness.get_by_label("更换本地安装包");
+        harness.get_by_label("使用本地包安装");
+        assert!(harness.query_by_label("选择本地安装包").is_none());
+        assert!(harness.query_by_label("下载并安装").is_none());
     }
 
     #[test]

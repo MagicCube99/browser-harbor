@@ -2,6 +2,17 @@
 
 [简体中文](CHANGELOG.zh-CN.md) · English
 
+## v0.6.5 — 2026-10-29
+
+### Changed
+
+- “Load local package” is now “Choose local installer package,” and the
+  follow-up action names no longer imply that the browser will be downloaded.
+- Local-package selection now shows the selected target, channel, build, and
+  path in the footer.
+- Mismatched local packages now report the expected browser, version, and file
+  name instead of a generic size or digest error.
+
 ## v0.6.4 — 2026-10-29
 
 ### Changed

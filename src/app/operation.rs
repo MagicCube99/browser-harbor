@@ -428,7 +428,7 @@ async fn run_operation(
         if !local.is_file() {
             return Err(format!("本地安装包不存在：{}", local.display()).into());
         }
-        crate::services::download::verify_artifact(local, &descriptor.artifact)?;
+        verify_local_package(local, &descriptor)?;
         local.clone()
     } else {
         download_artifact(
@@ -473,6 +473,40 @@ async fn run_operation(
     })
     .map_err(Box::<dyn std::error::Error + Send + Sync>::from)?;
     Ok(OperationResult::Installed(receipt))
+}
+
+fn verify_local_package(
+    path: &std::path::Path,
+    descriptor: &ReleaseDescriptor,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    let expected_package = format!(
+        "{} {} {} 的 {} {}",
+        descriptor.target.display_name(),
+        descriptor.channel.display_name(),
+        descriptor.cpu_build.display_name(),
+        descriptor.version,
+        descriptor.artifact.file_name
+    );
+    match crate::services::download::verify_artifact(path, &descriptor.artifact) {
+        Ok(()) => Ok(()),
+        Err(crate::services::ServiceError::SizeMismatch {
+            expected: expected_bytes,
+            actual: actual_bytes,
+        }) => Err(format!(
+            "本地安装包与当前目标不匹配：应为 {expected_package}；文件大小应为 {expected_bytes} 字节，实际为 {actual_bytes} 字节。"
+        )
+        .into()),
+        Err(crate::services::ServiceError::HashMismatch { .. }) => Err(format!(
+            "本地安装包摘要与当前目标不匹配：请确认版本、渠道和构建，并选择 {expected_package}。"
+        )
+        .into()),
+        Err(crate::services::ServiceError::Io { .. }) => Err(format!(
+            "无法读取本地安装包：{}",
+            path.display()
+        )
+        .into()),
+        Err(error) => Err(format!("本地安装包校验失败：{error}").into()),
+    }
 }
 
 fn requires_replacement_confirmation(
@@ -781,9 +815,12 @@ impl OperationPhase {
 
 #[cfg(test)]
 mod tests {
+    use std::fs;
+
     use super::{
         CachedReleaseMetadata, MetadataSource, OperationPhase, UPSTREAM_REUSE_SECONDS,
         require_expected_chrome_plus_version, requires_replacement_confirmation, unix_now,
+        verify_local_package,
     };
     use crate::domain::release::{
         ArchiveFormat, Artifact, CpuBuild, Integrity, ProgramPlacement, ProviderKind,
@@ -810,6 +847,22 @@ mod tests {
             source: "fixture".to_owned(),
             published_at: None,
         }
+    }
+
+    #[test]
+    fn local_package_mismatch_identifies_the_expected_target() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("wrong-package.zip");
+        fs::write(&path, b"two bytes").unwrap();
+
+        let error = verify_local_package(&path, &descriptor())
+            .unwrap_err()
+            .to_string();
+
+        assert!(error.contains("Brave Stable x64"));
+        assert!(error.contains("1.0.0"));
+        assert!(error.contains("brave.zip"));
+        assert!(error.contains("文件大小"));
     }
 
     #[test]
