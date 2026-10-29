@@ -207,8 +207,14 @@ fn exact_translation(text: &str) -> Option<&'static str> {
         "将 BrowserHarbor.json 保存在 Browser Harbor EXE 旁，可随程序一起带走" => {
             "Keep BrowserHarbor.json beside the Browser Harbor EXE so it can travel with the program"
         }
-        "便携模式要求 EXE 所在目录可写；浏览器绝对路径在新电脑上仍需重新定位。" => {
-            "Portable mode needs a writable EXE folder; moved browser paths may need relocation."
+        "便携模式要求 EXE 所在目录可写（避免放在 C 盘根目录或 Program Files 等受保护位置）；浏览器绝对路径在新电脑上仍需重新定位。" => {
+            "Portable mode requires a writable EXE directory (avoid protected paths like C:\\ or Program Files). Absolute browser paths still need relocation on a new PC."
+        }
+        "切换配置位置失败：当前目录受系统权限保护（如 C 盘根目录或 Program Files）。请将程序移至普通用户目录（如 D 盘或 C:\\Tools），或右键以管理员身份运行。" => {
+            "Failed to switch configuration location: The current directory is protected by Windows permissions (such as C:\\ or Program Files). Move Browser Harbor to a standard user directory (such as D:\\ or C:\\Tools), or run as administrator."
+        }
+        "自动保存失败：当前目录受系统权限保护。请将程序移至普通用户目录，或以管理员身份运行。" => {
+            "Autosave failed: The current directory is protected by Windows permissions. Move Browser Harbor to a standard user directory, or run as administrator."
         }
         "配置位置已切换" => "Configuration location changed",
         "切换配置位置失败" => "Could not change configuration location",
@@ -630,6 +636,11 @@ fn dynamic_translation(text: &str) -> String {
             )
             .replace("等待确认替换", "waiting for replacement confirmation");
     }
+    if text.starts_with("文件操作受系统权限保护（") {
+        return text
+            .replace("文件操作受系统权限保护（", "File operation was blocked by Windows permissions (")
+            .replace("）。请将浏览器根目录移至普通用户目录（如 D 盘或 C:\\Tools），或右键以管理员身份运行。", "). Move the browser root to a standard user directory (such as D:\\ or C:\\Tools), or run as administrator.");
+    }
     if text.contains(" 已安装") {
         return text
             .replace(" 已安装", " installed")
@@ -664,6 +675,18 @@ mod tests {
             "Leave empty to follow Profile"
         );
         assert_eq!(localized("检查配置"), "Check configuration");
+        assert_eq!(
+            localized(
+                "自动保存失败：当前目录受系统权限保护。请将程序移至普通用户目录，或以管理员身份运行。"
+            ),
+            "Autosave failed: The current directory is protected by Windows permissions. Move Browser Harbor to a standard user directory, or run as administrator."
+        );
+        assert_eq!(
+            localized(
+                "文件操作受系统权限保护（C:\\Program Files\\Chrome）。请将浏览器根目录移至普通用户目录（如 D 盘或 C:\\Tools），或右键以管理员身份运行。"
+            ),
+            "File operation was blocked by Windows permissions (C:\\Program Files\\Chrome). Move the browser root to a standard user directory (such as D:\\ or C:\\Tools), or run as administrator."
+        );
         assert_eq!(
             localized(
                 "缓存总目录；浏览器缓存会在此目录下按 Profile 存放。已安装的浏览器修改路径后，请在“检查配置”中修正。"

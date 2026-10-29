@@ -196,7 +196,17 @@ impl ConfigStore {
             }
         }
         for (target, config) in &mut settings.targets {
+            if target.spec().layout.data == target.spec().layout.profile {
+                if config.data_directory.is_some() {
+                    config.profile_directory = config.data_directory.clone();
+                } else if config.profile_directory.is_some() {
+                    config.data_directory = config.profile_directory.clone();
+                }
+            }
             config.fill_default_paths(*target);
+            if target.spec().layout.data == target.spec().layout.profile {
+                config.profile_directory = config.data_directory.clone();
+            }
         }
         Ok(settings)
     }
@@ -397,6 +407,18 @@ pub enum ConfigError {
         #[source]
         source: io::Error,
     },
+}
+
+impl ConfigError {
+    pub fn is_permission_denied(&self) -> bool {
+        match self {
+            Self::Write { source, .. } | Self::Read { source, .. } => {
+                source.kind() == std::io::ErrorKind::PermissionDenied
+                    || source.raw_os_error() == Some(5)
+            }
+            _ => false,
+        }
+    }
 }
 
 #[cfg(test)]
@@ -1048,5 +1070,33 @@ mod tests {
 
         assert!(matches!(error, ConfigError::Write { .. }));
         assert_eq!(fs::read(&path).unwrap(), previous);
+    }
+
+    #[test]
+    fn legacy_config_with_mismatched_profile_and_data_aligns_on_load() {
+        let directory = tempdir().unwrap();
+        let path = temp_path(&directory);
+        let store = ConfigStore::new(path.clone());
+        let mut value = serde_json::to_value(Settings::default()).unwrap();
+        value["schemaVersion"] = serde_json::json!(10);
+        value["selectedBrowser"] = serde_json::json!("chrome");
+        value["targets"]["chrome"]["browserRoot"] = serde_json::json!(r"D:\Tools\Chrome");
+        value["targets"]["chrome"]["browserDirectory"] = serde_json::json!(r"D:\Tools\Chrome\App");
+        value["targets"]["chrome"]["dataDirectory"] =
+            serde_json::json!(r"D:\Tools\Chrome\CustomData");
+        value["targets"]["chrome"]["profileDirectory"] =
+            serde_json::json!(r"D:\Tools\Chrome\OldProfiles");
+        fs::write(&path, serde_json::to_vec_pretty(&value).unwrap()).unwrap();
+
+        let loaded = store.load().unwrap();
+
+        assert_eq!(
+            loaded.targets[&TargetId::Chrome].data_directory,
+            Some(std::path::PathBuf::from(r"D:\Tools\Chrome\CustomData"))
+        );
+        assert_eq!(
+            loaded.targets[&TargetId::Chrome].profile_directory,
+            Some(std::path::PathBuf::from(r"D:\Tools\Chrome\CustomData"))
+        );
     }
 }

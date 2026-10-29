@@ -241,11 +241,13 @@ pub fn inspect(target: TargetId, config: &TargetConfig) -> HealthReport {
         config.data_directory.as_deref(),
         &mut items,
     );
-    inspect_directory(
-        HealthAspect::Profile,
-        config.profile_directory.as_deref(),
-        &mut items,
-    );
+    if target.spec().layout.data != target.spec().layout.profile {
+        inspect_directory(
+            HealthAspect::Profile,
+            config.profile_directory.as_deref(),
+            &mut items,
+        );
+    }
     inspect_directory(
         HealthAspect::Cache,
         config.cache_directory.as_deref(),
@@ -389,7 +391,10 @@ pub fn repair_chromeplus_paths(
     let (Some(root), Some(configured_program), Some(profile)) = (
         config.browser_root.as_deref(),
         config.browser_directory.as_deref(),
-        config.profile_directory.as_deref(),
+        config
+            .profile_directory
+            .as_deref()
+            .or(config.data_directory.as_deref()),
     ) else {
         return Err(RepairError::MissingPath);
     };
@@ -600,7 +605,10 @@ fn inspect_chrome_plus_config(program: &Path, config: &TargetConfig, items: &mut
             "chrome++.ini data_dir",
             &data_value,
             program,
-            config.profile_directory.as_deref(),
+            config
+                .data_directory
+                .as_deref()
+                .or(config.profile_directory.as_deref()),
             items,
         );
     }
@@ -1227,5 +1235,19 @@ mod tests {
         let relocated = relocate(TargetId::Chrome, &config, &new_root).unwrap();
 
         assert_eq!(relocated.data_directory, Some(new_root.join("Profiles")));
+    }
+
+    #[test]
+    fn inspect_chromeplus_uses_data_directory_when_profile_differs() {
+        let directory = tempdir().unwrap();
+        let root = chrome_root(&directory);
+        let mut config = TargetConfig::for_target(TargetId::Chrome);
+        config.browser_root = Some(root.clone());
+        config.derive_paths_from_root(TargetId::Chrome);
+        config.profile_directory = Some(root.join("LegacyProfile"));
+
+        let report = inspect(TargetId::Chrome, &config);
+
+        assert_eq!(report.state, HealthState::Healthy);
     }
 }

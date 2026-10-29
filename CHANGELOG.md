@@ -1,6 +1,16 @@
-# Changelog
+﻿# Changelog
 
 [简体中文](CHANGELOG.zh-CN.md) · English
+
+## v0.6.6 — 2026-10-29
+
+### Fixed
+
+- Fixed a configuration check false positive where upgraded legacy configs
+  drifted between internal profile and user data paths until manually reselected.
+- Added actionable guidance for Windows permission barriers when switching to
+  portable configuration mode or installing under protected directories like
+  C:\ or Program Files.
 
 ## v0.6.5 — 2026-10-29
 

@@ -286,6 +286,16 @@ async fn run_operation(
                     path.display()
                 )
                 .into(),
+                crate::services::install::InstallError::Io { path, source }
+                    if source.kind() == std::io::ErrorKind::PermissionDenied
+                        || source.raw_os_error() == Some(5) =>
+                {
+                    format!(
+                        "文件操作受系统权限保护（{}）。请将浏览器根目录移至普通用户目录（如 D 盘或 C:\\Tools），或右键以管理员身份运行。",
+                        path.display()
+                    )
+                    .into()
+                }
                 error => error.into(),
             }
         })?;
@@ -471,7 +481,21 @@ async fn run_operation(
         chrome_plus_runtime,
         libportable_runtime,
     })
-    .map_err(Box::<dyn std::error::Error + Send + Sync>::from)?;
+    .map_err(|error| -> Box<dyn std::error::Error + Send + Sync> {
+        match error {
+            crate::services::install::InstallError::Io { path, source }
+                if source.kind() == std::io::ErrorKind::PermissionDenied
+                    || source.raw_os_error() == Some(5) =>
+            {
+                format!(
+                    "文件操作受系统权限保护（{}）。请将浏览器根目录移至普通用户目录（如 D 盘或 C:\\Tools），或右键以管理员身份运行。",
+                    path.display()
+                )
+                .into()
+            }
+            error => Box::new(error),
+        }
+    })?;
     Ok(OperationResult::Installed(receipt))
 }
 
