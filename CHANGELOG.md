@@ -2,6 +2,19 @@
 
 [简体中文](CHANGELOG.zh-CN.md) · English
 
+## v0.6.2 — 2026-10-29
+
+### Added
+
+- Browser Harbor now checks the latest stable release at startup. When a newer
+  version exists, the footer version link gains an `↑` and opens the release page.
+
+### Fixed
+
+- Native folder and file pickers now canonicalize their starting directory and
+  fall back to the nearest existing parent, reducing transient Windows Shell
+  “folder unavailable” errors.
+
 ## v0.6.1 — 2026-10-29
 
 ### Fixed

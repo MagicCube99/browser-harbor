@@ -6,6 +6,7 @@ pub mod health;
 pub mod http;
 pub mod install;
 pub mod trusted_metadata;
+pub mod update_check;
 pub mod version_probe;
 
 use std::path::PathBuf;
