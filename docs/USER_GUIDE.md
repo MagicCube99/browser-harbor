@@ -13,7 +13,7 @@ Browser Harbor is a portable single EXE. It does not require installation or adm
 
 ## First launch
 
-1. Download `BrowserHarbor-0.6.4-x64.exe` from
+1. Download `BrowserHarbor-0.6.5-x64.exe` from
    [GitHub Releases](https://github.com/MagicCube99/browser-harbor/releases/latest)
    or the [Gitee mirror](https://gitee.com/MagicCube99/browser-harbor/releases).
 2. Run it from a writable folder.
@@ -51,13 +51,19 @@ Open the browser page and choose one of these actions:
 - **Check for updates**: refresh upstream release information.
 - **Download and install/upgrade**: download, verify, and install the selected target.
 - **Download again and replace**: replace the current program when the upstream version is the same.
-- **Load local package**: use an official package you already downloaded.
+- **Choose local installer package**: use an official package you already
+  downloaded. It must match the selected browser, channel, build, and upstream
+  version. Browser Harbor still verifies size, digest, and any required
+  signature, and may still need network access for portable runtimes.
 
 Browser Harbor checks the browser version and download integrity before changing the installation. Same-version replacement remains available but requires confirmation.
 
 If the selected channel differs from the channel detected in the existing local executable, Browser Harbor asks before replacing the program directory.
 
 The browser page checks the selected target, channel, and build once per session. A manual check is still available. An installation started within ten minutes can reuse the verified upstream result.
+
+Selecting a local installer does not install it immediately. Use **Install from
+local package** (or the corresponding reinstall/upgrade label) afterward.
 
 ## Directories
 
