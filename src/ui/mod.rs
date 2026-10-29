@@ -43,6 +43,7 @@ use crate::{
             HealthAspect, HealthReport, HealthState, ProgramIdentity, inspect,
             inspect_program_identity, relocate, repair_chromeplus_paths, repair_portable_paths,
         },
+        update_check::{LatestAppRelease, latest_release},
         version_probe::{VersionProbeError, locate_executable, probe_local_version},
     },
 };
@@ -317,6 +318,9 @@ pub struct BrowserHarborApp {
     operation: Option<OperationController>,
     operation_phase: Option<OperationPhase>,
     accelerator_input: String,
+    app_update_receiver: Option<std::sync::mpsc::Receiver<Option<LatestAppRelease>>>,
+    app_update_checked: bool,
+    available_app_update: Option<LatestAppRelease>,
     observed_window_position: Option<WindowPosition>,
     pending_window_position: Option<WindowPosition>,
     window_position_changed_at: Option<Instant>,
@@ -405,6 +409,9 @@ impl BrowserHarborApp {
             operation: None,
             operation_phase: None,
             accelerator_input: String::new(),
+            app_update_receiver: None,
+            app_update_checked: false,
+            available_app_update: None,
             observed_window_position,
             pending_window_position: None,
             window_position_changed_at: None,
@@ -425,6 +432,44 @@ impl BrowserHarborApp {
     #[cfg(test)]
     pub fn state(&self) -> &AppState {
         &self.state
+    }
+
+    fn maybe_check_app_update(&mut self) {
+        if !self.auto_check_enabled || self.app_update_checked {
+            return;
+        }
+        self.app_update_checked = true;
+        let network = self.state.draft().network.clone();
+        let (sender, receiver) = std::sync::mpsc::channel();
+        self.app_update_receiver = Some(receiver);
+        std::thread::spawn(move || {
+            let release = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .ok()
+                .and_then(|runtime| runtime.block_on(latest_release(&network)).ok());
+            let _ = sender.send(release);
+        });
+    }
+
+    fn poll_app_update(&mut self) {
+        let Some(receiver) = self.app_update_receiver.as_ref() else {
+            return;
+        };
+        match receiver.try_recv() {
+            Ok(Some(release)) => {
+                if compare_versions(env!("CARGO_PKG_VERSION"), &release.version)
+                    == VersionRelation::UpstreamNewer
+                {
+                    self.available_app_update = Some(release);
+                }
+                self.app_update_receiver = None;
+            }
+            Ok(None) | Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                self.app_update_receiver = None;
+            }
+            Err(std::sync::mpsc::TryRecvError::Empty) => {}
+        }
     }
 
     fn refresh_local_version(&mut self, target: TargetId) {
@@ -3050,6 +3095,10 @@ impl BrowserHarborApp {
         let operation_active = self.operation.is_some();
         let current_theme = self.state.draft().theme;
         let current_language = self.state.draft().language;
+        let available_app_update = self
+            .available_app_update
+            .as_ref()
+            .map(|release| release.version.clone());
         let mut requested_theme = None;
         let mut requested_language = None;
         let mut requested_tab = None;
@@ -3130,13 +3179,33 @@ impl BrowserHarborApp {
                             }
                         },
                         |ui| {
+                            let version_label = available_app_update.as_ref().map_or_else(
+                                || format!("ver {}", env!("CARGO_PKG_VERSION")),
+                                |_latest| format!("ver {} ↑", env!("CARGO_PKG_VERSION")),
+                            );
+                            let version_hover = available_app_update.as_ref().map_or_else(
+                                || localized("查看发布版本"),
+                                |latest| {
+                                    if current_language == Language::English {
+                                        format!(
+                                            "Browser Harbor {latest} is available; click to view releases"
+                                        )
+                                    } else {
+                                        format!("发现 Browser Harbor 新版 {latest}；点击查看发布版本")
+                                    }
+                                },
+                            );
                             ui.hyperlink_to(
-                                RichText::new(format!("ver {}", env!("CARGO_PKG_VERSION")))
+                                RichText::new(version_label)
                                     .size(10.5)
-                                    .color(palette.muted),
+                                    .color(if available_app_update.is_some() {
+                                        palette.accent
+                                    } else {
+                                        palette.muted
+                                    }),
                                 RELEASES_URL,
                             )
-                            .localized_hover("查看发布版本");
+                            .on_hover_text(version_hover);
                             ui.add_space(5.0);
 
                             let language_menu = egui::containers::menu::MenuButton::from_button(
@@ -3326,6 +3395,8 @@ impl BrowserHarborApp {
 impl eframe::App for BrowserHarborApp {
     fn ui(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
         set_language(self.state.draft().language);
+        self.maybe_check_app_update();
+        self.poll_app_update();
         self.poll_operation();
         let window_position = frame.winit_window().and_then(|window| {
             let position = window.outer_position().ok()?;
@@ -4778,6 +4849,17 @@ mod tests {
 
         assert!(version.rect().min.x > network.rect().max.x);
         assert!(version.rect().min.x > theme.rect().max.x);
+    }
+
+    #[test]
+    fn footer_marks_an_available_app_update() {
+        let mut harness = harness();
+        harness.state_mut().available_app_update = Some(super::LatestAppRelease {
+            version: "99.0.0".to_owned(),
+        });
+        harness.run();
+
+        harness.get_by_role_and_label(Role::Link, &format!("ver {} ↑", env!("CARGO_PKG_VERSION")));
     }
 
     #[test]

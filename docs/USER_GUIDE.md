@@ -13,7 +13,7 @@ Browser Harbor is a portable single EXE. It does not require installation or adm
 
 ## First launch
 
-1. Download `BrowserHarbor-0.6.1-x64.exe` from
+1. Download `BrowserHarbor-0.6.2-x64.exe` from
    [GitHub Releases](https://github.com/MagicCube99/browser-harbor/releases/latest)
    or the [Gitee mirror](https://gitee.com/MagicCube99/browser-harbor/releases).
 2. Run it from a writable folder.
@@ -38,6 +38,10 @@ If an older `manager.json` is found, the next launch migrates it to
 `BrowserHarbor.json`; conflicting files are preserved as numbered backups.
 
 Use the `中` / `EN` control in the footer to switch languages. The choice is saved immediately.
+
+At startup, Browser Harbor checks the latest stable release once. If a newer
+version exists, the footer version link gains an `↑`; click it to open the
+release page. Browser Harbor does not replace its own running EXE.
 
 ## Download and update
 
