@@ -19,13 +19,38 @@ pub fn pick_file(title: &str, current: Option<&Path>) -> Option<PathBuf> {
 }
 
 fn starting_directory(path: &Path) -> Option<PathBuf> {
-    existing_directory(path).or_else(|| path.parent().and_then(existing_directory))
+    existing_directory(path)
+        .and_then(|directory| {
+            (!has_same_stem_file(&directory))
+                .then_some(directory.clone())
+                .or_else(|| directory.parent().and_then(existing_directory))
+        })
+        .or_else(|| path.parent().and_then(existing_directory))
 }
 
 fn existing_directory(path: &Path) -> Option<PathBuf> {
     std::fs::canonicalize(path)
         .ok()
         .filter(|path| path.is_dir())
+}
+
+fn has_same_stem_file(directory: &Path) -> bool {
+    let Some(name) = directory.file_name().and_then(|name| name.to_str()) else {
+        return false;
+    };
+    let Some(parent) = directory.parent() else {
+        return false;
+    };
+    parent.read_dir().is_ok_and(|entries| {
+        entries.flatten().any(|entry| {
+            entry.file_type().is_ok_and(|file_type| file_type.is_file())
+                && entry
+                    .path()
+                    .file_stem()
+                    .and_then(|stem| stem.to_str())
+                    .is_some_and(|stem| stem.eq_ignore_ascii_case(name))
+        })
+    })
 }
 
 #[cfg(test)]
@@ -56,6 +81,19 @@ mod tests {
 
         assert_eq!(
             starting_directory(&file),
+            Some(fs::canonicalize(directory.path()).unwrap())
+        );
+    }
+
+    #[test]
+    fn same_stem_file_uses_the_parent_directory_to_avoid_shell_ambiguity() {
+        let directory = tempdir().unwrap();
+        let nested = directory.path().join("Iceweasel");
+        fs::create_dir(&nested).unwrap();
+        fs::write(directory.path().join("Iceweasel.zip"), b"test").unwrap();
+
+        assert_eq!(
+            starting_directory(&nested),
             Some(fs::canonicalize(directory.path()).unwrap())
         );
     }

@@ -2,6 +2,14 @@
 
 [简体中文](CHANGELOG.zh-CN.md) · English
 
+## v0.6.3 — 2026-10-29
+
+### Fixed
+
+- Folder selection no longer hits Windows Shell’s “folder unavailable” error
+  when a directory and an archive with the same base name exist side by side.
+  The picker opens their parent instead.
+
 ## v0.6.2 — 2026-10-29
 
 ### Added
