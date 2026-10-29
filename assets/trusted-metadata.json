@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": 1793250481,
+  "generatedAt": 1793262976,
   "expiresAt": 253402300799,
   "releases": [
     {
@@ -29,27 +29,27 @@
     },
     {
       "target": "brave",
-      "version": "1.99.53",
+      "version": "1.100.44",
       "channel": "beta",
       "cpuBuild": "x64",
       "provider": "git_hub_release",
       "artifact": {
-        "fileName": "brave-v1.99.53-win32-x64.zip",
+        "fileName": "brave-v1.100.44-win32-x64.zip",
         "format": "zip",
-        "size": 252985591,
+        "size": 253004559,
         "integrity": {
           "algorithm": "sha256",
-          "value": "e78ead90dc3b24acf5d2802930150c7656eade6d13d15d3b7c8e64271a54625d"
+          "value": "68f515a4201b0da6edc9ce53289a1947134e1487d2fa00ddb1b2ad14de847e9c"
         },
         "urls": [
-          "https://github.com/brave/brave-browser/releases/download/v1.99.53/brave-v1.99.53-win32-x64.zip"
+          "https://github.com/brave/brave-browser/releases/download/v1.100.44/brave-v1.100.44-win32-x64.zip"
         ],
         "signatureUrl": null
       },
       "placement": "native_package",
       "innerArchive": null,
-      "source": "https://github.com/brave/brave-browser/releases/tag/v1.99.53",
-      "publishedAt": "2026-10-28T05:21:08Z"
+      "source": "https://github.com/brave/brave-browser/releases/tag/v1.100.44",
+      "publishedAt": "2026-10-29T05:16:16Z"
     },
     {
       "target": "catsxp",
