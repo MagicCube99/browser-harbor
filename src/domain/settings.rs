@@ -157,6 +157,43 @@ impl TargetConfig {
         self.profile_directory = Some(root.join(layout.profile));
         self.cache_directory = (!target.cache_follows_profile()).then(|| root.join(layout.cache));
     }
+
+    pub fn effective_data_dir(&self, target: TargetId) -> Option<&std::path::Path> {
+        if target.spec().layout.data == target.spec().layout.profile {
+            self.data_directory
+                .as_deref()
+                .or(self.profile_directory.as_deref())
+        } else {
+            self.data_directory.as_deref()
+        }
+    }
+
+    pub fn effective_profile_dir(&self, target: TargetId) -> Option<&std::path::Path> {
+        if target.spec().layout.data == target.spec().layout.profile {
+            self.data_directory
+                .as_deref()
+                .or(self.profile_directory.as_deref())
+        } else {
+            self.profile_directory.as_deref()
+        }
+    }
+
+    pub fn set_user_data_dir(&mut self, target: TargetId, path: Option<std::path::PathBuf>) {
+        if target.spec().layout.data == target.spec().layout.profile {
+            self.profile_directory = path.clone();
+        }
+        self.data_directory = path;
+    }
+
+    pub fn align_single_directory_paths(&mut self, target: TargetId) {
+        if target.spec().layout.data == target.spec().layout.profile {
+            if let Some(data) = self.data_directory.clone() {
+                self.profile_directory = Some(data);
+            } else if let Some(profile) = self.profile_directory.clone() {
+                self.data_directory = Some(profile);
+            }
+        }
+    }
 }
 
 impl Default for TargetConfig {

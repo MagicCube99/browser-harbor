@@ -196,17 +196,9 @@ impl ConfigStore {
             }
         }
         for (target, config) in &mut settings.targets {
-            if target.spec().layout.data == target.spec().layout.profile {
-                if config.data_directory.is_some() {
-                    config.profile_directory = config.data_directory.clone();
-                } else if config.profile_directory.is_some() {
-                    config.data_directory = config.profile_directory.clone();
-                }
-            }
+            config.align_single_directory_paths(*target);
             config.fill_default_paths(*target);
-            if target.spec().layout.data == target.spec().layout.profile {
-                config.profile_directory = config.data_directory.clone();
-            }
+            config.align_single_directory_paths(*target);
         }
         Ok(settings)
     }
