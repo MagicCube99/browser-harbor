@@ -104,7 +104,7 @@ pub enum InstallError {
     ArtifactIntegrityMissing,
     #[error("archive extraction failed")]
     Archive(#[from] ArchiveError),
-    #[error("runtime preparation failed")]
+    #[error("runtime preparation failed: {0}")]
     Runtime(#[from] RuntimeError),
     #[error("process protection check failed")]
     Process(#[from] ProcessError),
