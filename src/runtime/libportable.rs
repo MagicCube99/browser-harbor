@@ -136,7 +136,7 @@ pub fn is_compatible(product: TargetId, version: &str) -> bool {
     match product {
         TargetId::Firefox | TargetId::LibreWolf => (115..=160).contains(&major),
         TargetId::Floorp => major == 12,
-        TargetId::Zen => major == 1 && minor == 23,
+        TargetId::Zen => major == 1 && (0..=40).contains(&minor),
         _ => false,
     }
 }
@@ -235,6 +235,7 @@ mod tests {
         assert!(is_compatible(TargetId::Floorp, "12.20.2"));
         assert!(is_compatible(TargetId::LibreWolf, "158.0.1"));
         assert!(is_compatible(TargetId::Zen, "1.23.4b"));
+        assert!(is_compatible(TargetId::Zen, "1.24b"));
         assert!(!is_compatible(TargetId::Floorp, "13.0"));
         assert!(!is_compatible(TargetId::Floorp, "159.0"));
         assert!(!is_compatible(TargetId::Firefox, "161.0a1"));

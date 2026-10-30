@@ -636,6 +636,18 @@ fn dynamic_translation(text: &str) -> String {
             )
             .replace("等待确认替换", "waiting for replacement confirmation");
     }
+    if text.starts_with("Libportable 暂不支持 ") {
+        return text
+            .replace("Libportable 暂不支持 ", "Libportable does not yet support ")
+            .replace(" 版本 ", " version ")
+            .replace(
+                "，请等待适配或选择兼容版本。",
+                "; wait for compatibility or select a supported version.",
+            );
+    }
+    if let Some(rest) = text.strip_prefix("便携运行时准备失败：") {
+        return format!("Portable runtime preparation failed: {rest}");
+    }
     if text.starts_with("文件操作受系统权限保护（") {
         return text
             .replace("文件操作受系统权限保护（", "File operation was blocked by Windows permissions (")
@@ -686,6 +698,14 @@ mod tests {
                 "文件操作受系统权限保护（C:\\Program Files\\Chrome）。请将浏览器根目录移至普通用户目录（如 D 盘或 C:\\Tools），或右键以管理员身份运行。"
             ),
             "File operation was blocked by Windows permissions (C:\\Program Files\\Chrome). Move the browser root to a standard user directory (such as D:\\ or C:\\Tools), or run as administrator."
+        );
+        assert_eq!(
+            localized("Libportable 暂不支持 Zen 版本 9.99，请等待适配或选择兼容版本。"),
+            "Libportable does not yet support Zen version 9.99; wait for compatibility or select a supported version."
+        );
+        assert_eq!(
+            localized("便携运行时准备失败：组件损坏"),
+            "Portable runtime preparation failed: 组件损坏"
         );
         assert_eq!(
             localized(

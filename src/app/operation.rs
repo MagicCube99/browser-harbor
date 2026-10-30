@@ -493,6 +493,15 @@ async fn run_operation(
                 )
                 .into()
             }
+            crate::services::install::InstallError::Runtime(
+                crate::runtime::RuntimeError::UnsupportedLibportableVersion { product, version },
+            ) => format!(
+                "Libportable 暂不支持 {product} 版本 {version}，请等待适配或选择兼容版本。"
+            )
+            .into(),
+            crate::services::install::InstallError::Runtime(error) => {
+                format!("便携运行时准备失败：{error}").into()
+            }
             error => Box::new(error),
         }
     })?;
