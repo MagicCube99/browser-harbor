@@ -1314,28 +1314,30 @@ impl BrowserHarborApp {
         let local_package_selected = config.local_package.is_some();
         let install_label = if channel_mismatch.is_some() && upstream.is_some() {
             if local_package_selected {
-                "使用本地包切换渠道"
+                format!("使用本地 {} 离线包安装", config.channel.display_name())
             } else {
-                "切换渠道并安装"
+                format!("使用 {} 渠道安装", config.channel.display_name())
             }
         } else if local_package_selected {
-            match relation {
+            (match relation {
                 VersionRelation::Same => "使用本地包重新安装",
                 VersionRelation::UpstreamNewer => "使用本地包升级",
                 VersionRelation::UpstreamOlder | VersionRelation::Different => "使用本地包安装",
                 VersionRelation::Unknown if incomplete_install => "使用本地包重新安装",
                 VersionRelation::Unknown if displayed_version.is_some() => "使用本地包安装/升级",
                 VersionRelation::Unknown => "使用本地包安装",
-            }
+            })
+            .to_owned()
         } else {
-            match relation {
+            (match relation {
                 VersionRelation::Same => "重新下载并替换",
                 VersionRelation::UpstreamNewer => "下载并升级",
                 VersionRelation::UpstreamOlder | VersionRelation::Different => "下载上游版本",
                 VersionRelation::Unknown if incomplete_install => "重新下载并安装",
                 VersionRelation::Unknown if displayed_version.is_some() => "检查并安装/升级",
                 VersionRelation::Unknown => "下载并安装",
-            }
+            })
+            .to_owned()
         };
         let can_start = self.operation.is_none()
             && self.startup_error.is_none()
@@ -1488,14 +1490,14 @@ impl BrowserHarborApp {
                         can_install,
                         if relation == VersionRelation::UpstreamNewer {
                             localized_button(
-                                RichText::new(install_label)
+                                RichText::new(&install_label)
                                     .strong()
                                     .color(palette.accent_text),
                             )
                             .fill(palette.accent_soft)
                             .stroke(Stroke::new(1.0, palette.accent))
                         } else {
-                            localized_button(install_label)
+                            localized_button(&install_label)
                         },
                     )
                     .clicked()

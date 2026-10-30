@@ -129,8 +129,14 @@ fn exact_translation(text: &str) -> Option<&'static str> {
             "Choose the official installer for the current browser, channel, and build. Installation still verifies version, size, and digest, and may require network access for portable runtimes."
         }
         "渠道不同" => "Channel mismatch",
-        "切换渠道并安装" => "Switch channel and install",
-        "使用本地包切换渠道" => "Switch channel from local package",
+        "使用 Beta 渠道安装" => "Install using Beta channel",
+        "使用 ESR 渠道安装" => "Install using ESR channel",
+        "使用 Release 渠道安装" => "Install using Release channel",
+        "使用 Stable 渠道安装" => "Install using Stable channel",
+        "使用本地 Beta 离线包安装" => "Install from local Beta package",
+        "使用本地 ESR 离线包安装" => "Install from local ESR package",
+        "使用本地 Release 离线包安装" => "Install from local Release package",
+        "使用本地 Stable 离线包安装" => "Install from local Stable package",
         "路径与用户数据" => "Paths and user data",
         "检查配置" => "Check configuration",
         "快捷方式：开" => "Shortcut: On",
@@ -714,7 +720,11 @@ mod tests {
             "File operation was blocked by Windows permissions (C:\\Program Files\\Chrome). Move the browser root to a standard user directory (such as D:\\ or C:\\Tools), or run as administrator."
         );
         assert_eq!(localized("渠道不同"), "Channel mismatch");
-        assert_eq!(localized("切换渠道并安装"), "Switch channel and install");
+        assert_eq!(localized("使用 ESR 渠道安装"), "Install using ESR channel");
+        assert_eq!(
+            localized("使用本地 ESR 离线包安装"),
+            "Install from local ESR package"
+        );
         assert_eq!(
             localized("当前目录已安装 Release 渠道（159.0）；当前选择的是 ESR 渠道（115.44.0esr）"),
             "Installed version in directory belongs to Release channel (159.0); currently selected is ESR channel (115.44.0esr)"
