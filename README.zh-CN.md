@@ -71,7 +71,7 @@ Thorium 提供面向 SSE3、SSE4、AVX、AVX2 和 AVX512 的 CPU 构建。
 ## 开始使用
 
 1. 从 [GitHub Releases](https://github.com/MagicCube99/browser-harbor/releases/latest)
-   下载 `BrowserHarbor-0.6.7-x64.exe`。
+   下载 `BrowserHarbor-0.6.8-x64.exe`。
    无法访问 GitHub 时，可从 [Gitee 镜像](https://gitee.com/MagicCube99/browser-harbor/releases)下载。
 2. 放进任意可写目录，直接运行。
 3. 选择浏览器，确认 Browser Root 和数据路径。

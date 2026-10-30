@@ -2,6 +2,17 @@
 
 [简体中文](CHANGELOG.zh-CN.md) · English
 
+## v0.6.8 — 2026-10-30
+
+### Changed
+
+- Refined cross-channel upgrade experience: when the installed browser channel
+  differs from the selected channel, the overview displays a clear "Channel mismatch"
+  status and the action button clearly states "Install using {Channel} channel"
+  (or "Install from local {Channel} package"), eliminating misleading version comparisons.
+- Added channel detection for Iceweasel (ESR and Release).
+- Forward-expanded Floorp Libportable compatibility gate to v12–v14.
+
 ## v0.6.7 — 2026-10-30
 
 ### Fixed
