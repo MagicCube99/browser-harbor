@@ -417,11 +417,11 @@ fn channel_mismatch_shows_warning_chip_and_switch_action() {
     harness.run();
 
     harness.get_by_label("渠道不同");
-    harness.get_by_label("切换渠道并安装");
+    harness.get_by_label("使用 ESR 渠道安装");
     assert!(harness.query_by_label("上游版本较旧").is_none());
     assert!(harness.query_by_label("下载上游版本").is_none());
 
-    harness.get_by_label("切换渠道并安装").click();
+    harness.get_by_label("使用 ESR 渠道安装").click();
     harness.run();
 
     harness.get_by_label("渠道与现有安装不一致");
