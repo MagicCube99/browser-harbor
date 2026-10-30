@@ -250,6 +250,93 @@ impl AppState {
             }
         }
     }
+
+    pub fn inspect_program_identity(
+        &self,
+        target: TargetId,
+        program: &Path,
+    ) -> crate::services::health::ProgramIdentity {
+        crate::services::health::inspect_program_identity(target, program)
+    }
+
+    pub fn inspect_target_health(
+        &self,
+        target: TargetId,
+    ) -> Result<crate::services::health::HealthReport, PathResolutionError> {
+        let config = self.draft.targets[&target].clone();
+        let resolved = self.resolve_operation_paths(config)?;
+        Ok(crate::services::health::inspect(target, &resolved))
+    }
+
+    pub fn relocate_target(
+        &self,
+        target: TargetId,
+        new_root: &Path,
+    ) -> Result<TargetConfig, Box<dyn std::error::Error + Send + Sync>> {
+        let config = self.draft.targets[&target].clone();
+        let resolved = self.resolve_operation_paths(config)?;
+        Ok(crate::services::health::relocate(
+            target, &resolved, new_root,
+        )?)
+    }
+
+    pub fn repair_chromeplus_paths(
+        &self,
+        target: TargetId,
+    ) -> Result<
+        crate::services::health::ChromePlusPathRepair,
+        Box<dyn std::error::Error + Send + Sync>,
+    > {
+        let config = self.draft.targets[&target].clone();
+        let resolved = self.resolve_operation_paths(config)?;
+        Ok(crate::services::health::repair_chromeplus_paths(
+            target, &resolved,
+        )?)
+    }
+
+    pub fn repair_portable_paths(
+        &self,
+        target: TargetId,
+    ) -> Result<crate::services::health::PortablePathRepair, Box<dyn std::error::Error + Send + Sync>>
+    {
+        let config = self.draft.targets[&target].clone();
+        let resolved = self.resolve_operation_paths(config)?;
+        Ok(crate::services::health::repair_portable_paths(
+            target, &resolved,
+        )?)
+    }
+
+    pub fn clear_download_cache(
+        &self,
+    ) -> std::io::Result<crate::services::download::DownloadCacheUsage> {
+        crate::services::download::clear_download_cache(&self.cache_dir())
+    }
+
+    pub fn download_cache_usage(
+        &self,
+    ) -> std::io::Result<crate::services::download::DownloadCacheUsage> {
+        crate::services::download::download_cache_usage(&self.cache_dir())
+    }
+
+    pub fn count_running_processes(
+        &self,
+        program_directory: &Path,
+    ) -> Result<usize, crate::infra::windows::process::ProcessError> {
+        crate::infra::windows::process::running_process_count_in_directory(program_directory)
+    }
+
+    pub fn create_target_shortcut(
+        &self,
+        target: TargetId,
+        browser_root: &Path,
+        executable_path: &Path,
+    ) -> Result<PathBuf, crate::infra::windows::shortcut::ShortcutError> {
+        crate::infra::windows::shortcut::create_browser_shortcut(
+            browser_root,
+            target.display_name(),
+            executable_path,
+        )
+    }
 }
 
 fn normalize_settings_paths(settings: &mut Settings, tool_root: &Path) -> Result<(), ConfigError> {
