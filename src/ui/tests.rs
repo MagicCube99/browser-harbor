@@ -367,6 +367,66 @@ fn installed_channel_is_inferred_before_replacing_program_files() {
         installed_channel_label(TargetId::Firefox, "159.0", "Firefox"),
         Some("Stable")
     );
+    assert_eq!(
+        installed_channel_label(TargetId::Iceweasel, "115.44.0esr", "Iceweasel"),
+        Some("ESR")
+    );
+    assert_eq!(
+        installed_channel_label(TargetId::Iceweasel, "159.0", "Iceweasel"),
+        Some("Release")
+    );
+}
+
+#[test]
+fn channel_mismatch_shows_warning_chip_and_switch_action() {
+    let directory = tempdir().unwrap();
+    let root = directory.path().join("Iceweasel");
+    let program = root.join("App");
+    fs::create_dir_all(&program).unwrap();
+    fs::write(program.join("iceweasel.exe"), b"fixture").unwrap();
+    fs::write(
+        program.join("application.ini"),
+        "[App]\r\nName=Iceweasel\r\nVersion=159.0\r\n",
+    )
+    .unwrap();
+
+    let mut settings = Settings {
+        selected_browser: TargetId::Iceweasel,
+        ..Settings::default()
+    };
+    let config = settings.targets.get_mut(&TargetId::Iceweasel).unwrap();
+    config.browser_root = Some(root.clone());
+    config.browser_directory = Some(program);
+    config.channel = ReleaseChannel::Esr;
+
+    let state = AppState::new(
+        settings,
+        ConfigStore::new(directory.path().join("BrowserHarbor.json")),
+    );
+    let mut harness = harness_for(BrowserHarborApp::new(state));
+    harness.state_mut().latest_versions.insert(
+        (TargetId::Iceweasel, ReleaseChannel::Esr, CpuBuild::X64),
+        UpstreamCheck {
+            version: "115.44.0esr".to_owned(),
+            channel: ReleaseChannel::Esr,
+            cpu_build: CpuBuild::X64,
+            source: MetadataSource::Official,
+            checked_at: 0,
+        },
+    );
+    harness.run();
+
+    harness.get_by_label("渠道不同");
+    harness.get_by_label("切换渠道并安装");
+    assert!(harness.query_by_label("上游版本较旧").is_none());
+    assert!(harness.query_by_label("下载上游版本").is_none());
+
+    harness.get_by_label("切换渠道并安装").click();
+    harness.run();
+
+    harness.get_by_label("渠道与现有安装不一致");
+    harness.get_by_label_contains("当前安装：Iceweasel Release 159.0");
+    harness.get_by_label_contains("本次选择：ESR");
 }
 
 #[test]

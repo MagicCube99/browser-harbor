@@ -1269,21 +1269,56 @@ impl BrowserHarborApp {
             .as_ref()
             .map_or_else(|| "—".to_owned(), |check| check.version.clone());
         let latest_checked = upstream.as_ref().map(|check| checked_age(check.checked_at));
+        let installed_channel = detected_version.as_ref().and_then(|current| {
+            let product_name = match &self.program_identity {
+                ProgramIdentity::Match { product_name }
+                | ProgramIdentity::Unknown { product_name } => product_name.as_str(),
+                _ => "",
+            };
+            installed_channel_label(target, &current.version, product_name)
+        });
+        let channel_mismatch =
+            installed_channel.filter(|&installed| installed != config.channel.display_name());
         let relation = match (detected_version.as_ref(), upstream.as_ref()) {
             (Some(current), Some(upstream)) => {
                 compare_versions(&current.version, &upstream.version)
             }
             _ => VersionRelation::Unknown,
         };
-        let relation_text = if missing_directory {
-            Some(("未安装", StatusTone::Neutral))
+        let (relation_text, relation_hover) = if missing_directory {
+            (Some(("未安装", StatusTone::Neutral)), current_hover.clone())
         } else if incomplete_install {
-            Some(("无法比较", StatusTone::Error))
+            (Some(("无法比较", StatusTone::Error)), current_hover.clone())
+        } else if upstream.is_none() {
+            (
+                relation_status(detected_version.is_some(), false, relation),
+                current_hover.clone(),
+            )
+        } else if let Some(installed) = channel_mismatch {
+            (
+                Some(("渠道不同", StatusTone::Warning)),
+                format!(
+                    "当前目录已安装 {installed} 渠道（{}）；当前选择的是 {} 渠道（{latest_version}）",
+                    detected_version
+                        .as_ref()
+                        .map_or("—", |v| v.version.as_str()),
+                    config.channel.display_name()
+                ),
+            )
         } else {
-            relation_status(detected_version.is_some(), upstream.is_some(), relation)
+            (
+                relation_status(detected_version.is_some(), upstream.is_some(), relation),
+                current_hover.clone(),
+            )
         };
         let local_package_selected = config.local_package.is_some();
-        let install_label = if local_package_selected {
+        let install_label = if channel_mismatch.is_some() && upstream.is_some() {
+            if local_package_selected {
+                "使用本地包切换渠道"
+            } else {
+                "切换渠道并安装"
+            }
+        } else if local_package_selected {
             match relation {
                 VersionRelation::Same => "使用本地包重新安装",
                 VersionRelation::UpstreamNewer => "使用本地包升级",
@@ -1434,7 +1469,7 @@ impl BrowserHarborApp {
                     ));
                 }
                 if let Some((text, tone)) = relation_text {
-                    status_chip(ui, text, tone).localized_hover(current_hover.clone());
+                    status_chip(ui, text, tone).localized_hover(relation_hover);
                 }
             });
             ui.add_space(4.0);
@@ -3425,6 +3460,11 @@ fn installed_channel_label(
             "Beta"
         } else {
             "Stable"
+        }),
+        TargetId::Iceweasel => Some(if version.contains("esr") {
+            "ESR"
+        } else {
+            "Release"
         }),
         _ => None,
     }

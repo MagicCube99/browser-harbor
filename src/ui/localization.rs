@@ -128,6 +128,9 @@ fn exact_translation(text: &str) -> Option<&'static str> {
         "选择当前浏览器、渠道和构建对应的官方安装包；安装时仍会校验版本、大小和摘要，并可能需要联网准备便携运行时" => {
             "Choose the official installer for the current browser, channel, and build. Installation still verifies version, size, and digest, and may require network access for portable runtimes."
         }
+        "渠道不同" => "Channel mismatch",
+        "切换渠道并安装" => "Switch channel and install",
+        "使用本地包切换渠道" => "Switch channel from local package",
         "路径与用户数据" => "Paths and user data",
         "检查配置" => "Check configuration",
         "快捷方式：开" => "Shortcut: On",
@@ -636,6 +639,17 @@ fn dynamic_translation(text: &str) -> String {
             )
             .replace("等待确认替换", "waiting for replacement confirmation");
     }
+    if text.starts_with("当前目录已安装 ") && text.contains(" 渠道（") {
+        return text
+            .replace(
+                "当前目录已安装 ",
+                "Installed version in directory belongs to ",
+            )
+            .replace(" 渠道（", " channel (")
+            .replace("）；当前选择的是 ", "); currently selected is ")
+            .replace(" 渠道（", " channel (")
+            .replace('）', ")");
+    }
     if text.starts_with("Libportable 暂不支持 ") {
         return text
             .replace("Libportable 暂不支持 ", "Libportable does not yet support ")
@@ -698,6 +712,12 @@ mod tests {
                 "文件操作受系统权限保护（C:\\Program Files\\Chrome）。请将浏览器根目录移至普通用户目录（如 D 盘或 C:\\Tools），或右键以管理员身份运行。"
             ),
             "File operation was blocked by Windows permissions (C:\\Program Files\\Chrome). Move the browser root to a standard user directory (such as D:\\ or C:\\Tools), or run as administrator."
+        );
+        assert_eq!(localized("渠道不同"), "Channel mismatch");
+        assert_eq!(localized("切换渠道并安装"), "Switch channel and install");
+        assert_eq!(
+            localized("当前目录已安装 Release 渠道（159.0）；当前选择的是 ESR 渠道（115.44.0esr）"),
+            "Installed version in directory belongs to Release channel (159.0); currently selected is ESR channel (115.44.0esr)"
         );
         assert_eq!(
             localized("Libportable 暂不支持 Zen 版本 9.99，请等待适配或选择兼容版本。"),
