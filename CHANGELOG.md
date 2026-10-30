@@ -2,6 +2,14 @@
 
 [简体中文](CHANGELOG.zh-CN.md) · English
 
+## v0.6.7 — 2026-10-30
+
+### Fixed
+
+- Fixed Libportable version gate blocking Zen browser updates to 1.24b+.
+- Improved runtime preparation error reporting with specific error descriptions
+  and localization.
+
 ## v0.6.6 — 2026-10-29
 
 ### Fixed
