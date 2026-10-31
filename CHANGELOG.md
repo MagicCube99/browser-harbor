@@ -2,6 +2,14 @@
 
 [简体中文](CHANGELOG.zh-CN.md) · English
 
+## v0.6.10 — 2026-10-31
+
+### Fixed
+
+- Fixed Edge 156 Stable installation failing during archive extraction.
+- Edge Stable and Beta now use Microsoft's official CDP 7z payload, which contains the complete `MSEDGE.7Z` browser archive.
+- Removed obsolete Edge Enterprise MSI entries from signed metadata generation and fallback handling.
+
 ## v0.6.9 — 2026-10-31
 
 ### Added
