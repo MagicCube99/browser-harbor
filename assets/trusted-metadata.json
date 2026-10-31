@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": 1793262976,
+  "generatedAt": 1793449190,
   "expiresAt": 253402300799,
   "releases": [
     {
@@ -29,27 +29,27 @@
     },
     {
       "target": "brave",
-      "version": "1.100.44",
+      "version": "1.100.45",
       "channel": "beta",
       "cpuBuild": "x64",
       "provider": "git_hub_release",
       "artifact": {
-        "fileName": "brave-v1.100.44-win32-x64.zip",
+        "fileName": "brave-v1.100.45-win32-x64.zip",
         "format": "zip",
-        "size": 253004559,
+        "size": 253010331,
         "integrity": {
           "algorithm": "sha256",
-          "value": "68f515a4201b0da6edc9ce53289a1947134e1487d2fa00ddb1b2ad14de847e9c"
+          "value": "51247a81650a78cc0397efb8d1802da3efcee9c07ea645248437e330db3cc9a4"
         },
         "urls": [
-          "https://github.com/brave/brave-browser/releases/download/v1.100.44/brave-v1.100.44-win32-x64.zip"
+          "https://github.com/brave/brave-browser/releases/download/v1.100.45/brave-v1.100.45-win32-x64.zip"
         ],
         "signatureUrl": null
       },
       "placement": "native_package",
       "innerArchive": null,
-      "source": "https://github.com/brave/brave-browser/releases/tag/v1.100.44",
-      "publishedAt": "2026-10-29T05:16:16Z"
+      "source": "https://github.com/brave/brave-browser/releases/tag/v1.100.45",
+      "publishedAt": "2026-10-30T05:17:51Z"
     },
     {
       "target": "catsxp",
@@ -79,25 +79,25 @@
     },
     {
       "target": "chrome",
-      "version": "156.0.8078.74",
+      "version": "156.0.8078.80",
       "channel": "stable",
       "cpuBuild": "x64",
       "provider": "chrome_omaha",
       "artifact": {
-        "fileName": "156.0.8078.74_chrome_installer_uncompressed.exe",
+        "fileName": "156.0.8078.80_chrome_installer_uncompressed.exe",
         "format": "sevenzip",
-        "size": 525470120,
+        "size": 525302696,
         "integrity": {
           "algorithm": "sha256",
-          "value": "8783e3a9a3bb263a6b39da9e9ea6bdb7f31bb9dc9806f9b438ae7c1dde0480b0"
+          "value": "43cca215206b634b89d226ed71522c7f58c5430b8559b92e782dd7bd77add7cc"
         },
         "urls": [
-          "https://edgedl.me.gvt1.com/edgedl/release2/chrome/adnbzwqfdty3qpprdhwig7aufvyq_156.0.8078.74/156.0.8078.74_chrome_installer_uncompressed.exe",
-          "https://edgedl.me.gvt1.com/edgedl/release2/chrome/adnbzwqfdty3qpprdhwig7aufvyq_156.0.8078.74/156.0.8078.74_chrome_installer_uncompressed.exe",
-          "https://dl.google.com/release2/chrome/adnbzwqfdty3qpprdhwig7aufvyq_156.0.8078.74/156.0.8078.74_chrome_installer_uncompressed.exe",
-          "https://dl.google.com/release2/chrome/adnbzwqfdty3qpprdhwig7aufvyq_156.0.8078.74/156.0.8078.74_chrome_installer_uncompressed.exe",
-          "https://www.google.com/dl/release2/chrome/adnbzwqfdty3qpprdhwig7aufvyq_156.0.8078.74/156.0.8078.74_chrome_installer_uncompressed.exe",
-          "https://www.google.com/dl/release2/chrome/adnbzwqfdty3qpprdhwig7aufvyq_156.0.8078.74/156.0.8078.74_chrome_installer_uncompressed.exe"
+          "https://edgedl.me.gvt1.com/edgedl/release2/chrome/aczq54y7kwp55hzkkdtm7qgz2x6a_156.0.8078.80/156.0.8078.80_chrome_installer_uncompressed.exe",
+          "https://edgedl.me.gvt1.com/edgedl/release2/chrome/aczq54y7kwp55hzkkdtm7qgz2x6a_156.0.8078.80/156.0.8078.80_chrome_installer_uncompressed.exe",
+          "https://dl.google.com/release2/chrome/aczq54y7kwp55hzkkdtm7qgz2x6a_156.0.8078.80/156.0.8078.80_chrome_installer_uncompressed.exe",
+          "https://dl.google.com/release2/chrome/aczq54y7kwp55hzkkdtm7qgz2x6a_156.0.8078.80/156.0.8078.80_chrome_installer_uncompressed.exe",
+          "https://www.google.com/dl/release2/chrome/aczq54y7kwp55hzkkdtm7qgz2x6a_156.0.8078.80/156.0.8078.80_chrome_installer_uncompressed.exe",
+          "https://www.google.com/dl/release2/chrome/aczq54y7kwp55hzkkdtm7qgz2x6a_156.0.8078.80/156.0.8078.80_chrome_installer_uncompressed.exe"
         ],
         "signatureUrl": null
       },
@@ -137,27 +137,27 @@
     },
     {
       "target": "edge",
-      "version": "156.0.4314.50",
+      "version": "156.0.4314.58",
       "channel": "stable",
       "cpuBuild": "x64",
       "provider": "edge_enterprise",
       "artifact": {
         "fileName": "MicrosoftEdgeEnterpriseX64.msi",
         "format": "msi",
-        "size": 215318528,
+        "size": 215449600,
         "integrity": {
           "algorithm": "sha256",
-          "value": "f7bc427c4d26aefe12bd492a24959cc6ca328aea2851614637d7133cae329071"
+          "value": "784051ebfcc8b28569127f381d515766866c4925312d35c52293382b97eef2fb"
         },
         "urls": [
-          "https://msedge.sf.dl.delivery.mp.microsoft.com/filestreamingservice/files/43a4cadd-6bb0-4325-83ba-ce03006a0b00/MicrosoftEdgeEnterpriseX64.msi"
+          "https://msedge.sf.dl.delivery.mp.microsoft.com/filestreamingservice/files/d0a4e3fc-604a-4d46-8fd6-e90de2df72f6/MicrosoftEdgeEnterpriseX64.msi"
         ],
         "signatureUrl": null
       },
       "placement": "edge_versioned",
       "innerArchive": null,
       "source": "https://edgeupdates.microsoft.com/api/products?view=enterprise",
-      "publishedAt": "2026-10-26T19:10:00"
+      "publishedAt": "2026-10-30T20:25:00"
     },
     {
       "target": "firefox",
@@ -209,26 +209,26 @@
     },
     {
       "target": "firefox",
-      "version": "160.0b2",
+      "version": "160.0b3",
       "channel": "beta",
       "cpuBuild": "x64",
       "provider": "mozilla",
       "artifact": {
-        "fileName": "Firefox Setup 160.0b2.exe",
+        "fileName": "Firefox Setup 160.0b3.exe",
         "format": "sevenzip",
         "size": null,
         "integrity": {
           "algorithm": "sha256",
-          "value": "617fea2a059c87a03929b64fbb648c1a65897886e6bcae5f88ffdb9333f3d941"
+          "value": "fbd151a85fdd0d37701363d85ea590313c693bad31ad502948812e914583d02e"
         },
         "urls": [
-          "https://download-installer.cdn.mozilla.net/pub/firefox/releases/160.0b2/win64/zh-CN/Firefox%20Setup%20160.0b2.exe"
+          "https://download-installer.cdn.mozilla.net/pub/firefox/releases/160.0b3/win64/zh-CN/Firefox%20Setup%20160.0b3.exe"
         ],
         "signatureUrl": null
       },
       "placement": "app",
       "innerArchive": null,
-      "source": "https://download-installer.cdn.mozilla.net/pub/firefox/releases/160.0b2/SHA256SUMS",
+      "source": "https://download-installer.cdn.mozilla.net/pub/firefox/releases/160.0b3/SHA256SUMS",
       "publishedAt": null
     },
     {
@@ -257,27 +257,27 @@
     },
     {
       "target": "helium",
-      "version": "0.20.2.1",
+      "version": "0.20.3.1",
       "channel": "stable",
       "cpuBuild": "x64",
       "provider": "git_hub_release",
       "artifact": {
-        "fileName": "helium_0.20.2.1_x64-windows.zip",
+        "fileName": "helium_0.20.3.1_x64-windows.zip",
         "format": "zip",
-        "size": 195779927,
+        "size": 195771721,
         "integrity": {
           "algorithm": "sha256",
-          "value": "8ea50096f734ac8ffe7f31e4bef4aa18be065b847bf4c34926183180d9e9f5e8"
+          "value": "07f602a49fd2712dc13e1d9ce8793ccd1bb2c1a6b2b06b864e2b56e22970cc46"
         },
         "urls": [
-          "https://github.com/imputnet/helium-windows/releases/download/0.20.2.1/helium_0.20.2.1_x64-windows.zip"
+          "https://github.com/imputnet/helium-windows/releases/download/0.20.3.1/helium_0.20.3.1_x64-windows.zip"
         ],
         "signatureUrl": null
       },
       "placement": "native_package",
       "innerArchive": null,
-      "source": "https://github.com/imputnet/helium-windows/releases/tag/0.20.2.1",
-      "publishedAt": "2026-10-28T12:38:18Z"
+      "source": "https://github.com/imputnet/helium-windows/releases/tag/0.20.3.1",
+      "publishedAt": "2026-10-30T11:37:39Z"
     },
     {
       "target": "iceweasel",
@@ -497,20 +497,20 @@
     },
     {
       "target": "turbo",
-      "version": "154.0.8037.104",
+      "version": "154.0.8037.105",
       "channel": "stable",
       "cpuBuild": "x64",
       "provider": "turbo",
       "artifact": {
-        "fileName": "Turbo_154.0.8037.104_portable.7z",
+        "fileName": "Turbo_154.0.8037.105_portable.7z",
         "format": "sevenzip",
-        "size": null,
+        "size": 125292932,
         "integrity": {
           "algorithm": "sha256",
-          "value": "69e8bccd425059f13a39dd25b1c64352b9f0393f54f32d17874aeb0e08e2faf3"
+          "value": "5f874d2838feb6d0943c40084b399172a1e4ffc7bbdd57ef8d683a4b2a2af78f"
         },
         "urls": [
-          "https://dl.tbrowser.cn/download/Turbo_154.0.8037.104_portable.7z"
+          "https://dl.tbrowser.cn/download/Turbo_154.0.8037.105_portable.7z"
         ],
         "signatureUrl": null
       },
@@ -521,51 +521,75 @@
     },
     {
       "target": "ungoogled_chromium",
-      "version": "156.0.8078.47",
+      "version": "156.0.8078.73",
       "channel": "stable",
       "cpuBuild": "x64",
       "provider": "git_hub_release",
       "artifact": {
-        "fileName": "ungoogled-chromium_156.0.8078.47-1.1_windows_x64.zip",
+        "fileName": "ungoogled-chromium_156.0.8078.73-1.1_windows_x64.zip",
         "format": "zip",
-        "size": 201848261,
+        "size": 200854085,
         "integrity": {
           "algorithm": "sha256",
-          "value": "e8ed1486a88146bf72bfe3d22e198808560e16803a9a1ef62e6e3fc17c979800"
+          "value": "360406931fb55b04ac276bcf409511bd86e4e67e6950029fc45ca5ca63443090"
         },
         "urls": [
-          "https://github.com/ungoogled-software/ungoogled-chromium-windows/releases/download/156.0.8078.47-1.1/ungoogled-chromium_156.0.8078.47-1.1_windows_x64.zip"
+          "https://github.com/ungoogled-software/ungoogled-chromium-windows/releases/download/156.0.8078.73-1.1/ungoogled-chromium_156.0.8078.73-1.1_windows_x64.zip"
         ],
         "signatureUrl": null
       },
       "placement": "native_package",
       "innerArchive": null,
-      "source": "https://github.com/ungoogled-software/ungoogled-chromium-windows/releases/tag/156.0.8078.47-1.1",
-      "publishedAt": "2026-10-25T16:46:25Z"
+      "source": "https://github.com/ungoogled-software/ungoogled-chromium-windows/releases/tag/156.0.8078.73-1.1",
+      "publishedAt": "2026-10-30T22:27:37Z"
+    },
+    {
+      "target": "vivaldi",
+      "version": "8.2.4133.94",
+      "channel": "stable",
+      "cpuBuild": "x64",
+      "provider": "vivaldi",
+      "artifact": {
+        "fileName": "Vivaldi.8.2.4133.94.x64.exe",
+        "format": "sevenzip",
+        "size": 156217256,
+        "integrity": {
+          "algorithm": "sha256",
+          "value": "6f2eee78fd43c9cb5d04150487aa786625c3361c96c43e6032f753909850a893"
+        },
+        "urls": [
+          "https://downloads.vivaldi.com/stable/Vivaldi.8.2.4133.94.x64.exe"
+        ],
+        "signatureUrl": null
+      },
+      "placement": "native_package",
+      "innerArchive": "vivaldi.7z",
+      "source": "https://vivaldi.com/wp-content/vivaldi-versions.js",
+      "publishedAt": null
     },
     {
       "target": "zen",
-      "version": "1.23.4b",
+      "version": "1.24b",
       "channel": "stable",
       "cpuBuild": "x64",
       "provider": "git_hub_release",
       "artifact": {
         "fileName": "zen.installer.exe",
         "format": "sevenzip",
-        "size": 118361088,
+        "size": 118588392,
         "integrity": {
           "algorithm": "sha256",
-          "value": "f8d6f7b52f5a08eb44ebc487fad2cf14c78887f38cd21552f0801e3e8f8269df"
+          "value": "2d55965f1952f2e5489dfaf954d613ebbf6361c5ca2bcad95ab8d3c0a481d6a4"
         },
         "urls": [
-          "https://github.com/zen-browser/desktop/releases/download/1.23.4b/zen.installer.exe"
+          "https://github.com/zen-browser/desktop/releases/download/1.24b/zen.installer.exe"
         ],
         "signatureUrl": null
       },
       "placement": "native_package",
       "innerArchive": null,
-      "source": "https://github.com/zen-browser/desktop/releases/tag/1.23.4b",
-      "publishedAt": "2026-10-21T13:41:13Z"
+      "source": "https://github.com/zen-browser/desktop/releases/tag/1.24b",
+      "publishedAt": "2026-10-29T21:28:59Z"
     }
   ],
   "chromePlus": {
