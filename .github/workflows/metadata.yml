@@ -93,6 +93,7 @@ jobs:
           $signature = Join-Path $env:RUNNER_TEMP "trusted-metadata.sig"
           Copy-Item -LiteralPath assets/trusted-metadata.json -Destination $metadata
           Copy-Item -LiteralPath assets/trusted-metadata.sig -Destination $signature
+          git reset --hard HEAD
 
           git fetch origin metadata-live
           if ($LASTEXITCODE -eq 0) {

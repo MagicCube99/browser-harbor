@@ -2,6 +2,16 @@
 
 [简体中文](CHANGELOG.zh-CN.md) · English
 
+## v0.6.9 — 2026-10-31
+
+### Added
+
+- Added Vivaldi (Stable x64) as the 15th supported browser target.
+- Pure in-memory double-layer 7z unpacking from the official installer without executing third-party installation binaries.
+- Configured official native Standalone mode via `stp.viv`, keeping `User Data` strictly isolated in the browser root without modifying vendor binaries or touching registry.
+- Automatically strips background `update_notifier.exe` on install and update.
+- Updated documentation and architecture specifications across all public and internal references.
+
 ## v0.6.8 — 2026-10-30
 
 ### Changed
