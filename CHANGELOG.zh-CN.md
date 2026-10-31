@@ -2,6 +2,14 @@
 
 [English](CHANGELOG.md) · 简体中文
 
+## v0.6.10 — 2026-10-31
+
+### 修复
+
+- 修复 Edge 156 Stable 安装时解压失败的问题。
+- Edge Stable 和 Beta 现在统一使用 Microsoft 官方 CDP 7z 制品，其中包含完整的 `MSEDGE.7Z` 浏览器归档。
+- 清除签名清单生成和回退逻辑中的旧 Edge Enterprise MSI 条目。
+
 ## v0.6.9 — 2026-10-31
 
 ### 新增
