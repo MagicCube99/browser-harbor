@@ -89,8 +89,8 @@ fn contains_executable(root: &Path, names: &[&str]) -> bool {
 }
 
 #[tokio::test]
-#[ignore = "downloads and extracts the official Microsoft Edge MSI"]
-async fn downloads_and_extracts_edge_enterprise_msi() {
+#[ignore = "downloads and extracts the official Microsoft Edge CDP 7z payload"]
+async fn downloads_and_extracts_edge_cdp_payload() {
     let http = HttpClient::new(&NetworkSettings::default()).unwrap();
     let directory = tempdir().unwrap();
     let downloader = Downloader::new(

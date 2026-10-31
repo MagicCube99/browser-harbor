@@ -105,35 +105,13 @@ foreach ($property in $cache.PSObject.Properties) {
     $releases[$key] = $descriptor
 }
 
-$edgeProducts = Invoke-RestMethod `
-    -Uri "https://edgeupdates.microsoft.com/api/products?view=enterprise" `
-    -Headers @{ "User-Agent" = "BrowserHarbor-Metadata-Builder" } `
-    -TimeoutSec 30
-$edgeRelease = $edgeProducts |
-    Where-Object Product -eq "Stable" |
-    ForEach-Object { $_.Releases } |
-    Where-Object { $_.Platform -eq "Windows" -and $_.Architecture -eq "x64" } |
-    Select-Object -First 1
-$edgeArtifact = $edgeRelease.Artifacts | Where-Object ArtifactName -eq "msi" | Select-Object -First 1
-if ($null -eq $edgeArtifact) {
-    throw "Microsoft Edge x64 MSI was not found"
+# Edge MSI entries are obsolete: the Enterprise MSI is only a bootstrapper.
+# Keep the signed manifest free of a fallback that the portable installer cannot consume.
+@($releases.Keys | Where-Object { $_ -like "edge|*" }) | ForEach-Object {
+    $releases.Remove($_)
 }
-$edgeDescriptor = New-Descriptor `
-    -Target "edge" `
-    -Version $edgeRelease.ProductVersion `
-    -Channel "stable" `
-    -CpuBuild "x64" `
-    -Provider "edge_enterprise" `
-    -Artifact (New-Artifact `
-        -FileName ([uri]$edgeArtifact.Location).Segments[-1] `
-        -Format "msi" `
-        -Size $edgeArtifact.SizeInBytes `
-        -Digest "sha256:$($edgeArtifact.Hash)" `
-        -Urls @($edgeArtifact.Location)) `
-    -Placement "edge_versioned" `
-    -Source "https://edgeupdates.microsoft.com/api/products?view=enterprise" `
-    -PublishedAt $edgeRelease.PublishedTime
-$releases["edge|stable|x64"] = $edgeDescriptor
+
+Write-Host "Edge Stable is resolved at install time through Microsoft's CDP API because its signed URL is short-lived."
 
 $iceReleases = Get-GitHubJson "https://api.github.com/repos/adonais/iceweasel/releases?per_page=30"
 $iceRelease = $iceReleases | Where-Object {
