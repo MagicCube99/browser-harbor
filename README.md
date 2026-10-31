@@ -7,7 +7,7 @@
 <p align="center">
   <b>Portable browsers without the ritual sacrifice.</b><br>
   A small native Windows tool for downloading, verifying, installing, updating,
-  and configuring 14 Chromium- and Firefox-family browsers.
+  and configuring 15 Chromium- and Firefox-family browsers.
 </p>
 
 <p align="center">
@@ -86,7 +86,7 @@ the current desktop.
 
 | Family | Browsers |
 |---|---|
-| **Chromium** | Brave, Catsxp, Chrome, Edge, Helium, Thorium, Turbo, Ungoogled Chromium |
+| **Chromium** | Brave, Catsxp, Chrome, Edge, Helium, Thorium, Turbo, Ungoogled Chromium, Vivaldi |
 | **Firefox** | Firefox, Floorp, Iceweasel, LibreWolf, SkyKakapo, Zen |
 
 Chrome and Edge support Stable and Beta; Brave supports Stable and Beta; Firefox
@@ -95,7 +95,7 @@ provides CPU-specific builds for SSE3, SSE4, AVX, AVX2, and AVX512.
 
 ## 🚀 Quick start
 
-1. Download `BrowserHarbor-0.6.8-x64.exe` from
+1. Download `BrowserHarbor-0.6.9-x64.exe` from
    [GitHub Releases](https://github.com/MagicCube99/browser-harbor/releases/latest).
    If GitHub is unreachable, use the [Gitee mirror](https://gitee.com/MagicCube99/browser-harbor/releases).
 2. Put it in any writable folder and run it.
@@ -112,6 +112,7 @@ running.
 
 ## 🧨 Known rough edges
 
+- **Vivaldi portable credentials:** Vivaldi runs in official Standalone mode without third-party binary modification; use Vivaldi Sync if you need credentials to roam across different Windows machines.
 - **Experimental labels:** Brave, Helium, and Ungoogled Chromium are usable, but
   their deeper Chrome++ compatibility remains experimental.
 - **SmartScreen warnings:** The binary is not Authenticode-signed yet. A warning

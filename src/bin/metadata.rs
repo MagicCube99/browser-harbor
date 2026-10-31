@@ -407,10 +407,11 @@ async fn ensure_release_integrity(
     let path = downloader
         .download(&descriptor.artifact, network, |_| {})
         .await?;
-    println!(
-        "Downloaded {} bytes; calculating SHA-256",
-        fs::metadata(&path)?.len()
-    );
+    let file_len = fs::metadata(&path)?.len();
+    println!("Downloaded {file_len} bytes; calculating SHA-256");
+    if descriptor.artifact.size.is_none() {
+        descriptor.artifact.size = Some(file_len);
+    }
     descriptor.artifact.integrity = Some(Integrity::Sha256(sha256_file(&path)?));
     println!("Calculated SHA-256 for {}", descriptor.artifact.file_name);
     Ok(Some(descriptor))

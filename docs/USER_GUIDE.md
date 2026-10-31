@@ -13,7 +13,7 @@ Browser Harbor is a portable single EXE. It does not require installation or adm
 
 ## First launch
 
-1. Download `BrowserHarbor-0.6.8-x64.exe` from
+1. Download `BrowserHarbor-0.6.9-x64.exe` from
    [GitHub Releases](https://github.com/MagicCube99/browser-harbor/releases/latest)
    or the [Gitee mirror](https://gitee.com/MagicCube99/browser-harbor/releases).
 2. Run it from a writable folder.
@@ -138,6 +138,16 @@ Edge uses the matching `setdll` helper to add the `version.dll` import. Brave, H
 - Iceweasel uses its package portable runtime.
 - SkyKakapo uses its bundled `tmemutil` runtime.
 - Floorp and LibreWolf are made portable at the browser executable itself; Browser Harbor removes their bundled launchers and LibreWolf's updater/task scripts during installation or update.
+
+## Native Standalone portability (Vivaldi)
+
+Vivaldi uses the official native Standalone portable mode:
+
+- Extracted cleanly from the official installer via in-memory double-layer 7z into `App/` without executing third-party installation wizards.
+- Automatically places a `stp.viv` marker file in `App/`, which instructs Vivaldi to confine all profile data to the adjacent `User Data/` directory without writing to `%LOCALAPPDATA%` or touching the Windows registry.
+- Automatically removes the background update notifier (`update_notifier.exe`) during installation and upgrade.
+- Single-data-directory targets (Vivaldi, Turbo, Catsxp) manage all user data directly under `User Data/`, and the standalone Profile field is automatically linked.
+- **Cross-machine credentials notice:** To strictly comply with Vivaldi's EULA, Vivaldi is not modified or injected with third-party DLLs. Because native Chromium uses Windows DPAPI encryption tied to the local user account, saved passwords will not automatically decrypt if the directory is copied to a different Windows machine. To roam saved logins and extensions seamlessly across devices, use official Vivaldi Sync.
 
 ## Global settings
 
