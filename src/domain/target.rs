@@ -83,7 +83,7 @@ const HELIUM_VERSION: VersionSource = VersionSource::ExecutableFileVersion;
 const BRAVE_VERSION: VersionSource = VersionSource::BraveProductVersion;
 const FIREFOX_VERSION: VersionSource = VersionSource::ApplicationIni;
 
-const TARGET_SPECS: [TargetSpec; 14] = [
+const TARGET_SPECS: [TargetSpec; 15] = [
     TargetSpec {
         target: TargetId::Brave,
         display_name: "Brave",
@@ -385,6 +385,30 @@ const TARGET_SPECS: [TargetSpec; 14] = [
         display_beta: false,
     },
     TargetSpec {
+        target: TargetId::Vivaldi,
+        display_name: "Vivaldi",
+        family: BrowserFamily::Chromium,
+        support_level: SupportLevel::Standard,
+        provider: ProviderKind::Vivaldi,
+        runtime: RuntimeKind::VivaldiStandalone,
+        default_channel: ReleaseChannel::Stable,
+        channels: STABLE,
+        default_cpu_build: CpuBuild::X64,
+        cpu_builds: X64_ONLY,
+        placement: ProgramPlacement::NativePackage,
+        layout: TargetLayout {
+            program: Some("App"),
+            package_prefix: Some("App"),
+            data: "User Data",
+            profile: "User Data",
+            cache: "User Data",
+        },
+        version_source: CHROMIUM_VERSION,
+        executable_candidates: &["vivaldi.exe"],
+        preserved_program_files: &["stp.viv"],
+        display_beta: false,
+    },
+    TargetSpec {
         target: TargetId::Zen,
         display_name: "Zen",
         family: BrowserFamily::Firefox,
@@ -434,11 +458,12 @@ pub enum TargetId {
     Thorium,
     Turbo,
     UngoogledChromium,
+    Vivaldi,
     Zen,
 }
 
 impl TargetId {
-    pub const ALL: [Self; 14] = [
+    pub const ALL: [Self; 15] = [
         Self::Brave,
         Self::Catsxp,
         Self::Chrome,
@@ -452,6 +477,7 @@ impl TargetId {
         Self::Thorium,
         Self::Turbo,
         Self::UngoogledChromium,
+        Self::Vivaldi,
         Self::Zen,
     ];
 
@@ -470,6 +496,7 @@ impl TargetId {
             Self::Thorium => "thorium",
             Self::Turbo => "turbo",
             Self::UngoogledChromium => "ungoogled_chromium",
+            Self::Vivaldi => "vivaldi",
             Self::Zen => "zen",
         }
     }
@@ -489,6 +516,7 @@ impl TargetId {
             Self::Thorium => "Thorium",
             Self::Turbo => "Turbo",
             Self::UngoogledChromium => "Ungoogled Chromium",
+            Self::Vivaldi => "Vivaldi",
             Self::Zen => "Zen",
         }
     }
@@ -502,7 +530,8 @@ impl TargetId {
             | Self::Helium
             | Self::Thorium
             | Self::Turbo
-            | Self::UngoogledChromium => BrowserFamily::Chromium,
+            | Self::UngoogledChromium
+            | Self::Vivaldi => BrowserFamily::Chromium,
             Self::Firefox
             | Self::Floorp
             | Self::Iceweasel
@@ -545,12 +574,16 @@ impl TargetId {
                 | Self::SkyKakapo
                 | Self::Thorium
                 | Self::UngoogledChromium
+                | Self::Vivaldi
                 | Self::Zen
         )
     }
 
     pub const fn supports_custom_cache(self) -> bool {
-        !matches!(self, Self::Floorp | Self::LibreWolf | Self::SkyKakapo)
+        !matches!(
+            self,
+            Self::Floorp | Self::LibreWolf | Self::SkyKakapo | Self::Vivaldi
+        )
     }
 
     pub const fn spec(self) -> &'static TargetSpec {
@@ -568,7 +601,8 @@ impl TargetId {
             Self::Thorium => 10,
             Self::Turbo => 11,
             Self::UngoogledChromium => 12,
-            Self::Zen => 13,
+            Self::Vivaldi => 13,
+            Self::Zen => 14,
         };
         &TARGET_SPECS[index]
     }
@@ -602,6 +636,7 @@ mod tests {
                 "thorium",
                 "turbo",
                 "ungoogled_chromium",
+                "vivaldi",
                 "zen",
             ]
         );
@@ -644,6 +679,7 @@ mod tests {
                 "thorium",
                 "turbo",
                 "ungoogled_chromium",
+                "vivaldi",
             ]
         );
         assert_eq!(
@@ -712,6 +748,7 @@ mod tests {
                 "skykakapo",
                 "thorium",
                 "ungoogled_chromium",
+                "vivaldi",
                 "zen",
             ]
         );
@@ -721,7 +758,10 @@ mod tests {
             .filter(|target| !target.supports_custom_cache())
             .map(TargetId::sort_key)
             .collect::<Vec<_>>();
-        assert_eq!(no_custom_cache, ["floorp", "librewolf", "skykakapo"]);
+        assert_eq!(
+            no_custom_cache,
+            ["floorp", "librewolf", "skykakapo", "vivaldi"]
+        );
     }
 
     #[test]
@@ -854,6 +894,13 @@ mod tests {
                 r"Profiles\Cache",
             ),
             (
+                TargetId::Vivaldi,
+                Some("App"),
+                "User Data",
+                "User Data",
+                "User Data",
+            ),
+            (
                 TargetId::Zen,
                 Some(r"App\core"),
                 "Profiles",
@@ -876,6 +923,7 @@ mod tests {
                     | TargetId::Helium
                     | TargetId::SkyKakapo
                     | TargetId::UngoogledChromium
+                    | TargetId::Vivaldi
                     | TargetId::Zen => Some("App"),
                     _ => None,
                 },

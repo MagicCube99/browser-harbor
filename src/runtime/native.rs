@@ -45,6 +45,9 @@ pub fn configure_app_launcher(
         TargetId::SkyKakapo => {
             configure_skykakapo(program_dir, portable_program_dir, data_dir, profile_dir)?
         }
+        TargetId::Vivaldi => {
+            configure_vivaldi(program_dir)?;
+        }
         _ => {}
     }
     Ok(())
@@ -318,6 +321,14 @@ fn quote_argument(path: &Path) -> String {
     format!("\"{}\"", path.display())
 }
 
+fn configure_vivaldi(program_dir: &Path) -> Result<(), RuntimeError> {
+    let stp = program_dir.join("stp.viv");
+    if !stp.exists() {
+        fs::write(&stp, b"").map_err(|source| io_error(&stp, source))?;
+    }
+    Ok(())
+}
+
 fn copy_path(source: &Path, destination: &Path) -> Result<(), RuntimeError> {
     if source.is_file() {
         if let Some(parent) = destination.parent() {
@@ -475,6 +486,25 @@ mod tests {
         let ini = fs::read_to_string(program.join("portable.ini")).unwrap();
         assert!(ini.contains(r"PortableDataPath=..\..\..\Shared\Iceweasel Data"));
         assert!(ini.contains(r"TmpDataPath=..\..\..\Shared\Iceweasel Cache"));
+    }
+
+    #[test]
+    fn vivaldi_launcher_configuration_creates_standalone_marker() {
+        let directory = tempdir().unwrap();
+        let program = directory.path().join("App");
+        fs::create_dir_all(&program).unwrap();
+
+        configure_app_launcher(
+            &program,
+            &program,
+            TargetId::Vivaldi,
+            &directory.path().join("User Data"),
+            &directory.path().join("User Data"),
+            None,
+        )
+        .unwrap();
+
+        assert!(program.join("stp.viv").is_file());
     }
 
     #[test]

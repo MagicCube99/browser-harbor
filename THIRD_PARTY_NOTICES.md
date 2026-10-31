@@ -88,6 +88,8 @@ Browser packages, launchers, and bundled runtimes downloaded by the manager are 
 
 Floorp's portable release is used as the upstream browser payload, but its launcher is removed after installation. LibreWolf's official portable package is likewise used as a payload; its launcher, updater, and task scripts are removed. Browser Harbor makes both executables directly portable through Libportable. The respective package licenses and notices remain in force for the downloaded artifacts.
 
+Vivaldi's official installation package is extracted through its embedded 7z payload, and the manager uses Vivaldi's official Standalone portable mode via a local stp.viv marker without binary patching or DLL injection. Vivaldi's proprietary package license and notices remain in force for the downloaded artifacts.
+
 ## Application Icon
 
 `assets/app-icon.png` and `assets/app-icon.ico` were derived from artwork supplied by the project owner for use as this application's icon. They are distributed under the same `MIT OR Apache-2.0` terms as the project unless the owner states otherwise.

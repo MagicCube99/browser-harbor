@@ -15,6 +15,7 @@ pub enum ProviderKind {
     Catsxp,
     SkyKakapo,
     Turbo,
+    Vivaldi,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]

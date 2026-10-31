@@ -273,7 +273,7 @@ mod tests {
     use super::{Accelerator, NetworkSettings, TargetConfig};
     use crate::domain::{
         release::{CpuBuild, ReleaseChannel},
-        target::{BrowserFamily, TargetId},
+        target::TargetId,
     };
 
     #[test]
@@ -378,9 +378,7 @@ mod tests {
             );
             assert_eq!(config.data_directory, Some(root.join(layout.data)));
             assert_eq!(config.profile_directory, Some(root.join(layout.profile)));
-            let expected_cache = (target.family() == BrowserFamily::Chromium
-                && !target.spec().runtime.uses_chrome_plus())
-            .then(|| root.join(layout.cache));
+            let expected_cache = (!target.cache_follows_profile()).then(|| root.join(layout.cache));
             assert_eq!(
                 config.cache_directory,
                 expected_cache,
