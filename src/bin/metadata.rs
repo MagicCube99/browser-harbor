@@ -9,7 +9,7 @@ use std::{
 
 use browser_harbor::{
     domain::{
-        release::{Artifact, Integrity, ReleaseDescriptor},
+        release::{ArchiveFormat, Artifact, Integrity, ReleaseDescriptor},
         runtime::{ChromePlusRelease, LibportableRelease},
         settings::NetworkSettings,
         target::TargetId,
@@ -219,6 +219,17 @@ async fn refresh(
                     Ok(None) => {}
                     Err(error) => {
                         if let Some(previous) = baseline.release(target, *channel, *cpu_build) {
+                            if target == TargetId::Edge
+                                && previous.artifact.format == ArchiveFormat::Msi
+                            {
+                                eprintln!(
+                                    "{} / {} / {} refresh failed; dropping stale MSI baseline: {error}",
+                                    target.display_name(),
+                                    channel.display_name(),
+                                    cpu_build.display_name()
+                                );
+                                continue;
+                            }
                             eprintln!(
                                 "{} / {} / {} refresh failed; keeping baseline: {error}",
                                 target.display_name(),
