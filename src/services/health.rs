@@ -78,6 +78,7 @@ const PRODUCT_EXECUTABLES: &[&str] = &[
     "thorium.exe",
     "turbo.exe",
     "helium.exe",
+    "vivaldi.exe",
 ];
 
 #[derive(Debug, Error)]
@@ -322,6 +323,8 @@ fn identify_product(product_name: &str) -> Option<TargetId> {
         Some(TargetId::Floorp)
     } else if name.contains("zen browser") {
         Some(TargetId::Zen)
+    } else if name.contains("vivaldi") {
+        Some(TargetId::Vivaldi)
     } else if name.contains("turbo") {
         Some(TargetId::Turbo)
     } else if name.contains("firefox") {
@@ -509,6 +512,7 @@ fn inspect_runtime(
         RuntimeKind::IceweaselNative => &["portable64.dll", "portable.ini"][..],
         RuntimeKind::SkyKakapoNative => &["tmemutil.dll", "tmemutil.ini"][..],
         RuntimeKind::TurboLauncher => &[".portable"][..],
+        RuntimeKind::VivaldiStandalone => &["stp.viv"][..],
         _ => &[][..],
     };
     let missing = required
@@ -528,6 +532,7 @@ fn inspect_runtime(
                 RuntimeKind::IceweaselNative => "Iceweasel portable runtime files found",
                 RuntimeKind::SkyKakapoNative => "SkyKakapo portable runtime files found",
                 RuntimeKind::TurboLauncher => "Turbo portable marker found",
+                RuntimeKind::VivaldiStandalone => "Vivaldi standalone portable marker found",
                 _ => "bundled runtime does not require additional files",
             },
         ));

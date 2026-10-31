@@ -17,6 +17,7 @@ pub enum RuntimeKind {
     SkyKakapoNative,
     CatsxpLauncher,
     TurboLauncher,
+    VivaldiStandalone,
 }
 
 impl RuntimeKind {

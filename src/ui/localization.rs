@@ -412,6 +412,7 @@ fn exact_translation(text: &str) -> Option<&'static str> {
         "Catsxp 官方" => "Catsxp official",
         "SkyKakapo 官方" => "SkyKakapo official",
         "Turbo 官方" => "Turbo official",
+        "Vivaldi 官方" => "Vivaldi official",
         "无法比较" => "Cannot compare",
         "尚未检查上游版本" => "Upstream not checked",
         "与上游版本相同" => "Same as upstream",

@@ -176,6 +176,7 @@ fn browser_combo_uses_two_ordered_groups_with_sorted_members() {
         "Thorium",
         "Turbo",
         "Ungoogled Chromium",
+        "Vivaldi",
     ];
     let firefox_members = [
         "Firefox",

@@ -24,6 +24,7 @@ use crate::{
 const CATSXP_HOME: &str = "https://www.catsxp.com/";
 const SKYKAKAPO_HOME: &str = "https://tete009.pages.dev/en-US/software";
 const TURBO_UPDATE: &str = "https://tbrowser.cn/update/update.js";
+const VIVALDI_VERSIONS: &str = "https://vivaldi.com/wp-content/vivaldi-versions.js";
 const LIBREWOLF_WINDOWS: &str = "https://librewolf.net/installation/windows/";
 const LIBREWOLF_RELEASES: &str =
     "https://librewolf.dev/api/v1/repos/librewolf/bsys6/releases?limit=1";
@@ -116,6 +117,67 @@ pub async fn resolve_turbo(
         inner_archive: None,
         source: TURBO_UPDATE.to_owned(),
         published_at: None,
+    })
+}
+
+pub async fn resolve_vivaldi(
+    http: &HttpClient,
+    channel: ReleaseChannel,
+    cpu_build: CpuBuild,
+) -> Result<ReleaseDescriptor, ProviderError> {
+    validate_stable_x64(channel, cpu_build)?;
+    let script = http.get_text(VIVALDI_VERSIONS).await?;
+    let parsed = parse_vivaldi(&script)?;
+    Ok(ReleaseDescriptor {
+        target: TargetId::Vivaldi,
+        version: parsed.version,
+        channel,
+        cpu_build,
+        provider: ProviderKind::Vivaldi,
+        artifact: Artifact {
+            file_name: parsed.file_name,
+            format: ArchiveFormat::SevenZip,
+            size: None,
+            integrity: None,
+            urls: vec![parsed.url],
+            signature_url: None,
+        },
+        placement: TargetId::Vivaldi.spec().placement,
+        inner_archive: Some("vivaldi.7z".to_owned()),
+        source: VIVALDI_VERSIONS.to_owned(),
+        published_at: None,
+    })
+}
+
+#[derive(Debug, PartialEq, Eq)]
+struct VivaldiArtifact {
+    version: String,
+    file_name: String,
+    url: String,
+}
+
+fn parse_vivaldi(script: &str) -> Result<VivaldiArtifact, ProviderError> {
+    let json_str = script
+        .split_once('=')
+        .map(|(_, right)| right.trim().trim_end_matches(';'))
+        .unwrap_or(script);
+    let value: serde_json::Value =
+        serde_json::from_str(json_str).map_err(|error| ProviderError::Parse(error.to_string()))?;
+    let version = value
+        .get("vivaldi_version_number")
+        .and_then(serde_json::Value::as_str)
+        .ok_or_else(|| ProviderError::Parse("missing vivaldi_version_number".to_owned()))?
+        .to_owned();
+    let file_name = value
+        .get("vivaldi_version_win64")
+        .and_then(serde_json::Value::as_str)
+        .map(ToOwned::to_owned)
+        .unwrap_or_else(|| format!("Vivaldi.{version}.x64.exe"));
+    let url = format!("https://downloads.vivaldi.com/stable/{file_name}");
+    Ok(VivaldiArtifact {
+        version,
+        file_name,
+        url,
     })
 }
 
@@ -412,7 +474,7 @@ fn validate_stable_x64(channel: ReleaseChannel, cpu_build: CpuBuild) -> Result<(
 mod tests {
     use base64::{Engine, engine::general_purpose::STANDARD};
 
-    use super::{parse_catsxp, parse_librewolf, parse_skykakapo, parse_turbo};
+    use super::{parse_catsxp, parse_librewolf, parse_skykakapo, parse_turbo, parse_vivaldi};
 
     fn encode_catsxp(url: &str) -> String {
         let mut bytes = url
@@ -462,6 +524,18 @@ mod tests {
         assert_eq!(
             parsed.url,
             "https://dl.librewolf.net/librewolf/158.0.1-2/librewolf-158.0.1-2-windows-x86_64-portable.zip"
+        );
+    }
+
+    #[test]
+    fn vivaldi_parser_extracts_version_and_download_url() {
+        let script = r#"var vivaldi_versions = {"vivaldi_version_number":"8.2.4133.94","vivaldi_version_win64":"Vivaldi.8.2.4133.94.x64.exe"};"#;
+        let parsed = parse_vivaldi(script).unwrap();
+        assert_eq!(parsed.version, "8.2.4133.94");
+        assert_eq!(parsed.file_name, "Vivaldi.8.2.4133.94.x64.exe");
+        assert_eq!(
+            parsed.url,
+            "https://downloads.vivaldi.com/stable/Vivaldi.8.2.4133.94.x64.exe"
         );
     }
 }

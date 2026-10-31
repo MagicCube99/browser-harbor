@@ -3482,6 +3482,7 @@ fn provider_label(provider: ProviderKind) -> &'static str {
         ProviderKind::Catsxp => "Catsxp 官方",
         ProviderKind::SkyKakapo => "SkyKakapo 官方",
         ProviderKind::Turbo => "Turbo 官方",
+        ProviderKind::Vivaldi => "Vivaldi 官方",
     }
 }
 

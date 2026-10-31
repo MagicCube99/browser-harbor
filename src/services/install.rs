@@ -790,6 +790,7 @@ fn obsolete_native_files(target: TargetId) -> &'static [&'static str] {
             "ScheduledTask-Create.ps1",
             "ScheduledTask-Remove.ps1",
         ],
+        TargetId::Vivaldi => &["update_notifier.exe"],
         _ => &[],
     }
 }

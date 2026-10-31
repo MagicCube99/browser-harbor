@@ -68,6 +68,9 @@ impl ProviderResolver {
                 website::resolve_skykakapo(&self.http, channel, cpu_build).await?
             }
             ProviderKind::Turbo => website::resolve_turbo(&self.http, channel, cpu_build).await?,
+            ProviderKind::Vivaldi => {
+                website::resolve_vivaldi(&self.http, channel, cpu_build).await?
+            }
         };
         descriptor
             .validate()

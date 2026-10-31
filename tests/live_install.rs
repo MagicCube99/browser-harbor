@@ -865,3 +865,62 @@ async fn installs_remaining_generic_targets() {
         }
     }
 }
+
+#[test]
+#[ignore = "extracts local Vivaldi installer in temporary directory"]
+fn extracts_and_installs_vivaldi_local_package() {
+    let local_file = std::path::Path::new(r"D:\Downloads\Vivaldi.8.2.4133.96.x64.exe");
+    if !local_file.is_file() {
+        return;
+    }
+    let directory = tempdir().unwrap();
+    let browser_root = directory.path().join("Vivaldi");
+    let descriptor = browser_harbor::domain::release::ReleaseDescriptor {
+        target: TargetId::Vivaldi,
+        version: "8.2.4133.96".to_owned(),
+        channel: ReleaseChannel::Stable,
+        cpu_build: browser_harbor::domain::release::CpuBuild::X64,
+        provider: browser_harbor::domain::release::ProviderKind::Vivaldi,
+        artifact: browser_harbor::domain::release::Artifact {
+            file_name: "Vivaldi.8.2.4133.96.x64.exe".to_owned(),
+            format: browser_harbor::domain::release::ArchiveFormat::SevenZip,
+            size: Some(156264872),
+            integrity: Some(browser_harbor::domain::release::Integrity::Sha256(
+                "cd3374dbbffe20ccc8dd1f621c171831ae4e79548af1d41db4dadadf3decb034".to_owned(),
+            )),
+            urls: vec![
+                "https://downloads.vivaldi.com/stable/Vivaldi.8.2.4133.96.x64.exe".to_owned(),
+            ],
+            signature_url: None,
+        },
+        placement: TargetId::Vivaldi.spec().placement,
+        inner_archive: Some("vivaldi.7z".to_owned()),
+        source: "https://vivaldi.com/wp-content/vivaldi-versions.js".to_owned(),
+        published_at: None,
+    };
+
+    let receipt = InstallService::install(InstallRequest {
+        release: descriptor,
+        browser_artifact: local_file.to_path_buf(),
+        browser_root: browser_root.clone(),
+        browser_directory: None,
+        data_directory: None,
+        profile_directory: None,
+        cache_directory: None,
+        chrome_plus_config: ChromePlusConfig::default(),
+        chrome_plus_runtime: None,
+        libportable_runtime: None,
+    })
+    .unwrap();
+
+    assert_eq!(receipt.browser_directory, browser_root.join("App"));
+    assert_eq!(receipt.data_directory, browser_root.join("User Data"));
+    assert!(receipt.browser_directory.join("vivaldi.exe").is_file());
+    assert!(receipt.browser_directory.join("stp.viv").is_file());
+    assert!(
+        !receipt
+            .browser_directory
+            .join("update_notifier.exe")
+            .exists()
+    );
+}
