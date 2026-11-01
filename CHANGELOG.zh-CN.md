@@ -27,8 +27,8 @@
 ### 新增
 
 - 新增 Vivaldi（Stable x64）作为第 15 款受支持的浏览器目标。
-- 纯 Rust 内存静态受控解包官方安装包（双层 7z），绝不执行第三方安装程序。
-- 写入官方原生 `stp.viv` 激活 Standalone 隔离模式，完全将 `User Data` 锁定在根目录，零修改二进制，不碰注册表与 `%LOCALAPPDATA%`。
+- 分两阶段受控提取官方安装包，不运行安装程序。
+- 启用原生 Standalone 模式，用户数据与程序目录并列保存在 Browser Root 下，不注入第三方 DLL。
 - 安装与更新时自动剔除后台更新组件 `update_notifier.exe`。
 - 全面对齐中英文文档、用户指南、ADR 决策与架构规范。
 

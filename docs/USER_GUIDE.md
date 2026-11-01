@@ -143,10 +143,10 @@ Edge uses the matching `setdll` helper to add the `version.dll` import. Brave, H
 
 Vivaldi uses the official native Standalone portable mode:
 
-- Extracted cleanly from the official installer via in-memory double-layer 7z into `App/` without executing third-party installation wizards.
-- Automatically places a `stp.viv` marker file in `App/`, which instructs Vivaldi to confine all profile data to the adjacent `User Data/` directory without writing to `%LOCALAPPDATA%` or touching the Windows registry.
+- The official installer is extracted in two controlled stages into `App/`, without running the installer.
+- The manager enables Vivaldi's native Standalone mode, with user data stored by default in `User Data/` beside `App/` under the Browser Root.
 - Automatically removes the background update notifier (`update_notifier.exe`) during installation and upgrade.
-- Single-data-directory targets (Vivaldi, Turbo, Catsxp) manage all user data directly under `User Data/`, and the standalone Profile field is automatically linked.
+- Vivaldi and Turbo default to `User Data/`; Catsxp defaults to `Profiles/`. These targets manage profiles within their user-data directory, so the app hides the duplicate Profile field.
 - **Moving to another PC:** Vivaldi uses native Standalone mode without Chrome++. After copying the browser folder to another PC, saved passwords may not work. Enable Vivaldi Sync beforehand to sync passwords and extensions. Websites and extensions may still require a fresh sign-in; copying the folder does not guarantee that every signed-in session will transfer.
 
 When Vivaldi is selected, a short migration notice appears below **Paths and user data**. Hover over it for the full explanation. Other browsers do not show this notice.
