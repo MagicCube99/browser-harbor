@@ -1,31 +1,31 @@
 {
   "schemaVersion": 1,
-  "generatedAt": 1793458658,
+  "generatedAt": 1793524972,
   "expiresAt": 253402300799,
   "releases": [
     {
       "target": "brave",
-      "version": "1.98.62",
+      "version": "1.98.63",
       "channel": "stable",
       "cpuBuild": "x64",
       "provider": "git_hub_release",
       "artifact": {
-        "fileName": "brave-v1.98.62-win32-x64.zip",
+        "fileName": "brave-v1.98.63-win32-x64.zip",
         "format": "zip",
-        "size": 253047023,
+        "size": 252907553,
         "integrity": {
           "algorithm": "sha256",
-          "value": "1bd30af14e3026f986a374a4eb2dae7b1f36de01a411fb58ba41adde10032781"
+          "value": "403f330d018f86fddbcedb95ea1f8b9b5e9a6198d93d306a4d4cee776f49396a"
         },
         "urls": [
-          "https://github.com/brave/brave-browser/releases/download/v1.98.62/brave-v1.98.62-win32-x64.zip"
+          "https://github.com/brave/brave-browser/releases/download/v1.98.63/brave-v1.98.63-win32-x64.zip"
         ],
         "signatureUrl": null
       },
       "placement": "native_package",
       "innerArchive": null,
-      "source": "https://github.com/brave/brave-browser/releases/tag/v1.98.62",
-      "publishedAt": "2026-10-28T03:43:08Z"
+      "source": "https://github.com/brave/brave-browser/releases/tag/v1.98.63",
+      "publishedAt": "2026-10-30T05:50:37Z"
     },
     {
       "target": "brave",
@@ -473,20 +473,20 @@
     },
     {
       "target": "turbo",
-      "version": "154.0.8037.105",
+      "version": "156.0.8078.80",
       "channel": "stable",
       "cpuBuild": "x64",
       "provider": "turbo",
       "artifact": {
-        "fileName": "Turbo_154.0.8037.105_portable.7z",
+        "fileName": "Turbo_156.0.8078.80_portable.7z",
         "format": "sevenzip",
-        "size": null,
+        "size": 127003032,
         "integrity": {
           "algorithm": "sha256",
-          "value": "5f874d2838feb6d0943c40084b399172a1e4ffc7bbdd57ef8d683a4b2a2af78f"
+          "value": "13999f6769a98afcdfc3009cf3fa54eb446958327144db5d2edf1ba3e50ef851"
         },
         "urls": [
-          "https://dl.tbrowser.cn/download/Turbo_154.0.8037.105_portable.7z"
+          "https://dl.tbrowser.cn/download/Turbo_156.0.8078.80_portable.7z"
         ],
         "signatureUrl": null
       },
@@ -528,7 +528,7 @@
       "artifact": {
         "fileName": "Vivaldi.8.2.4133.96.x64.exe",
         "format": "sevenzip",
-        "size": 156264872,
+        "size": null,
         "integrity": {
           "algorithm": "sha256",
           "value": "cd3374dbbffe20ccc8dd1f621c171831ae4e79548af1d41db4dadadf3decb034"
