@@ -1235,9 +1235,5 @@ mod tests {
                     )
                     .is_some())
         );
-        println!(
-            "Vivaldi {}: signed metadata resolves successfully",
-            release.version
-        );
     }
 }

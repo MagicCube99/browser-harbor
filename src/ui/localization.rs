@@ -416,6 +416,12 @@ fn exact_translation(text: &str) -> Option<&'static str> {
         "SkyKakapo 官方" => "SkyKakapo official",
         "Turbo 官方" => "Turbo official",
         "Vivaldi 官方" => "Vivaldi official",
+        "换电脑时，已保存密码可能无法直接使用；建议提前开启 Vivaldi Sync。" => {
+            "Changing PCs? Saved passwords may stop working. Enable Vivaldi Sync beforehand."
+        }
+        "复制整个目录换电脑后，已保存密码可能无法直接使用。建议提前开启 Vivaldi Sync 同步密码与扩展；网站和扩展可能仍需重新登录。" => {
+            "After copying the browser folder to another PC, saved passwords may not work. Enable Vivaldi Sync beforehand to sync passwords and extensions. Websites and extensions may still require you to sign in again."
+        }
         "无法比较" => "Cannot compare",
         "尚未检查上游版本" => "Upstream not checked",
         "与上游版本相同" => "Same as upstream",

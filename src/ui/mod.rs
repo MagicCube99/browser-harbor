@@ -1664,6 +1664,16 @@ impl BrowserHarborApp {
             },
         );
         changed |= path_changed;
+        if target == TargetId::Vivaldi {
+            ui.add_space(4.0);
+            ui.add(egui::Label::new(
+                RichText::new("换电脑时，已保存密码可能无法直接使用；建议提前开启 Vivaldi Sync。")
+                    .size(11.0)
+                    .color(palette.warning),
+            ).wrap()).localized_hover(
+                "复制整个目录换电脑后，已保存密码可能无法直接使用。建议提前开启 Vivaldi Sync 同步密码与扩展；网站和扩展可能仍需重新登录。",
+            );
+        }
         if check_configuration {
             self.open_health_dialog();
         }

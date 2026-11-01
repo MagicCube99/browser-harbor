@@ -604,6 +604,54 @@ fn overview_has_no_scroll_bar() {
 }
 
 #[test]
+fn vivaldi_warns_about_password_portability_without_overflowing_the_compact_window() {
+    for language in [Language::Chinese, Language::English] {
+        let mut harness = harness();
+        harness.state_mut().state.update_draft(|settings| {
+            settings.selected_browser = TargetId::Vivaldi;
+            settings.language = language;
+        });
+        harness.state_mut().state.save().unwrap();
+        harness.run();
+        let notice = match language {
+            Language::Chinese => {
+                "换电脑时，已保存密码可能无法直接使用；建议提前开启 Vivaldi Sync。"
+            }
+            Language::English => {
+                "Changing PCs? Saved passwords may stop working. Enable Vivaldi Sync beforehand."
+            }
+        };
+        let warning = harness.get_by_label(notice);
+        assert!(
+            warning.rect().min.y
+                > harness
+                    .get_by_label(match language {
+                        Language::Chinese => "缓存目录",
+                        Language::English => "Cache directory",
+                    })
+                    .rect()
+                    .min
+                    .y
+        );
+        assert!(
+            warning.rect().max.y
+                < harness
+                    .get_by_label(match language {
+                        Language::Chinese => "自动保存已开启",
+                        Language::English => "Autosave on",
+                    })
+                    .rect()
+                    .min
+                    .y
+        );
+        assert!(harness.query_by_role(Role::ScrollBar).is_none());
+        harness.state_mut().state.select(TargetId::Chrome);
+        harness.run();
+        assert!(harness.query_by_label(notice).is_none());
+    }
+}
+
+#[test]
 fn footer_shows_release_menu_at_the_right_edge() {
     assert_eq!(
         super::RELEASES_URL,

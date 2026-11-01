@@ -4,6 +4,10 @@
 
 ## v0.6.11 — 2026-11-01
 
+### Added
+
+- Added a bilingual notice when Vivaldi is selected, explaining saved-password migration limits and recommending Vivaldi Sync before moving to another PC. Hover for details.
+
 ### Fixed
 
 - Fresh browser installations no longer report an upgrade from a historical Chrome++ version. Upgrade messages use the version detected before replacing files.

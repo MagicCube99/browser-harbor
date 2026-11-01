@@ -147,7 +147,9 @@ Vivaldi uses the official native Standalone portable mode:
 - Automatically places a `stp.viv` marker file in `App/`, which instructs Vivaldi to confine all profile data to the adjacent `User Data/` directory without writing to `%LOCALAPPDATA%` or touching the Windows registry.
 - Automatically removes the background update notifier (`update_notifier.exe`) during installation and upgrade.
 - Single-data-directory targets (Vivaldi, Turbo, Catsxp) manage all user data directly under `User Data/`, and the standalone Profile field is automatically linked.
-- **Cross-machine credentials notice:** To strictly comply with Vivaldi's EULA, Vivaldi is not modified or injected with third-party DLLs. Because native Chromium uses Windows DPAPI encryption tied to the local user account, saved passwords will not automatically decrypt if the directory is copied to a different Windows machine. To roam saved logins and extensions seamlessly across devices, use official Vivaldi Sync.
+- **Moving to another PC:** Vivaldi uses native Standalone mode without Chrome++. After copying the browser folder to another PC, saved passwords may not work. Enable Vivaldi Sync beforehand to sync passwords and extensions. Websites and extensions may still require a fresh sign-in; copying the folder does not guarantee that every signed-in session will transfer.
+
+When Vivaldi is selected, a short migration notice appears below **Paths and user data**. Hover over it for the full explanation. Other browsers do not show this notice.
 
 ## Global settings
 

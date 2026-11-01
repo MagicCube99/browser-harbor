@@ -29,7 +29,7 @@
   <img src="assets/screenshots/chromeplus-en.png" width="49%" alt="Chrome++ integration and configuration">
 </p>
 
-<p align="center"><sub>Browser setup · Chrome++ configuration</sub></p>
+<p align="center"><sub>Browser setup · Chrome++ configuration · Example screenshots; version numbers may differ from the current release.</sub></p>
 
 ---
 
@@ -112,7 +112,7 @@ running.
 
 ## 🧨 Known rough edges
 
-- **Vivaldi portable credentials:** Vivaldi runs in official Standalone mode without third-party binary modification; use Vivaldi Sync if you need credentials to roam across different Windows machines.
+- **Moving Vivaldi to another PC:** Copying the folder may leave saved passwords unusable. Enable Vivaldi Sync beforehand to sync passwords and extensions; websites and extensions may still require a fresh sign-in. Selecting Vivaldi also shows this notice in the app.
 - **Experimental labels:** Brave, Helium, and Ungoogled Chromium are usable, but
   their deeper Chrome++ compatibility remains experimental.
 - **SmartScreen warnings:** The binary is not Authenticode-signed yet. A warning
