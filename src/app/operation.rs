@@ -327,11 +327,18 @@ async fn run_operation(
         {
             Ok(descriptor) if descriptor.artifact.integrity.is_some() => descriptor,
             Ok(_) => {
-                let metadata = load_trusted_metadata(&http, &request.network, &request.cache_dir)
-                    .await
-                    .map_err(|error| {
-                        format!("官方元数据缺少可信摘要，签名发布清单也不可用：{error}")
-                    })?;
+                let metadata = load_trusted_metadata_for_release(
+                    &http,
+                    &request.network,
+                    &request.cache_dir,
+                    target,
+                    request.target_config.channel,
+                    request.target_config.cpu_build,
+                )
+                .await
+                .map_err(|error| {
+                    format!("官方元数据缺少可信摘要，签名发布清单也不可用：{error}")
+                })?;
                 if metadata.is_expired() {
                     emit(OperationPhase::Notice(
                         "签名发布清单已过期，但使用它完成本次安装".to_owned(),
@@ -357,11 +364,18 @@ async fn run_operation(
                 descriptor
             }
             Err(error) => {
-                let metadata = load_trusted_metadata(&http, &request.network, &request.cache_dir)
-                    .await
-                    .map_err(|signed_error| {
-                        format!("官方元数据不可用：{error}；签名发布清单也不可用：{signed_error}")
-                    })?;
+                let metadata = load_trusted_metadata_for_release(
+                    &http,
+                    &request.network,
+                    &request.cache_dir,
+                    target,
+                    request.target_config.channel,
+                    request.target_config.cpu_build,
+                )
+                .await
+                .map_err(|signed_error| {
+                    format!("官方元数据不可用：{error}；签名发布清单也不可用：{signed_error}")
+                })?;
                 if metadata.is_expired() {
                     emit(OperationPhase::Notice(
                         "官方元数据不可用；签名发布清单已过期，但使用它完成本次安装".to_owned(),
@@ -567,6 +581,38 @@ async fn load_trusted_metadata(
         .as_ref()
         .filter(|_| cached_metadata_is_recent(cache_dir))
     {
+        return Ok(metadata.clone());
+    }
+    match fetch_trusted_metadata(http, network, cache_dir).await {
+        Ok(metadata) => Ok(metadata),
+        Err(error) => {
+            if let Some(cached) = cached {
+                return Ok(cached);
+            }
+            match TrustedMetadata::load_embedded() {
+                Ok(metadata) => Ok(metadata),
+                Err(embedded_error) => Err(format!(
+                    "live signed metadata failed: {error}; embedded metadata failed: {embedded_error}"
+                )
+                .into()),
+            }
+        }
+    }
+}
+
+async fn load_trusted_metadata_for_release(
+    http: &HttpClient,
+    network: &NetworkSettings,
+    cache_dir: &std::path::Path,
+    target: TargetId,
+    channel: ReleaseChannel,
+    cpu_build: CpuBuild,
+) -> Result<TrustedMetadata, Box<dyn std::error::Error + Send + Sync>> {
+    let cached = TrustedMetadata::load_cached(cache_dir).ok().flatten();
+    if let Some(metadata) = cached.as_ref().filter(|metadata| {
+        cached_metadata_is_recent(cache_dir)
+            && metadata.release(target, channel, cpu_build).is_some()
+    }) {
         return Ok(metadata.clone());
     }
     match fetch_trusted_metadata(http, network, cache_dir).await {

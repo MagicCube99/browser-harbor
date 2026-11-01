@@ -16,7 +16,8 @@ use tempfile::tempdir;
 use super::{
     BODY_FONT_SIZE, BrowserHarborApp, DetailTab, LIGHT_PALETTE, ProgramIdentity, StatusTone,
     chrome_plus_update_button_label, chrome_plus_update_hover, configure_context,
-    create_auto_shortcut, installed_channel_label, relation_status, set_language,
+    create_auto_shortcut, detect_chrome_plus_version, installed_channel_label, relation_status,
+    set_language,
 };
 use crate::{
     app::{
@@ -26,7 +27,7 @@ use crate::{
     config::ConfigStore,
     domain::{
         release::{CpuBuild, ReleaseChannel},
-        settings::{Language, Settings, ThemeMode},
+        settings::{Language, Settings, TargetConfig, ThemeMode},
         target::TargetId,
     },
     infra::ini::{IniEncoding, read_ini, write_ini},
@@ -1474,6 +1475,24 @@ fn chrome_plus_update_button_reflects_the_last_check() {
     assert_eq!(
         chrome_plus_update_button_label(Some("1.18.2"), Some("1.18.2-beta")),
         "检查更新"
+    );
+}
+
+#[test]
+fn fresh_browser_does_not_report_a_stored_chrome_plus_upgrade() {
+    let directory = tempdir().unwrap();
+    let mut config = TargetConfig::for_target(TargetId::Edge);
+    config.browser_root = Some(directory.path().join("Edge"));
+    config.browser_directory = Some(
+        directory
+            .path()
+            .join(r"Edge\App\Microsoft\Edge\Application"),
+    );
+    config.chrome_plus_version = Some("1.18.2".to_owned());
+
+    assert_eq!(
+        detect_chrome_plus_version(TargetId::Edge, &config, directory.path()),
+        None
     );
 }
 

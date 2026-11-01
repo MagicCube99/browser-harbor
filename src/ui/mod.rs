@@ -1018,12 +1018,26 @@ impl BrowserHarborApp {
                     });
                 }
                 OperationPhase::Installed { receipt } => {
-                    let previous_chrome_plus = self
-                        .state
-                        .draft()
-                        .targets
-                        .get(&event.target)
-                        .and_then(|config| config.chrome_plus_version.clone());
+                    let previous_chrome_plus =
+                        if let Some(cached) = self.chrome_plus_versions.get(&event.target) {
+                            cached.clone()
+                        } else {
+                            let detected =
+                                self.state
+                                    .draft()
+                                    .targets
+                                    .get(&event.target)
+                                    .and_then(|config| {
+                                        detect_chrome_plus_version(
+                                            event.target,
+                                            config,
+                                            self.state.tool_root(),
+                                        )
+                                    });
+                            self.chrome_plus_versions
+                                .insert(event.target, detected.clone());
+                            detected
+                        };
                     if let Some(config) = self.state.draft().targets.get(&event.target) {
                         let key = (event.target, config.channel, config.cpu_build);
                         self.latest_versions.insert(
@@ -3495,6 +3509,16 @@ fn chrome_plus_ini_path(
         let ini = program.join("chrome++.ini");
         ini.is_file().then_some(ini)
     })
+}
+
+fn detect_chrome_plus_version(
+    target: TargetId,
+    config: &crate::domain::settings::TargetConfig,
+    tool_root: &std::path::Path,
+) -> Option<String> {
+    let ini = chrome_plus_ini_path(target, config, tool_root)?;
+    ini.parent()
+        .and_then(|directory| crate::runtime::chromeplus::installed_version(directory).ok())
 }
 
 fn chrome_plus_program_directory(
