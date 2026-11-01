@@ -2,7 +2,13 @@
 
 [简体中文](CHANGELOG.zh-CN.md) · English
 
-## v0.6.11 — 2026-11-01
+## v0.6.12 — 2026-11-01
+
+- Clarified Vivaldi's official password-migration limitation and the recommendation to use Vivaldi Sync before moving to another PC.
+- Made version checks faster and reduced waits on poor connections. Download verification remains unchanged.
+- Brave selects an available Windows package in the chosen channel when a newer release is still being uploaded.
+
+## v0.6.11 — 2026-11-01 (withdrawn)
 
 ### Added
 
@@ -14,7 +20,7 @@
 - A signed metadata cache missing the selected browser is refreshed, and incomplete mirrors no longer hide a complete fallback. The embedded manifest now includes Vivaldi.
 - Edge no longer falls back to obsolete MSI metadata when Microsoft's live lookup fails. Starting a new check clears the previous result; a newer local version is labeled clearly.
 
-## v0.6.10 — 2026-10-31
+## v0.6.10 — 2026-10-31 (withdrawn)
 
 ### Fixed
 

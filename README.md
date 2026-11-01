@@ -95,7 +95,7 @@ provides CPU-specific builds for SSE3, SSE4, AVX, AVX2, and AVX512.
 
 ## 🚀 Quick start
 
-1. Download `BrowserHarbor-0.6.11-x64.exe` from
+1. Download the `BrowserHarbor-<version>-x64.exe` file from
    [GitHub Releases](https://github.com/MagicCube99/browser-harbor/releases/latest).
    If GitHub is unreachable, use the [Gitee mirror](https://gitee.com/MagicCube99/browser-harbor/releases).
 2. Put it in any writable folder and run it.
@@ -112,12 +112,13 @@ running.
 
 ## 🧨 Known rough edges
 
-- **Moving Vivaldi to another PC:** Copying the folder may leave saved passwords unusable. Enable Vivaldi Sync beforehand to sync passwords and extensions; websites and extensions may still require a fresh sign-in. Selecting Vivaldi also shows this notice in the app.
+- **Moving Vivaldi to another PC:** Vivaldi's official Standalone mode does not support moving saved passwords and extensions just by copying the folder. Use Vivaldi Sync beforehand; websites and extensions may still require a fresh sign-in. The app also shows this limitation when Vivaldi is selected.
+- **Remote Desktop:** Some graphics-driver and remote-session combinations may prevent the app from opening. Try the local desktop.
 - **Experimental labels:** Brave, Helium, and Ungoogled Chromium are usable, but
   their deeper Chrome++ compatibility remains experimental.
 - **SmartScreen warnings:** The binary is not Authenticode-signed yet. A warning
   is expected.
-- **Edge needs a live lookup:** Stable and Beta use Microsoft's short-lived CDP download URLs. Old MSI entries are never used as a fallback.
+- **Edge needs a live lookup:** Its download addresses expire, so installation requires a working connection to Microsoft. If the lookup fails, retry later or check your network settings.
 - **Manual orientation required:** Existing folders do not import themselves.
   Select the target, then use **Check configuration** or **Relocate…**.
 - **Windows x64 only:** Windows 10 22H2 or Windows 11. Older systems are not

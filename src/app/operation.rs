@@ -667,21 +667,13 @@ async fn fetch_trusted_metadata(
     let signature_urls = signed_manifest_candidates(SIGNED_METADATA_SIGNATURE_URL, network)?;
     let mut last_error = None;
     for (metadata_url, signature_url) in metadata_urls.iter().zip(&signature_urls) {
-        let result = async {
-            let metadata = http.get_bytes(metadata_url).await?;
-            let signature = http.get_bytes(signature_url).await?;
-            let signature = std::str::from_utf8(&signature)?;
-            let parsed = verify_with_public_key(
-                &metadata,
-                signature,
-                include_str!("../../assets/metadata-public-key.hex"),
-            )?;
-            if !accepts(&parsed) {
-                return Err("signed metadata mirror has no compatible release entry".into());
-            }
-            parsed.store(&metadata, signature, cache_dir)?;
-            Ok::<_, Box<dyn std::error::Error + Send + Sync>>(parsed)
-        }
+        let result = fetch_trusted_metadata_candidate(
+            http,
+            metadata_url,
+            signature_url,
+            cache_dir,
+            &accepts,
+        )
         .await;
         match result {
             Ok(metadata) => return Ok(metadata),
@@ -689,6 +681,28 @@ async fn fetch_trusted_metadata(
         }
     }
     Err(last_error.unwrap_or_else(|| "no signed metadata candidate succeeded".into()))
+}
+
+async fn fetch_trusted_metadata_candidate(
+    http: &HttpClient,
+    metadata_url: &str,
+    signature_url: &str,
+    cache_dir: &std::path::Path,
+    accepts: &impl Fn(&TrustedMetadata) -> bool,
+) -> Result<TrustedMetadata, Box<dyn std::error::Error + Send + Sync>> {
+    let (metadata, signature) =
+        tokio::try_join!(http.get_bytes(metadata_url), http.get_bytes(signature_url),)?;
+    let signature = std::str::from_utf8(&signature)?;
+    let parsed = verify_with_public_key(
+        &metadata,
+        signature,
+        include_str!("../../assets/metadata-public-key.hex"),
+    )?;
+    if !accepts(&parsed) {
+        return Err("signed metadata mirror has no compatible release entry".into());
+    }
+    parsed.store(&metadata, signature, cache_dir)?;
+    Ok(parsed)
 }
 
 enum OperationResult {
@@ -913,6 +927,12 @@ impl OperationPhase {
 #[cfg(test)]
 mod tests {
     use std::fs;
+    use std::{
+        io::{Read, Write},
+        net::TcpListener,
+        thread,
+        time::{Duration, Instant},
+    };
 
     use super::{
         CachedReleaseMetadata, MetadataSource, OperationPhase, UPSTREAM_REUSE_SECONDS,
@@ -923,6 +943,112 @@ mod tests {
         ArchiveFormat, Artifact, CpuBuild, Integrity, ProgramPlacement, ProviderKind,
         ReleaseChannel, ReleaseDescriptor,
     };
+
+    fn serve_signed_pair(signature: Vec<u8>) -> (String, thread::JoinHandle<()>) {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let address = listener.local_addr().unwrap();
+        listener.set_nonblocking(true).unwrap();
+        let server = thread::spawn(move || {
+            let started = Instant::now();
+            let mut pending = Vec::new();
+            while pending.len() < 2 && started.elapsed() < Duration::from_secs(3) {
+                match listener.accept() {
+                    Ok((mut socket, _)) => {
+                        socket.set_nonblocking(false).unwrap();
+                        socket
+                            .set_read_timeout(Some(Duration::from_secs(1)))
+                            .unwrap();
+                        socket
+                            .set_write_timeout(Some(Duration::from_secs(1)))
+                            .unwrap();
+                        let mut request = [0; 2048];
+                        let size = socket.read(&mut request).unwrap();
+                        let is_signature = String::from_utf8_lossy(&request[..size])
+                            .starts_with("GET /signature ");
+                        pending.push((socket, is_signature));
+                    }
+                    Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
+                        thread::sleep(Duration::from_millis(5));
+                    }
+                    Err(error) => panic!("local metadata server: {error}"),
+                }
+            }
+            // Neither response is sent until both requests arrive.
+            for (mut socket, is_signature) in pending {
+                let body = if is_signature {
+                    signature.as_slice()
+                } else {
+                    include_bytes!("../../assets/trusted-metadata.json").as_slice()
+                };
+                let header = format!(
+                    "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+                    body.len()
+                );
+                if socket.write_all(header.as_bytes()).is_ok() {
+                    let _ = socket.write_all(body);
+                }
+            }
+        });
+        (format!("http://{address}"), server)
+    }
+
+    #[tokio::test]
+    async fn signed_metadata_requests_are_concurrent_and_verified_before_caching() {
+        let (url, server) =
+            serve_signed_pair(include_bytes!("../../assets/trusted-metadata.sig").to_vec());
+        let directory = tempfile::tempdir().unwrap();
+        let http = crate::services::http::HttpClient::new(
+            &crate::domain::settings::NetworkSettings::default(),
+        )
+        .unwrap();
+        let result = tokio::time::timeout(
+            Duration::from_secs(2),
+            super::fetch_trusted_metadata_candidate(
+                &http,
+                &format!("{url}/metadata"),
+                &format!("{url}/signature"),
+                directory.path(),
+                &|_| true,
+            ),
+        )
+        .await;
+        server.join().unwrap();
+        let metadata = result
+            .expect("both requests must be in flight together")
+            .unwrap();
+        assert_eq!(
+            crate::services::trusted_metadata::TrustedMetadata::load_cached(directory.path())
+                .unwrap(),
+            Some(metadata)
+        );
+    }
+
+    #[tokio::test]
+    async fn concurrently_fetched_invalid_signature_is_never_cached() {
+        let (url, server) = serve_signed_pair(b"0".repeat(128));
+        let directory = tempfile::tempdir().unwrap();
+        let http = crate::services::http::HttpClient::new(
+            &crate::domain::settings::NetworkSettings::default(),
+        )
+        .unwrap();
+        let result = super::fetch_trusted_metadata_candidate(
+            &http,
+            &format!("{url}/metadata"),
+            &format!("{url}/signature"),
+            directory.path(),
+            &|_| true,
+        )
+        .await;
+        server.join().unwrap();
+        assert!(result.is_err());
+        assert!(!directory.path().join(super::METADATA_FILE).exists());
+        assert!(
+            !directory
+                .path()
+                .join(crate::services::trusted_metadata::SIGNATURE_FILE)
+                .exists()
+        );
+    }
 
     fn descriptor() -> ReleaseDescriptor {
         ReleaseDescriptor {

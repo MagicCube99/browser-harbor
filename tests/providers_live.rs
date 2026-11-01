@@ -19,26 +19,33 @@ async fn resolves_every_supported_browser_target() {
         }
     }
 
+    let mut failures = Vec::new();
     for (target, channel, cpu_build) in selections {
-        let release = resolver
-            .resolve(target, channel, cpu_build)
-            .await
-            .unwrap_or_else(|error| panic!("{}: {error}", target.display_name()));
+        let release = match resolver.resolve(target, channel, cpu_build).await {
+            Ok(release) => release,
+            Err(error) => {
+                failures.push(format!(
+                    "{} {} {}: {error:?}",
+                    target.display_name(),
+                    channel.display_name(),
+                    cpu_build.display_name()
+                ));
+                continue;
+            }
+        };
         assert!(!release.version.is_empty());
         assert!(!release.artifact.urls.is_empty());
         println!(
-            "{} {} {} {} {:?} {}",
+            "{} {} {} {}",
             target.display_name(),
             release.channel.display_name(),
             release.version,
             release.artifact.file_name,
-            release.artifact.integrity,
-            release
-                .artifact
-                .urls
-                .first()
-                .map(String::as_str)
-                .unwrap_or("")
         );
     }
+    assert!(
+        failures.is_empty(),
+        "Official metadata failures:\n{}",
+        failures.join("\n")
+    );
 }

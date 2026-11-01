@@ -30,7 +30,8 @@ pub struct HttpClient {
 
 impl HttpClient {
     pub fn new(settings: &NetworkSettings) -> Result<Self, ServiceError> {
-        let (direct, fallback) = Self::download_clients(settings)?;
+        let direct = metadata_client(settings, true)?;
+        let fallback = metadata_client(settings, false)?;
         Ok(Self {
             direct,
             fallback,
@@ -167,6 +168,15 @@ impl HttpClient {
             &self.fallback
         }
     }
+}
+
+fn metadata_client(settings: &NetworkSettings, direct_only: bool) -> Result<Client, ServiceError> {
+    // Metadata must fail over promptly; artifact downloads keep the user's timeout.
+    base_builder(settings, direct_only)?
+        .connect_timeout(Duration::from_secs(4))
+        .timeout(Duration::from_secs(settings.timeout_seconds.clamp(5, 8)))
+        .build()
+        .map_err(ServiceError::Network)
 }
 
 fn base_builder(
@@ -333,6 +343,13 @@ fn ensure_success(response: Response, url: &Url) -> Result<Response, ServiceErro
 
 #[cfg(test)]
 mod tests {
+    use std::{
+        io::{Read, Write},
+        net::TcpListener,
+        thread,
+        time::Duration,
+    };
+
     use super::{
         UrlRouter, accelerator_hosts, github_api_candidates, signed_manifest_candidates,
         url_uses_accelerator,
@@ -341,6 +358,36 @@ mod tests {
         release::{ArchiveFormat, Artifact, Integrity},
         settings::{Accelerator, NetworkSettings},
     };
+
+    #[tokio::test]
+    async fn metadata_total_deadline_stops_a_slow_continuous_response() {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let address = listener.local_addr().unwrap();
+        let server = thread::spawn(move || {
+            let (mut socket, _) = listener.accept().unwrap();
+            socket
+                .set_write_timeout(Some(Duration::from_secs(1)))
+                .unwrap();
+            let mut request = [0; 2048];
+            let _ = socket.read(&mut request).unwrap();
+            socket
+                .write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 36\r\nConnection: close\r\n\r\n")
+                .unwrap();
+            for _ in 0..36 {
+                if socket.write_all(b"a").is_err() {
+                    break;
+                }
+                thread::sleep(Duration::from_millis(250));
+            }
+        });
+        let http = super::HttpClient::new(&NetworkSettings::default()).unwrap();
+        let result = http.get_bytes(&format!("http://{address}/metadata")).await;
+        server.join().unwrap();
+        assert!(
+            matches!(result, Err(super::ServiceError::Network(error)) if error.is_timeout()),
+            "metadata must have a total deadline even when each read arrives on time"
+        );
+    }
 
     fn artifact(url: &str) -> Artifact {
         Artifact {

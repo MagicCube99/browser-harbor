@@ -614,13 +614,15 @@ fn vivaldi_warns_about_password_portability_without_overflowing_the_compact_wind
         harness.state_mut().state.save().unwrap();
         harness.run();
         let notice = match language {
-            Language::Chinese => {
-                "换电脑时，已保存密码可能无法直接使用；建议提前开启 Vivaldi Sync。"
-            }
+            Language::Chinese => "Vivaldi 官方限制：密码无法随目录直接跨机迁移，建议使用 Sync。",
             Language::English => {
-                "Changing PCs? Saved passwords may stop working. Enable Vivaldi Sync beforehand."
+                "Vivaldi limitation: passwords cannot move between PCs by folder copy. Use Sync."
             }
         };
+        assert!(
+            harness.query_by_label(notice).is_some(),
+            "Vivaldi's official restriction must be explained in both languages"
+        );
         let warning = harness.get_by_label(notice);
         assert!(
             warning.rect().min.y
