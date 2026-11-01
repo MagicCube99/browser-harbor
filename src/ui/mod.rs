@@ -708,6 +708,7 @@ impl BrowserHarborApp {
     ) -> Option<&UpstreamCheck> {
         self.latest_versions
             .get(&(target, config.channel, config.cpu_build))
+            .filter(|check| target != TargetId::Edge || check.source == MetadataSource::Official)
     }
 
     fn cached_release(
@@ -968,6 +969,11 @@ impl BrowserHarborApp {
         let cached_release = (mode == OperationMode::Install)
             .then(|| self.cached_release(target, &config))
             .flatten();
+        if mode == OperationMode::Check {
+            let key = (target, config.channel, config.cpu_build);
+            self.latest_versions.remove(&key);
+            self.checked_releases.remove(&key);
+        }
         self.status_message = None;
         self.operation_phase = Some(OperationPhase::Preparing);
         self.operation = Some(start_operation(StartOperationRequest {
@@ -1018,26 +1024,6 @@ impl BrowserHarborApp {
                     });
                 }
                 OperationPhase::Installed { receipt } => {
-                    let previous_chrome_plus =
-                        if let Some(cached) = self.chrome_plus_versions.get(&event.target) {
-                            cached.clone()
-                        } else {
-                            let detected =
-                                self.state
-                                    .draft()
-                                    .targets
-                                    .get(&event.target)
-                                    .and_then(|config| {
-                                        detect_chrome_plus_version(
-                                            event.target,
-                                            config,
-                                            self.state.tool_root(),
-                                        )
-                                    });
-                            self.chrome_plus_versions
-                                .insert(event.target, detected.clone());
-                            detected
-                        };
                     if let Some(config) = self.state.draft().targets.get(&event.target) {
                         let key = (event.target, config.channel, config.cpu_build);
                         self.latest_versions.insert(
@@ -1052,7 +1038,7 @@ impl BrowserHarborApp {
                     let mut message = match self.state.record_install_success(event.target, receipt)
                     {
                         Ok(()) => match (
-                            previous_chrome_plus.as_deref(),
+                            receipt.previous_chrome_plus_version.as_deref(),
                             receipt.chrome_plus_version.as_deref(),
                         ) {
                             (Some(previous), Some(current)) if previous != current => format!(
@@ -3315,7 +3301,7 @@ fn relation_status(
         (true, true) => Some(match relation {
             VersionRelation::Same => ("与上游版本相同", StatusTone::Success),
             VersionRelation::UpstreamNewer => ("上游有新版本", StatusTone::Info),
-            VersionRelation::UpstreamOlder => ("上游版本较旧", StatusTone::Warning),
+            VersionRelation::UpstreamOlder => ("本地版本较新", StatusTone::Info),
             VersionRelation::Different => ("上游版本不同", StatusTone::Warning),
             VersionRelation::Unknown => ("版本无法可靠比较", StatusTone::Warning),
         }),
@@ -3509,16 +3495,6 @@ fn chrome_plus_ini_path(
         let ini = program.join("chrome++.ini");
         ini.is_file().then_some(ini)
     })
-}
-
-fn detect_chrome_plus_version(
-    target: TargetId,
-    config: &crate::domain::settings::TargetConfig,
-    tool_root: &std::path::Path,
-) -> Option<String> {
-    let ini = chrome_plus_ini_path(target, config, tool_root)?;
-    ini.parent()
-        .and_then(|directory| crate::runtime::chromeplus::installed_version(directory).ok())
 }
 
 fn chrome_plus_program_directory(

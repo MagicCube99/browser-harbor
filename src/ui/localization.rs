@@ -117,6 +117,9 @@ fn exact_translation(text: &str) -> Option<&'static str> {
         "下载并升级" => "Download and upgrade",
         "检查并安装/升级" => "Check and install/upgrade",
         "下载上游版本" => "Download upstream",
+        "Edge 下载信息需从 Microsoft 实时获取，不能使用旧 MSI 签名记录；请检查网络后重试" => {
+            "Edge download information must be fetched live from Microsoft. An old MSI manifest entry cannot be used; check the network and try again."
+        }
         "重新下载并替换" => "Download again and replace",
         "选择本地安装包" => "Choose local installer package",
         "更换本地安装包" => "Change local installer package",
@@ -417,7 +420,7 @@ fn exact_translation(text: &str) -> Option<&'static str> {
         "尚未检查上游版本" => "Upstream not checked",
         "与上游版本相同" => "Same as upstream",
         "上游有新版本" => "Upstream has a newer version",
-        "上游版本较旧" => "Upstream is older",
+        "本地版本较新" => "Local version is newer",
         "上游版本不同" => "Different upstream version",
         "版本无法可靠比较" => "Versions cannot be compared reliably",
         "未检测到" => "Not detected",
@@ -492,6 +495,14 @@ fn exact_translation(text: &str) -> Option<&'static str> {
 }
 
 fn dynamic_translation(text: &str) -> String {
+    if let Some(rest) = text.strip_prefix("官方元数据不可用：")
+        && let Some((official, signed)) = rest.split_once("；签名发布清单也不可用：")
+    {
+        return format!(
+            "Official metadata unavailable: {official}; signed release manifest unavailable: {}",
+            exact_translation(signed).unwrap_or(signed)
+        );
+    }
     if let Some(rest) = text.strip_prefix("Chrome++ 上游版本已从 ")
         && let Some((previous, current)) = rest.split_once(" 变化为 ")
         && let Some(current) = current.strip_suffix("，请重新检查")
@@ -701,6 +712,12 @@ mod tests {
         assert_eq!(translate("当前浏览器：Firefox"), "Current browser: Firefox");
         assert_eq!(translate("159.0（上次安装）"), "159.0 (last install)");
         assert_eq!(localized("检查更新"), "Check for updates");
+        assert_eq!(localized("本地版本较新"), "Local version is newer");
+        let edge_failure = localized(
+            "官方元数据不可用：timeout；签名发布清单也不可用：Edge 下载信息需从 Microsoft 实时获取，不能使用旧 MSI 签名记录；请检查网络后重试",
+        );
+        assert!(edge_failure.contains("fetched live from Microsoft"));
+        assert!(!edge_failure.contains("签名发布清单"));
         assert_eq!(localized("加速站前缀"), "Accelerator prefix");
         assert_eq!(localized("当前配置文件"), "Current config file");
         assert_eq!(

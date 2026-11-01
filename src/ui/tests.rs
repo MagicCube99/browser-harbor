@@ -16,8 +16,7 @@ use tempfile::tempdir;
 use super::{
     BODY_FONT_SIZE, BrowserHarborApp, DetailTab, LIGHT_PALETTE, ProgramIdentity, StatusTone,
     chrome_plus_update_button_label, chrome_plus_update_hover, configure_context,
-    create_auto_shortcut, detect_chrome_plus_version, installed_channel_label, relation_status,
-    set_language,
+    create_auto_shortcut, installed_channel_label, relation_status, set_language,
 };
 use crate::{
     app::{
@@ -27,7 +26,7 @@ use crate::{
     config::ConfigStore,
     domain::{
         release::{CpuBuild, ReleaseChannel},
-        settings::{Language, Settings, TargetConfig, ThemeMode},
+        settings::{Language, Settings, ThemeMode},
         target::TargetId,
     },
     infra::ini::{IniEncoding, read_ini, write_ini},
@@ -748,7 +747,7 @@ fn version_status_uses_semantic_tone_and_keeps_missing_state_distinct() {
     );
     assert_eq!(
         relation_status(true, true, VersionRelation::UpstreamOlder),
-        Some(("上游版本较旧", StatusTone::Warning))
+        Some(("本地版本较新", StatusTone::Info))
     );
 }
 
@@ -778,7 +777,7 @@ fn upstream_direction_drives_upgrade_and_replacement_labels() {
 
     let (_directory, mut older) = firefox_harness_with_versions("158.0.1", "157.0.9");
     older.run();
-    older.get_by_label("上游版本较旧");
+    older.get_by_label("本地版本较新");
     older.get_by_label("下载上游版本");
 }
 
@@ -1479,21 +1478,49 @@ fn chrome_plus_update_button_reflects_the_last_check() {
 }
 
 #[test]
-fn fresh_browser_does_not_report_a_stored_chrome_plus_upgrade() {
-    let directory = tempdir().unwrap();
-    let mut config = TargetConfig::for_target(TargetId::Edge);
-    config.browser_root = Some(directory.path().join("Edge"));
-    config.browser_directory = Some(
-        directory
-            .path()
-            .join(r"Edge\App\Microsoft\Edge\Application"),
+fn edge_never_displays_a_signed_msi_record_as_current_upstream() {
+    let mut harness = harness();
+    let config = harness.state().state.draft().targets[&TargetId::Edge].clone();
+    harness.state_mut().latest_versions.insert(
+        (TargetId::Edge, config.channel, config.cpu_build),
+        UpstreamCheck {
+            version: "156.0.4314.50".to_owned(),
+            channel: config.channel,
+            cpu_build: config.cpu_build,
+            source: MetadataSource::SignedManifest,
+            checked_at: 0,
+        },
     );
-    config.chrome_plus_version = Some("1.18.2".to_owned());
+    assert!(
+        harness
+            .state()
+            .latest_check(TargetId::Edge, &config)
+            .is_none()
+    );
+}
 
-    assert_eq!(
-        detect_chrome_plus_version(TargetId::Edge, &config, directory.path()),
-        None
+#[test]
+fn manual_version_check_clears_previous_result_before_starting() {
+    let directory = tempdir().unwrap();
+    let mut settings = Settings {
+        selected_browser: TargetId::Edge,
+        ..Settings::default()
+    };
+    settings.network.proxy = Some("http://[".to_owned());
+    let state = AppState::new(
+        settings,
+        ConfigStore::new(directory.path().join("BrowserHarbor.json")),
     );
+    let mut app = BrowserHarborApp::new(state);
+    let config = app.state.draft().targets[&TargetId::Edge].clone();
+    app.latest_versions.insert(
+        (TargetId::Edge, config.channel, config.cpu_build),
+        UpstreamCheck::fresh("156.0.4314.50".to_owned(), config.channel, config.cpu_build),
+    );
+
+    app.start_operation(crate::app::operation::OperationMode::Check, false);
+
+    assert!(app.latest_check(TargetId::Edge, &config).is_none());
 }
 
 #[test]

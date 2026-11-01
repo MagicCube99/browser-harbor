@@ -71,7 +71,7 @@ Thorium 提供面向 SSE3、SSE4、AVX、AVX2 和 AVX512 的 CPU 构建。
 ## 开始使用
 
 1. 从 [GitHub Releases](https://github.com/MagicCube99/browser-harbor/releases/latest)
-   下载 `BrowserHarbor-0.6.10-x64.exe`。
+   下载 `BrowserHarbor-0.6.11-x64.exe`。
    无法访问 GitHub 时，可从 [Gitee 镜像](https://gitee.com/MagicCube99/browser-harbor/releases)下载。
 2. 放进任意可写目录，直接运行。
 3. 选择浏览器，确认 Browser Root 和数据路径。
@@ -86,7 +86,7 @@ Thorium 提供面向 SSE3、SSE4、AVX、AVX2 和 AVX512 的 CPU 构建。
 
 - **Vivaldi 跨设备凭据：** Vivaldi 采用官方原生 Standalone 隔离模式，零修改浏览器二进制；跨机漫游已保存密码建议配合开启 Vivaldi 官方账号同步（Sync）。
 - **三个实验性目标：** Brave、Helium 和 Ungoogled Chromium 可以使用，但完整 Chrome++ 兼容性仍标记为实验性。
-- **Edge Beta 需要联网解析：** Microsoft 的完整 Beta 制品使用短期 CDP 地址，因此不写入长期签名回退清单。
+- **Edge 需要联网查询：** Stable 和 Beta 都使用 Microsoft 的短期下载地址，无法查询时会提示重试，不会退回旧 MSI 记录。
 - **可能被 SmartScreen 拦截：** EXE 尚未做 Authenticode 签名，出现提示属于预期情况。
 - **已有目录不会自动导入：** 选择目标后，使用 **检查配置** 或 **重新定位…**。
 - **仅支持 Windows x64：** 系统要求为 Windows 10 22H2 或 Windows 11。

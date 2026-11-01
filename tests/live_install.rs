@@ -866,42 +866,37 @@ async fn installs_remaining_generic_targets() {
     }
 }
 
-#[test]
-#[ignore = "extracts local Vivaldi installer in temporary directory"]
-fn extracts_and_installs_vivaldi_local_package() {
-    let local_file = std::path::Path::new(r"D:\Downloads\Vivaldi.8.2.4133.96.x64.exe");
-    if !local_file.is_file() {
-        return;
-    }
+#[tokio::test]
+#[ignore = "downloads and installs the Vivaldi package from the verified embedded manifest"]
+async fn installs_vivaldi_from_signed_manifest() {
     let directory = tempdir().unwrap();
     let browser_root = directory.path().join("Vivaldi");
-    let descriptor = browser_harbor::domain::release::ReleaseDescriptor {
-        target: TargetId::Vivaldi,
-        version: "8.2.4133.96".to_owned(),
-        channel: ReleaseChannel::Stable,
-        cpu_build: browser_harbor::domain::release::CpuBuild::X64,
-        provider: browser_harbor::domain::release::ProviderKind::Vivaldi,
-        artifact: browser_harbor::domain::release::Artifact {
-            file_name: "Vivaldi.8.2.4133.96.x64.exe".to_owned(),
-            format: browser_harbor::domain::release::ArchiveFormat::SevenZip,
-            size: Some(156264872),
-            integrity: Some(browser_harbor::domain::release::Integrity::Sha256(
-                "cd3374dbbffe20ccc8dd1f621c171831ae4e79548af1d41db4dadadf3decb034".to_owned(),
-            )),
-            urls: vec![
-                "https://downloads.vivaldi.com/stable/Vivaldi.8.2.4133.96.x64.exe".to_owned(),
-            ],
-            signature_url: None,
-        },
-        placement: TargetId::Vivaldi.spec().placement,
-        inner_archive: Some("vivaldi.7z".to_owned()),
-        source: "https://vivaldi.com/wp-content/vivaldi-versions.js".to_owned(),
-        published_at: None,
-    };
+    let network = NetworkSettings::default();
+    let metadata =
+        browser_harbor::services::trusted_metadata::TrustedMetadata::load_embedded().unwrap();
+    let descriptor = metadata
+        .release(
+            TargetId::Vivaldi,
+            ReleaseChannel::Stable,
+            browser_harbor::domain::release::CpuBuild::X64,
+        )
+        .unwrap()
+        .clone();
+    let (direct, fallback) = HttpClient::download_clients(&network).unwrap();
+    let downloader = Downloader::with_fallback_clients(
+        direct,
+        fallback,
+        directory.path().join("cache"),
+        Arc::new(AtomicBool::new(false)),
+    );
+    let local_file = downloader
+        .download(&descriptor.artifact, &network, |_| {})
+        .await
+        .unwrap();
 
     let receipt = InstallService::install(InstallRequest {
         release: descriptor,
-        browser_artifact: local_file.to_path_buf(),
+        browser_artifact: local_file,
         browser_root: browser_root.clone(),
         browser_directory: None,
         data_directory: None,

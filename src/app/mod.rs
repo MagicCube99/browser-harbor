@@ -520,6 +520,7 @@ mod tests {
             profile_directory: PathBuf::from(r"D:\Browsers\Chrome\Data"),
             cache_directory: Some(PathBuf::from(r"D:\Browsers\Chrome\Cache")),
             chrome_plus_version: Some("1.18.2".to_owned()),
+            previous_chrome_plus_version: None,
         };
 
         state

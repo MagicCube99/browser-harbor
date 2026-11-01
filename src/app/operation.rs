@@ -99,6 +99,11 @@ pub struct CachedReleaseMetadata {
 impl CachedReleaseMetadata {
     pub fn is_fresh(&self) -> bool {
         unix_now().saturating_sub(self.observed_at) <= UPSTREAM_REUSE_SECONDS
+            && (self.release.target != TargetId::Edge
+                || (self.check.source == MetadataSource::Official
+                    && self.release.artifact.format
+                        == crate::domain::release::ArchiveFormat::SevenZip
+                    && self.release.inner_archive.as_deref() == Some("MSEDGE.7Z")))
     }
 }
 
@@ -576,28 +581,13 @@ async fn load_trusted_metadata(
     network: &NetworkSettings,
     cache_dir: &std::path::Path,
 ) -> Result<TrustedMetadata, Box<dyn std::error::Error + Send + Sync>> {
-    let cached = TrustedMetadata::load_cached(cache_dir).ok().flatten();
-    if let Some(metadata) = cached
-        .as_ref()
-        .filter(|_| cached_metadata_is_recent(cache_dir))
-    {
-        return Ok(metadata.clone());
-    }
-    match fetch_trusted_metadata(http, network, cache_dir).await {
-        Ok(metadata) => Ok(metadata),
-        Err(error) => {
-            if let Some(cached) = cached {
-                return Ok(cached);
-            }
-            match TrustedMetadata::load_embedded() {
-                Ok(metadata) => Ok(metadata),
-                Err(embedded_error) => Err(format!(
-                    "live signed metadata failed: {error}; embedded metadata failed: {embedded_error}"
-                )
-                .into()),
-            }
-        }
-    }
+    select_verified_metadata(
+        TrustedMetadata::load_cached(cache_dir).ok().flatten(),
+        cached_metadata_is_recent(cache_dir),
+        |_| true,
+        fetch_trusted_metadata(http, network, cache_dir, |_| true),
+    )
+    .await
 }
 
 async fn load_trusted_metadata_for_release(
@@ -608,27 +598,51 @@ async fn load_trusted_metadata_for_release(
     channel: ReleaseChannel,
     cpu_build: CpuBuild,
 ) -> Result<TrustedMetadata, Box<dyn std::error::Error + Send + Sync>> {
-    let cached = TrustedMetadata::load_cached(cache_dir).ok().flatten();
-    if let Some(metadata) = cached.as_ref().filter(|metadata| {
-        cached_metadata_is_recent(cache_dir)
-            && metadata.release(target, channel, cpu_build).is_some()
-    }) {
+    if target == TargetId::Edge {
+        return Err(
+            "Edge 下载信息需从 Microsoft 实时获取，不能使用旧 MSI 签名记录；请检查网络后重试"
+                .into(),
+        );
+    }
+    let accepts =
+        |metadata: &TrustedMetadata| metadata.release(target, channel, cpu_build).is_some();
+    select_verified_metadata(
+        TrustedMetadata::load_cached(cache_dir).ok().flatten(),
+        cached_metadata_is_recent(cache_dir),
+        &accepts,
+        fetch_trusted_metadata(http, network, cache_dir, &accepts),
+    )
+    .await
+}
+
+async fn select_verified_metadata(
+    cached: Option<TrustedMetadata>,
+    recent: bool,
+    accepts: impl Fn(&TrustedMetadata) -> bool,
+    live: impl std::future::Future<
+        Output = Result<TrustedMetadata, Box<dyn std::error::Error + Send + Sync>>,
+    >,
+) -> Result<TrustedMetadata, Box<dyn std::error::Error + Send + Sync>> {
+    if let Some(metadata) = cached
+        .as_ref()
+        .filter(|metadata| recent && accepts(metadata))
+    {
         return Ok(metadata.clone());
     }
-    match fetch_trusted_metadata(http, network, cache_dir).await {
-        Ok(metadata) => Ok(metadata),
-        Err(error) => {
-            if let Some(cached) = cached {
-                return Ok(cached);
-            }
-            match TrustedMetadata::load_embedded() {
-                Ok(metadata) => Ok(metadata),
-                Err(embedded_error) => Err(format!(
-                    "live signed metadata failed: {error}; embedded metadata failed: {embedded_error}"
-                )
-                .into()),
-            }
-        }
+    let error = match live.await {
+        Ok(metadata) if accepts(&metadata) => return Ok(metadata),
+        Ok(_) => "live signed metadata has no compatible release entry".to_owned(),
+        Err(error) => error.to_string(),
+    };
+    if let Some(cached) = cached.filter(&accepts) {
+        return Ok(cached);
+    }
+    match TrustedMetadata::load_embedded() {
+        Ok(metadata) if accepts(&metadata) => Ok(metadata),
+        Ok(_) => Err(format!("live signed metadata failed: {error}; cached and embedded metadata have no compatible release entry").into()),
+        Err(embedded_error) => Err(format!(
+            "live signed metadata failed: {error}; embedded metadata failed: {embedded_error}"
+        ).into()),
     }
 }
 
@@ -647,6 +661,7 @@ async fn fetch_trusted_metadata(
     http: &HttpClient,
     network: &NetworkSettings,
     cache_dir: &std::path::Path,
+    accepts: impl Fn(&TrustedMetadata) -> bool,
 ) -> Result<TrustedMetadata, Box<dyn std::error::Error + Send + Sync>> {
     let metadata_urls = signed_manifest_candidates(SIGNED_METADATA_URL, network)?;
     let signature_urls = signed_manifest_candidates(SIGNED_METADATA_SIGNATURE_URL, network)?;
@@ -661,6 +676,9 @@ async fn fetch_trusted_metadata(
                 signature,
                 include_str!("../../assets/metadata-public-key.hex"),
             )?;
+            if !accepts(&parsed) {
+                return Err("signed metadata mirror has no compatible release entry".into());
+            }
             parsed.store(&metadata, signature, cache_dir)?;
             Ok::<_, Box<dyn std::error::Error + Send + Sync>>(parsed)
         }
@@ -928,6 +946,116 @@ mod tests {
         }
     }
 
+    #[tokio::test]
+    async fn recent_manifest_missing_vivaldi_refreshes_instead_of_returning_incomplete_cache() {
+        let mut cached =
+            crate::services::trusted_metadata::TrustedMetadata::load_embedded().unwrap();
+        cached.releases.clear();
+        let mut live = cached.clone();
+        let mut release = descriptor();
+        release.target = crate::domain::target::TargetId::Vivaldi;
+        live.releases.push(release);
+        let selected = super::select_verified_metadata(
+            Some(cached),
+            true,
+            |m| {
+                m.release(
+                    crate::domain::target::TargetId::Vivaldi,
+                    ReleaseChannel::Stable,
+                    CpuBuild::X64,
+                )
+                .is_some()
+            },
+            async { Ok(live) },
+        )
+        .await
+        .unwrap();
+        assert!(
+            selected
+                .release(
+                    crate::domain::target::TargetId::Vivaldi,
+                    ReleaseChannel::Stable,
+                    CpuBuild::X64
+                )
+                .is_some()
+        );
+    }
+
+    #[tokio::test]
+    async fn incomplete_cache_does_not_hide_complete_embedded_metadata_when_offline() {
+        let embedded = crate::services::trusted_metadata::TrustedMetadata::load_embedded().unwrap();
+        let mut cached = embedded.clone();
+        cached.releases.clear();
+        let selected = super::select_verified_metadata(
+            Some(cached),
+            true,
+            |m| {
+                m.release(
+                    crate::domain::target::TargetId::Vivaldi,
+                    ReleaseChannel::Stable,
+                    CpuBuild::X64,
+                )
+                .is_some()
+            },
+            async { Err("offline".into()) },
+        )
+        .await
+        .unwrap();
+        assert!(
+            selected
+                .release(
+                    crate::domain::target::TargetId::Vivaldi,
+                    ReleaseChannel::Stable,
+                    CpuBuild::X64
+                )
+                .is_some()
+        );
+    }
+
+    #[tokio::test]
+    async fn edge_rejects_historical_signed_msi_even_when_fetched_from_live_manifest() {
+        let mut cached =
+            crate::services::trusted_metadata::TrustedMetadata::load_embedded().unwrap();
+        let mut edge = descriptor();
+        edge.target = crate::domain::target::TargetId::Edge;
+        edge.artifact.format = ArchiveFormat::Msi;
+        cached.releases = vec![edge];
+        let selected = super::select_verified_metadata(
+            Some(cached.clone()),
+            true,
+            |m| {
+                m.release(
+                    crate::domain::target::TargetId::Edge,
+                    ReleaseChannel::Stable,
+                    CpuBuild::X64,
+                )
+                .is_some_and(|r| r.artifact.format == ArchiveFormat::SevenZip)
+            },
+            async { Ok(cached) },
+        )
+        .await;
+        assert!(selected.is_err());
+    }
+
+    #[tokio::test]
+    async fn edge_official_failure_never_falls_back_to_cached_msi() {
+        let directory = tempfile::tempdir().unwrap();
+        let http = crate::services::http::HttpClient::new(
+            &crate::domain::settings::NetworkSettings::default(),
+        )
+        .unwrap();
+        let result = super::load_trusted_metadata_for_release(
+            &http,
+            &crate::domain::settings::NetworkSettings::default(),
+            directory.path(),
+            crate::domain::target::TargetId::Edge,
+            ReleaseChannel::Stable,
+            CpuBuild::X64,
+        )
+        .await;
+        assert!(result.unwrap_err().to_string().contains("Microsoft"));
+    }
+
     #[test]
     fn local_package_mismatch_identifies_the_expected_target() {
         let directory = tempfile::tempdir().unwrap();
@@ -1029,5 +1157,87 @@ mod tests {
             ..cached
         };
         assert!(!stale.is_fresh());
+    }
+
+    #[test]
+    fn edge_install_cannot_reuse_an_msi_or_signed_fallback_check() {
+        let mut cached = CachedReleaseMetadata {
+            check: super::UpstreamCheck::fresh(
+                "156.0.4314.50".to_owned(),
+                ReleaseChannel::Stable,
+                CpuBuild::X64,
+            ),
+            release: descriptor(),
+            observed_at: unix_now(),
+        };
+        cached.release.target = crate::domain::target::TargetId::Edge;
+        cached.release.artifact.format = ArchiveFormat::Msi;
+        assert!(!cached.is_fresh());
+        cached.release.artifact.format = ArchiveFormat::SevenZip;
+        cached.release.inner_archive = Some("MSEDGE.7Z".to_owned());
+        cached.check.source = MetadataSource::SignedManifest;
+        assert!(!cached.is_fresh());
+        cached.check.source = MetadataSource::Official;
+        assert!(cached.is_fresh());
+    }
+
+    #[tokio::test]
+    async fn recent_complete_metadata_cache_avoids_a_redundant_fetch() {
+        let cached = crate::services::trusted_metadata::TrustedMetadata::load_embedded().unwrap();
+        let selected =
+            super::select_verified_metadata(Some(cached.clone()), true, |_| true, async {
+                panic!("a complete recent cache must be reused")
+            })
+            .await
+            .unwrap();
+        assert_eq!(selected, cached);
+    }
+
+    #[tokio::test]
+    #[ignore = "contacts official Vivaldi and signed metadata endpoints"]
+    async fn checks_vivaldi_with_an_empty_metadata_cache() {
+        let directory = tempfile::tempdir().unwrap();
+        let (sender, _) = std::sync::mpsc::channel();
+        let result = super::run_operation(
+            super::StartOperationRequest {
+                target: crate::domain::target::TargetId::Vivaldi,
+                mode: super::OperationMode::Check,
+                target_config: crate::domain::settings::TargetConfig::for_target(
+                    crate::domain::target::TargetId::Vivaldi,
+                ),
+                network: crate::domain::settings::NetworkSettings::default(),
+                cache_dir: directory.path().to_path_buf(),
+                current_version: None,
+                chrome_plus_expected_version: None,
+                replace_same_version: false,
+                cached_release: None,
+            },
+            sender,
+            std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
+        )
+        .await
+        .unwrap();
+        let super::OperationResult::Checked { check, release } = result else {
+            panic!("expected a completed version check")
+        };
+        assert_eq!(check.source, MetadataSource::SignedManifest);
+        assert_eq!(release.target, crate::domain::target::TargetId::Vivaldi);
+        assert!(release.artifact.integrity.is_some());
+        assert!(release.artifact.size.is_some_and(|size| size > 0));
+        assert!(
+            crate::services::trusted_metadata::TrustedMetadata::load_cached(directory.path())
+                .unwrap()
+                .is_some_and(|m| m
+                    .release(
+                        crate::domain::target::TargetId::Vivaldi,
+                        ReleaseChannel::Stable,
+                        CpuBuild::X64
+                    )
+                    .is_some())
+        );
+        println!(
+            "Vivaldi {}: signed metadata resolves successfully",
+            release.version
+        );
     }
 }
