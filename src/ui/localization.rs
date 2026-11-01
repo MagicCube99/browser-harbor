@@ -416,11 +416,11 @@ fn exact_translation(text: &str) -> Option<&'static str> {
         "SkyKakapo 官方" => "SkyKakapo official",
         "Turbo 官方" => "Turbo official",
         "Vivaldi 官方" => "Vivaldi official",
-        "换电脑时，已保存密码可能无法直接使用；建议提前开启 Vivaldi Sync。" => {
-            "Changing PCs? Saved passwords may stop working. Enable Vivaldi Sync beforehand."
+        "Vivaldi 官方限制：密码无法随目录直接跨机迁移，建议使用 Sync。" => {
+            "Vivaldi limitation: passwords cannot move between PCs by folder copy. Use Sync."
         }
-        "复制整个目录换电脑后，已保存密码可能无法直接使用。建议提前开启 Vivaldi Sync 同步密码与扩展；网站和扩展可能仍需重新登录。" => {
-            "After copying the browser folder to another PC, saved passwords may not work. Enable Vivaldi Sync beforehand to sync passwords and extensions. Websites and extensions may still require you to sign in again."
+        "这是 Vivaldi 官方 Standalone 模式的限制：密码和扩展使用当前电脑用户专属的密钥加密，不能仅靠复制目录迁移。请提前开启 Vivaldi Sync 同步账号密码与扩展；网站和扩展可能仍需重新登录。" => {
+            "This is a limitation of Vivaldi's official Standalone mode: passwords and extensions are encrypted with a key specific to the current computer's user profile and cannot be moved just by copying the folder. Enable Vivaldi Sync beforehand to sync saved logins and extensions. Websites and extensions may still require a fresh sign-in."
         }
         "无法比较" => "Cannot compare",
         "尚未检查上游版本" => "Upstream not checked",

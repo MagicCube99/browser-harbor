@@ -15,7 +15,7 @@ Browser Harbor 是单 EXE 便携程序，不需要安装，也不需要管理员
 
 1. 从 [GitHub Releases](https://github.com/MagicCube99/browser-harbor/releases/latest)
    或 [Gitee 镜像](https://gitee.com/MagicCube99/browser-harbor/releases)下载
-   `BrowserHarbor-0.6.11-x64.exe`。
+   `BrowserHarbor-<版本号>-x64.exe`。
 2. 放到可写目录后直接运行。
 3. 选择浏览器。
 4. 检查程序、数据、Profile 和缓存目录。
@@ -136,7 +136,7 @@ Vivaldi 采用官方原生 Standalone 隔离模式：
 - 管理器启用 Vivaldi 原生 Standalone 模式，用户数据默认保存在 Browser Root 下、与 `App/` 并列的 `User Data/` 中。
 - 安装与更新过程中会自动移除后台更新器 `update_notifier.exe`，避免后台静默服务干扰便携环境。
 - Vivaldi 和 Turbo 默认使用 `User Data/`，Catsxp 默认使用 `Profiles/`。这些浏览器会在用户数据目录内管理 Profile，界面因此隐藏重复的 Profile 输入项。
-- **换电脑使用：** Vivaldi 使用原生 Standalone 模式，不集成 Chrome++。复制目录换电脑后，已保存密码可能无法直接使用。建议提前开启 Vivaldi Sync 同步密码与扩展；部分网站和扩展可能仍需重新登录，不能保证所有登录状态随目录一起迁移。
+- **换电脑使用：** Vivaldi 使用原生 Standalone 模式，不集成 Chrome++。这是 Vivaldi 官方说明的限制：密码和扩展使用当前电脑用户专属的密钥加密，不能仅靠复制目录迁移。建议提前开启 Vivaldi Sync 同步账号密码与扩展；部分网站和扩展可能仍需重新登录，不能保证所有登录状态随目录一起迁移。详见[官方 Standalone 说明](https://help.vivaldi.com/desktop/install-update/standalone-version-of-vivaldi/)。
 
 选中 Vivaldi 时，“路径与用户数据”区域下方会显示简短的换机提示。鼠标悬停可查看完整说明；其他浏览器不显示这条提示。
 
@@ -144,9 +144,15 @@ Vivaldi 采用官方原生 Standalone 隔离模式：
 
 底栏设置页控制内置和自定义下载加速站、代理与超时、外观以及下载缓存清理。
 
+版本检查使用较短的等待时限，避免在不可用的来源上等待过久；安装包下载仍使用设置中选择的超时值。程序始终执行校验，尝试多个来源时仍可能需要等待片刻。
+
 加速站只改变传输路径。“清理下载缓存”只删除可重新下载的安装文件，不会删除浏览器 Profile 或已安装程序。
 
 ## 常见问题
+
+### 远程桌面中无法启动程序
+
+部分显卡驱动与远程会话组合可能导致窗口无法打开。请尝试在本地桌面运行同一份 EXE。Browser Harbor 不会修改显卡驱动或远程桌面设置。
 
 ### 找不到浏览器
 

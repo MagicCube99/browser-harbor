@@ -1667,11 +1667,11 @@ impl BrowserHarborApp {
         if target == TargetId::Vivaldi {
             ui.add_space(4.0);
             ui.add(egui::Label::new(
-                RichText::new("换电脑时，已保存密码可能无法直接使用；建议提前开启 Vivaldi Sync。")
+                RichText::new("Vivaldi 官方限制：密码无法随目录直接跨机迁移，建议使用 Sync。")
                     .size(11.0)
                     .color(palette.warning),
             ).wrap()).localized_hover(
-                "复制整个目录换电脑后，已保存密码可能无法直接使用。建议提前开启 Vivaldi Sync 同步密码与扩展；网站和扩展可能仍需重新登录。",
+                "这是 Vivaldi 官方 Standalone 模式的限制：密码和扩展使用当前电脑用户专属的密钥加密，不能仅靠复制目录迁移。请提前开启 Vivaldi Sync 同步账号密码与扩展；网站和扩展可能仍需重新登录。",
             );
         }
         if check_configuration {

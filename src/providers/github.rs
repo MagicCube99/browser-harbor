@@ -56,7 +56,7 @@ pub async fn resolve(
                 .await?,
         ]
     };
-    let release = select_release(releases, target, channel)?;
+    let release = select_release(releases, target, channel, cpu_build)?;
     let asset =
         select_asset(&release, target, cpu_build).ok_or(ProviderError::NoCompatibleAsset)?;
     let integrity = resolve_integrity(http, &release, asset).await?;
@@ -101,10 +101,11 @@ fn select_release(
     releases: Vec<GitHubRelease>,
     target: TargetId,
     channel: ReleaseChannel,
+    cpu_build: CpuBuild,
 ) -> Result<GitHubRelease, ProviderError> {
     let mut releases = releases
         .into_iter()
-        .filter(|release| !release.draft)
+        .filter(|release| !release.draft && select_asset(release, target, cpu_build).is_some())
         .collect::<Vec<_>>();
     match target {
         TargetId::Brave => {
@@ -287,40 +288,93 @@ mod tests {
     #[test]
     fn iceweasel_channel_selection_keeps_product_lines_separate() {
         let releases = vec![
-            release("v158.0.1", &[]),
-            release("v115.44.0esr", &[]),
-            release("v157.0.1", &[]),
+            release("v158.0.1", &["iceweasel-win64.7z"]),
+            release("v115.44.0esr", &["iceweasel-win64.7z"]),
+            release("v157.0.1", &["iceweasel-win64.7z"]),
         ];
-        let esr =
-            select_release(releases.clone(), TargetId::Iceweasel, ReleaseChannel::Esr).unwrap();
-        let mainstream =
-            select_release(releases, TargetId::Iceweasel, ReleaseChannel::Release).unwrap();
+        let esr = select_release(
+            releases.clone(),
+            TargetId::Iceweasel,
+            ReleaseChannel::Esr,
+            CpuBuild::X64,
+        )
+        .unwrap();
+        let mainstream = select_release(
+            releases,
+            TargetId::Iceweasel,
+            ReleaseChannel::Release,
+            CpuBuild::X64,
+        )
+        .unwrap();
         assert_eq!(esr.tag_name, "v115.44.0esr");
         assert_eq!(mainstream.tag_name, "v158.0.1");
     }
 
     #[test]
     fn brave_channel_selection_uses_release_names_not_prerelease_flags() {
-        let mut nightly = release("v1.101.1", &[]);
+        let mut nightly = release("v1.101.1", &["brave-v1.101.1-win32-x64.zip"]);
         nightly.name = "Nightly v1.101.1".to_owned();
         nightly.prerelease = true;
-        let mut beta = release("v1.99.53", &[]);
+        let mut beta = release("v1.99.53", &["brave-v1.99.53-win32-x64.zip"]);
         beta.name = "Beta v1.99.53".to_owned();
-        let mut stable = release("v1.98.62", &[]);
+        let mut stable = release("v1.98.62", &["brave-v1.98.62-win32-x64.zip"]);
         stable.name = "Release v1.98.62".to_owned();
         let releases = vec![nightly, beta, stable];
 
         assert_eq!(
-            select_release(releases.clone(), TargetId::Brave, ReleaseChannel::Stable)
-                .unwrap()
-                .tag_name,
+            select_release(
+                releases.clone(),
+                TargetId::Brave,
+                ReleaseChannel::Stable,
+                CpuBuild::X64
+            )
+            .unwrap()
+            .tag_name,
             "v1.98.62"
         );
         assert_eq!(
-            select_release(releases, TargetId::Brave, ReleaseChannel::Beta)
-                .unwrap()
-                .tag_name,
+            select_release(
+                releases,
+                TargetId::Brave,
+                ReleaseChannel::Beta,
+                CpuBuild::X64
+            )
+            .unwrap()
+            .tag_name,
             "v1.99.53"
+        );
+    }
+
+    #[test]
+    fn brave_skips_releases_without_a_windows_payload_without_crossing_channels() {
+        let mut pending = release("v1.98.64", &["BraveMonoarm64.apk"]);
+        pending.name = "Release v1.98.64".to_owned();
+        let mut stable = release("v1.98.63", &["brave-v1.98.63-win32-x64.zip"]);
+        stable.name = "Release v1.98.63".to_owned();
+        let mut beta = release("v1.100.45", &["brave-v1.100.45-win32-x64.zip"]);
+        beta.name = "Beta v1.100.45".to_owned();
+        let releases = vec![pending, beta, stable];
+        assert_eq!(
+            select_release(
+                releases.clone(),
+                TargetId::Brave,
+                ReleaseChannel::Stable,
+                CpuBuild::X64
+            )
+            .unwrap()
+            .tag_name,
+            "v1.98.63",
+        );
+        assert_eq!(
+            select_release(
+                releases,
+                TargetId::Brave,
+                ReleaseChannel::Beta,
+                CpuBuild::X64
+            )
+            .unwrap()
+            .tag_name,
+            "v1.100.45",
         );
     }
 

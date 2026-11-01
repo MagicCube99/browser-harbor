@@ -13,7 +13,7 @@ Browser Harbor is a portable single EXE. It does not require installation or adm
 
 ## First launch
 
-1. Download `BrowserHarbor-0.6.11-x64.exe` from
+1. Download the `BrowserHarbor-<version>-x64.exe` file from
    [GitHub Releases](https://github.com/MagicCube99/browser-harbor/releases/latest)
    or the [Gitee mirror](https://gitee.com/MagicCube99/browser-harbor/releases).
 2. Run it from a writable folder.
@@ -147,7 +147,7 @@ Vivaldi uses the official native Standalone portable mode:
 - The manager enables Vivaldi's native Standalone mode, with user data stored by default in `User Data/` beside `App/` under the Browser Root.
 - Automatically removes the background update notifier (`update_notifier.exe`) during installation and upgrade.
 - Vivaldi and Turbo default to `User Data/`; Catsxp defaults to `Profiles/`. These targets manage profiles within their user-data directory, so the app hides the duplicate Profile field.
-- **Moving to another PC:** Vivaldi uses native Standalone mode without Chrome++. After copying the browser folder to another PC, saved passwords may not work. Enable Vivaldi Sync beforehand to sync passwords and extensions. Websites and extensions may still require a fresh sign-in; copying the folder does not guarantee that every signed-in session will transfer.
+- **Moving to another PC:** Vivaldi uses native Standalone mode without Chrome++. Vivaldi documents an official limitation: passwords and extensions are encrypted with a key tied to the current computer's user profile and cannot be moved just by copying the folder. Enable Vivaldi Sync beforehand to sync saved logins and extensions. Websites and extensions may still require a fresh sign-in; copying the folder does not guarantee that every signed-in session will transfer. See the [official Standalone documentation](https://help.vivaldi.com/desktop/install-update/standalone-version-of-vivaldi/).
 
 When Vivaldi is selected, a short migration notice appears below **Paths and user data**. Hover over it for the full explanation. Other browsers do not show this notice.
 
@@ -155,9 +155,15 @@ When Vivaldi is selected, a short migration notice appears below **Paths and use
 
 The footer settings page controls built-in and custom download accelerators, proxy and timeout behavior, appearance, and download-cache cleanup.
 
+Version checks use shorter timeouts to avoid waiting too long for an unavailable source. Installer downloads retain the timeout selected in settings. Verification is always required, and trying several sources can still take a little time.
+
 Accelerators only change transport. **Clear download cache** removes only reproducible installation files and never removes browser profiles or installed programs.
 
 ## Troubleshooting
+
+### The app does not open through Remote Desktop
+
+Some graphics-driver and remote-session combinations may prevent the window from opening. Try running the same EXE on the local desktop. Browser Harbor does not change display drivers or Remote Desktop settings.
 
 ### The browser is not detected
 
