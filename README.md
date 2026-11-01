@@ -29,7 +29,7 @@
   <img src="assets/screenshots/chromeplus-en.png" width="49%" alt="Chrome++ integration and configuration">
 </p>
 
-<p align="center"><sub>Browser setup · Chrome++ configuration</sub></p>
+<p align="center"><sub>Browser setup · Chrome++ configuration · Example screenshots; version numbers may differ from the current release.</sub></p>
 
 ---
 
@@ -95,7 +95,7 @@ provides CPU-specific builds for SSE3, SSE4, AVX, AVX2, and AVX512.
 
 ## 🚀 Quick start
 
-1. Download `BrowserHarbor-0.6.10-x64.exe` from
+1. Download `BrowserHarbor-0.6.11-x64.exe` from
    [GitHub Releases](https://github.com/MagicCube99/browser-harbor/releases/latest).
    If GitHub is unreachable, use the [Gitee mirror](https://gitee.com/MagicCube99/browser-harbor/releases).
 2. Put it in any writable folder and run it.
@@ -112,12 +112,12 @@ running.
 
 ## 🧨 Known rough edges
 
-- **Vivaldi portable credentials:** Vivaldi runs in official Standalone mode without third-party binary modification; use Vivaldi Sync if you need credentials to roam across different Windows machines.
+- **Moving Vivaldi to another PC:** Copying the folder may leave saved passwords unusable. Enable Vivaldi Sync beforehand to sync passwords and extensions; websites and extensions may still require a fresh sign-in. Selecting Vivaldi also shows this notice in the app.
 - **Experimental labels:** Brave, Helium, and Ungoogled Chromium are usable, but
   their deeper Chrome++ compatibility remains experimental.
 - **SmartScreen warnings:** The binary is not Authenticode-signed yet. A warning
   is expected.
-- **Edge Beta is online-only:** Microsoft's complete Beta payload uses a short-lived CDP URL, so it is resolved live rather than stored in the signed fallback manifest.
+- **Edge needs a live lookup:** Stable and Beta use Microsoft's short-lived CDP download URLs. Old MSI entries are never used as a fallback.
 - **Manual orientation required:** Existing folders do not import themselves.
   Select the target, then use **Check configuration** or **Relocate…**.
 - **Windows x64 only:** Windows 10 22H2 or Windows 11. Older systems are not

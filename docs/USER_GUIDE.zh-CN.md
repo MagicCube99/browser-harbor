@@ -15,7 +15,7 @@ Browser Harbor 是单 EXE 便携程序，不需要安装，也不需要管理员
 
 1. 从 [GitHub Releases](https://github.com/MagicCube99/browser-harbor/releases/latest)
    或 [Gitee 镜像](https://gitee.com/MagicCube99/browser-harbor/releases)下载
-   `BrowserHarbor-0.6.10-x64.exe`。
+   `BrowserHarbor-0.6.11-x64.exe`。
 2. 放到可写目录后直接运行。
 3. 选择浏览器。
 4. 检查程序、数据、Profile 和缓存目录。
@@ -133,10 +133,12 @@ Edge 会使用同版本 `setdll` 添加 `version.dll` 导入。Brave、Helium �
 Vivaldi 采用官方原生 Standalone 隔离模式：
 
 - 安装时自动从官方安装包通过双层 7z 提取到 `App/`，不执行交互式安装程序。
-- 在 `App/` 下自动生成 `stp.viv` 标记文件，告知 Vivaldi 将用户数据完全限制在同级的 `User Data/` 目录下，不写入 `%LOCALAPPDATA%`，不修改 Windows 注册表。
+- 管理器启用 Vivaldi 原生 Standalone 模式，用户数据默认保存在 Browser Root 下、与 `App/` 并列的 `User Data/` 中。
 - 安装与更新过程中会自动移除后台更新器 `update_notifier.exe`，避免后台静默服务干扰便携环境。
-- 单数据目录目标（如 Vivaldi、Turbo、Catsxp）直接将所有数据保存在 `User Data/` 下，界面自动对齐并隐藏独立的 Profile 输入项。
-- **跨设备凭据提示：** 为严格恪守官方 EULA 许可，Vivaldi 未注入第三方 DLL；由于 Chromium 原生 DPAPI 加密绑定本机用户，跨电脑复制目录时已保存的网站登录密码无法跨机解密。如需跨设备漫游登录密码与扩展，建议配合开启 Vivaldi 官方账号同步（Sync）。
+- Vivaldi 和 Turbo 默认使用 `User Data/`，Catsxp 默认使用 `Profiles/`。这些浏览器会在用户数据目录内管理 Profile，界面因此隐藏重复的 Profile 输入项。
+- **换电脑使用：** Vivaldi 使用原生 Standalone 模式，不集成 Chrome++。复制目录换电脑后，已保存密码可能无法直接使用。建议提前开启 Vivaldi Sync 同步密码与扩展；部分网站和扩展可能仍需重新登录，不能保证所有登录状态随目录一起迁移。
+
+选中 Vivaldi 时，“路径与用户数据”区域下方会显示简短的换机提示。鼠标悬停可查看完整说明；其他浏览器不显示这条提示。
 
 ## 全局设置
 

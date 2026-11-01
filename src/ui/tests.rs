@@ -604,6 +604,54 @@ fn overview_has_no_scroll_bar() {
 }
 
 #[test]
+fn vivaldi_warns_about_password_portability_without_overflowing_the_compact_window() {
+    for language in [Language::Chinese, Language::English] {
+        let mut harness = harness();
+        harness.state_mut().state.update_draft(|settings| {
+            settings.selected_browser = TargetId::Vivaldi;
+            settings.language = language;
+        });
+        harness.state_mut().state.save().unwrap();
+        harness.run();
+        let notice = match language {
+            Language::Chinese => {
+                "换电脑时，已保存密码可能无法直接使用；建议提前开启 Vivaldi Sync。"
+            }
+            Language::English => {
+                "Changing PCs? Saved passwords may stop working. Enable Vivaldi Sync beforehand."
+            }
+        };
+        let warning = harness.get_by_label(notice);
+        assert!(
+            warning.rect().min.y
+                > harness
+                    .get_by_label(match language {
+                        Language::Chinese => "缓存目录",
+                        Language::English => "Cache directory",
+                    })
+                    .rect()
+                    .min
+                    .y
+        );
+        assert!(
+            warning.rect().max.y
+                < harness
+                    .get_by_label(match language {
+                        Language::Chinese => "自动保存已开启",
+                        Language::English => "Autosave on",
+                    })
+                    .rect()
+                    .min
+                    .y
+        );
+        assert!(harness.query_by_role(Role::ScrollBar).is_none());
+        harness.state_mut().state.select(TargetId::Chrome);
+        harness.run();
+        assert!(harness.query_by_label(notice).is_none());
+    }
+}
+
+#[test]
 fn footer_shows_release_menu_at_the_right_edge() {
     assert_eq!(
         super::RELEASES_URL,
@@ -747,7 +795,7 @@ fn version_status_uses_semantic_tone_and_keeps_missing_state_distinct() {
     );
     assert_eq!(
         relation_status(true, true, VersionRelation::UpstreamOlder),
-        Some(("上游版本较旧", StatusTone::Warning))
+        Some(("本地版本较新", StatusTone::Info))
     );
 }
 
@@ -777,7 +825,7 @@ fn upstream_direction_drives_upgrade_and_replacement_labels() {
 
     let (_directory, mut older) = firefox_harness_with_versions("158.0.1", "157.0.9");
     older.run();
-    older.get_by_label("上游版本较旧");
+    older.get_by_label("本地版本较新");
     older.get_by_label("下载上游版本");
 }
 
@@ -1475,6 +1523,52 @@ fn chrome_plus_update_button_reflects_the_last_check() {
         chrome_plus_update_button_label(Some("1.18.2"), Some("1.18.2-beta")),
         "检查更新"
     );
+}
+
+#[test]
+fn edge_never_displays_a_signed_msi_record_as_current_upstream() {
+    let mut harness = harness();
+    let config = harness.state().state.draft().targets[&TargetId::Edge].clone();
+    harness.state_mut().latest_versions.insert(
+        (TargetId::Edge, config.channel, config.cpu_build),
+        UpstreamCheck {
+            version: "156.0.4314.50".to_owned(),
+            channel: config.channel,
+            cpu_build: config.cpu_build,
+            source: MetadataSource::SignedManifest,
+            checked_at: 0,
+        },
+    );
+    assert!(
+        harness
+            .state()
+            .latest_check(TargetId::Edge, &config)
+            .is_none()
+    );
+}
+
+#[test]
+fn manual_version_check_clears_previous_result_before_starting() {
+    let directory = tempdir().unwrap();
+    let mut settings = Settings {
+        selected_browser: TargetId::Edge,
+        ..Settings::default()
+    };
+    settings.network.proxy = Some("http://[".to_owned());
+    let state = AppState::new(
+        settings,
+        ConfigStore::new(directory.path().join("BrowserHarbor.json")),
+    );
+    let mut app = BrowserHarborApp::new(state);
+    let config = app.state.draft().targets[&TargetId::Edge].clone();
+    app.latest_versions.insert(
+        (TargetId::Edge, config.channel, config.cpu_build),
+        UpstreamCheck::fresh("156.0.4314.50".to_owned(), config.channel, config.cpu_build),
+    );
+
+    app.start_operation(crate::app::operation::OperationMode::Check, false);
+
+    assert!(app.latest_check(TargetId::Edge, &config).is_none());
 }
 
 #[test]

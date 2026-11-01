@@ -72,6 +72,7 @@ pub struct InstallReceipt {
     pub profile_directory: PathBuf,
     pub cache_directory: Option<PathBuf>,
     pub chrome_plus_version: Option<String>,
+    pub previous_chrome_plus_version: Option<String>,
 }
 
 #[derive(Debug, Error)]
@@ -249,6 +250,9 @@ impl InstallService {
         };
 
         let previous_program = existing_program(&commit_root, request.release.target);
+        let previous_chrome_plus_version = previous_program
+            .as_deref()
+            .and_then(|program| chromeplus::installed_version(program).ok());
         if let Some(previous_program) = &previous_program
             && let Some(executable) = find_executable(previous_program, request.release.target).ok()
             && is_process_running(&executable)?
@@ -327,6 +331,7 @@ impl InstallService {
             profile_directory,
             cache_directory,
             chrome_plus_version,
+            previous_chrome_plus_version,
         })
     }
 }
@@ -504,6 +509,9 @@ fn install_native_package(
     }
 
     let previous_program = existing_program(browser_root, request.release.target);
+    let previous_chrome_plus_version = previous_program
+        .as_deref()
+        .and_then(|program| chromeplus::installed_version(program).ok());
     if let Some(previous) = previous_program.as_deref()
         && let Some(previous_executable) = find_executable(previous, request.release.target).ok()
         && is_process_running(&previous_executable)?
@@ -643,6 +651,7 @@ fn install_native_package(
         profile_directory: profile_directory.to_path_buf(),
         cache_directory: cache_directory.map(Path::to_path_buf),
         chrome_plus_version,
+        previous_chrome_plus_version,
     })
 }
 
@@ -1750,6 +1759,46 @@ mod tests {
                     target.display_name()
                 );
             }
+        }
+    }
+
+    #[test]
+    fn install_receipt_records_chromeplus_before_replacing_files() {
+        for placement in [ProgramPlacement::App, ProgramPlacement::NativePackage] {
+            let directory = tempdir().unwrap();
+            let root = directory.path().join("Chrome");
+            let archive = directory.path().join("chrome.zip");
+            let mut writer = ZipWriter::new(File::create(&archive).unwrap());
+            writer
+                .start_file("chrome.exe", SimpleFileOptions::default())
+                .unwrap();
+            writer.write_all(&fake_x64_exe()).unwrap();
+            writer.finish().unwrap();
+            let mut descriptor = release("156.0.1", &archive);
+            descriptor.target = TargetId::Chrome;
+            descriptor.placement = placement;
+            let mut install = request(descriptor, &archive, &root);
+            install.chrome_plus_runtime = Some(chrome_plus_runtime(
+                &directory.path().join("runtime.7z"),
+                "1.18.3",
+            ));
+
+            let fresh = InstallService::install(install.clone()).unwrap();
+            assert_eq!(fresh.previous_chrome_plus_version, None);
+            assert_eq!(fresh.chrome_plus_version.as_deref(), Some("1.18.3"));
+
+            let system_dll = std::path::PathBuf::from(std::env::var_os("SystemRoot").unwrap())
+                .join("System32/version.dll");
+            fs::copy(system_dll, fresh.browser_directory.join("version.dll")).unwrap();
+            let before =
+                crate::runtime::chromeplus::installed_version(&fresh.browser_directory).unwrap();
+            let updated = InstallService::install(install).unwrap();
+            assert_eq!(updated.previous_chrome_plus_version, Some(before));
+            assert_eq!(updated.chrome_plus_version.as_deref(), Some("1.18.3"));
+            assert_eq!(
+                fs::read(updated.browser_directory.join("version.dll")).unwrap(),
+                b"new-chromeplus-dll"
+            );
         }
     }
 

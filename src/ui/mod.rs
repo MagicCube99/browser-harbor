@@ -708,6 +708,7 @@ impl BrowserHarborApp {
     ) -> Option<&UpstreamCheck> {
         self.latest_versions
             .get(&(target, config.channel, config.cpu_build))
+            .filter(|check| target != TargetId::Edge || check.source == MetadataSource::Official)
     }
 
     fn cached_release(
@@ -968,6 +969,11 @@ impl BrowserHarborApp {
         let cached_release = (mode == OperationMode::Install)
             .then(|| self.cached_release(target, &config))
             .flatten();
+        if mode == OperationMode::Check {
+            let key = (target, config.channel, config.cpu_build);
+            self.latest_versions.remove(&key);
+            self.checked_releases.remove(&key);
+        }
         self.status_message = None;
         self.operation_phase = Some(OperationPhase::Preparing);
         self.operation = Some(start_operation(StartOperationRequest {
@@ -1018,12 +1024,6 @@ impl BrowserHarborApp {
                     });
                 }
                 OperationPhase::Installed { receipt } => {
-                    let previous_chrome_plus = self
-                        .state
-                        .draft()
-                        .targets
-                        .get(&event.target)
-                        .and_then(|config| config.chrome_plus_version.clone());
                     if let Some(config) = self.state.draft().targets.get(&event.target) {
                         let key = (event.target, config.channel, config.cpu_build);
                         self.latest_versions.insert(
@@ -1038,7 +1038,7 @@ impl BrowserHarborApp {
                     let mut message = match self.state.record_install_success(event.target, receipt)
                     {
                         Ok(()) => match (
-                            previous_chrome_plus.as_deref(),
+                            receipt.previous_chrome_plus_version.as_deref(),
                             receipt.chrome_plus_version.as_deref(),
                         ) {
                             (Some(previous), Some(current)) if previous != current => format!(
@@ -1664,6 +1664,16 @@ impl BrowserHarborApp {
             },
         );
         changed |= path_changed;
+        if target == TargetId::Vivaldi {
+            ui.add_space(4.0);
+            ui.add(egui::Label::new(
+                RichText::new("换电脑时，已保存密码可能无法直接使用；建议提前开启 Vivaldi Sync。")
+                    .size(11.0)
+                    .color(palette.warning),
+            ).wrap()).localized_hover(
+                "复制整个目录换电脑后，已保存密码可能无法直接使用。建议提前开启 Vivaldi Sync 同步密码与扩展；网站和扩展可能仍需重新登录。",
+            );
+        }
         if check_configuration {
             self.open_health_dialog();
         }
@@ -3301,7 +3311,7 @@ fn relation_status(
         (true, true) => Some(match relation {
             VersionRelation::Same => ("与上游版本相同", StatusTone::Success),
             VersionRelation::UpstreamNewer => ("上游有新版本", StatusTone::Info),
-            VersionRelation::UpstreamOlder => ("上游版本较旧", StatusTone::Warning),
+            VersionRelation::UpstreamOlder => ("本地版本较新", StatusTone::Info),
             VersionRelation::Different => ("上游版本不同", StatusTone::Warning),
             VersionRelation::Unknown => ("版本无法可靠比较", StatusTone::Warning),
         }),

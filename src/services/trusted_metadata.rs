@@ -322,8 +322,7 @@ mod tests {
             let spec = target.spec();
             for channel in spec.channels {
                 for cpu_build in spec.cpu_builds {
-                    let expected = !(target == TargetId::Edge && *channel == ReleaseChannel::Beta)
-                        && target != TargetId::Vivaldi;
+                    let expected = target != TargetId::Edge;
                     assert_eq!(
                         metadata.release(target, *channel, *cpu_build).is_some(),
                         expected,

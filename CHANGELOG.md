@@ -2,6 +2,18 @@
 
 [简体中文](CHANGELOG.zh-CN.md) · English
 
+## v0.6.11 — 2026-11-01
+
+### Added
+
+- Added a bilingual notice when Vivaldi is selected, explaining saved-password migration limits and recommending Vivaldi Sync before moving to another PC. Hover for details.
+
+### Fixed
+
+- Fresh browser installations no longer report an upgrade from a historical Chrome++ version. Upgrade messages use the version detected before replacing files.
+- A signed metadata cache missing the selected browser is refreshed, and incomplete mirrors no longer hide a complete fallback. The embedded manifest now includes Vivaldi.
+- Edge no longer falls back to obsolete MSI metadata when Microsoft's live lookup fails. Starting a new check clears the previous result; a newer local version is labeled clearly.
+
 ## v0.6.10 — 2026-10-31
 
 ### Fixed
@@ -15,8 +27,8 @@
 ### Added
 
 - Added Vivaldi (Stable x64) as the 15th supported browser target.
-- Pure in-memory double-layer 7z unpacking from the official installer without executing third-party installation binaries.
-- Configured official native Standalone mode via `stp.viv`, keeping `User Data` strictly isolated in the browser root without modifying vendor binaries or touching registry.
+- Controlled two-stage extraction from the official installer without running it.
+- Enabled native Standalone mode, with user data beside the program directory under the Browser Root and no third-party DLL injection.
 - Automatically strips background `update_notifier.exe` on install and update.
 - Updated documentation and architecture specifications across all public and internal references.
 

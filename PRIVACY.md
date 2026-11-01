@@ -8,11 +8,13 @@ Browser Harbor is a local Windows utility. It has no telemetry, analytics, accou
 
 The application stores:
 
-- manager settings in `%LOCALAPPDATA%\browser-harbor\BrowserHarbor.json`;
+- manager settings in `%LOCALAPPDATA%\browser-harbor\BrowserHarbor.json` by default, or beside the EXE when portable configuration storage is selected;
 - rebuildable download cache in `%TEMP%\browser-harbor\cache`;
 - browser program and user data only in the Browser Roots and overrides selected by the user.
 
 Browser Harbor does not collect browser history, cookies, credentials, or profile contents for transmission.
+
+Vivaldi Sync is an optional service of the browser itself. Browser Harbor only displays migration advice; it does not enable Sync, sign in to a browser account, or upload browser data.
 
 ## Network requests
 
@@ -33,4 +35,4 @@ Browser Harbor does not create a persistent application log. The configuration c
 
 ## Data deletion
 
-Delete `%LOCALAPPDATA%\browser-harbor\BrowserHarbor.json` to remove manager settings. Delete Browser Roots manually if you also want to remove browser programs and user data.
+Delete the active `BrowserHarbor.json` shown under **Configuration location** to remove manager settings. If you previously used both storage locations, inactive copies may remain in the other location. Delete Browser Roots manually if you also want to remove browser programs and user data.
