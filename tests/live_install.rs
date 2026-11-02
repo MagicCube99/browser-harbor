@@ -20,6 +20,16 @@ use tempfile::tempdir;
 #[tokio::test]
 #[ignore = "downloads the signed Catsxp Beta ZIP and verifies portable installation without launching it"]
 async fn installs_catsxp_beta_and_recognizes_the_real_build_after_reload() {
+    verify_catsxp_portable_install(ReleaseChannel::Beta).await;
+}
+
+#[tokio::test]
+#[ignore = "downloads the signed Catsxp Stable ZIP and verifies literal data/cache paths without launching it"]
+async fn installs_catsxp_stable_with_literal_data_and_cache_paths() {
+    verify_catsxp_portable_install(ReleaseChannel::Stable).await;
+}
+
+async fn verify_catsxp_portable_install(selected_channel: ReleaseChannel) {
     use browser_harbor::{
         app::AppState,
         config::ConfigStore,
@@ -31,12 +41,17 @@ async fn installs_catsxp_beta_and_recognizes_the_real_build_after_reload() {
     };
     let metadata = TrustedMetadata::load_embedded().unwrap();
     let release = metadata
-        .release(TargetId::Catsxp, ReleaseChannel::Beta, CpuBuild::X64)
-        .expect("signed Catsxp Beta entry is required")
+        .release(TargetId::Catsxp, selected_channel, CpuBuild::X64)
+        .expect("a signed Catsxp channel entry is required")
         .clone();
     let directory = tempdir().unwrap();
     let network = NetworkSettings::default();
-    let artifact = if let Some(path) = std::env::var_os("BROWSER_HARBOR_CATSXP_PACKAGE") {
+    let package_variable = if selected_channel == ReleaseChannel::Beta {
+        "BROWSER_HARBOR_CATSXP_PACKAGE"
+    } else {
+        "BROWSER_HARBOR_CATSXP_STABLE_PACKAGE"
+    };
+    let artifact = if let Some(path) = std::env::var_os(package_variable) {
         path.into()
     } else {
         let (direct, fallback) = HttpClient::download_clients(&network).unwrap();
@@ -50,7 +65,7 @@ async fn installs_catsxp_beta_and_recognizes_the_real_build_after_reload() {
         .await
         .unwrap()
     };
-    let root = directory.path().join("Catsxp Beta");
+    let root = directory.path().join("Catsxp 测试 Browser");
     let request = InstallRequest {
         release,
         browser_artifact: artifact,
@@ -66,6 +81,7 @@ async fn installs_catsxp_beta_and_recognizes_the_real_build_after_reload() {
     let receipt = InstallService::install(request.clone()).unwrap();
     assert_eq!(receipt.browser_directory, root.join("App"));
     assert_eq!(receipt.data_directory, root.join("Profiles"));
+    assert_catsxp_literal_paths(&receipt);
     let build = receipt
         .catsxp_build
         .as_ref()
@@ -77,12 +93,16 @@ async fn installs_catsxp_beta_and_recognizes_the_real_build_after_reload() {
         catsxp::base_version(&build.version, build.channel).as_deref(),
         Some(raw.as_str())
     );
-    assert_ne!(build.version, raw);
+    if selected_channel == ReleaseChannel::Beta {
+        assert_ne!(build.version, raw);
+    } else {
+        assert_eq!(build.version, raw);
+    }
     let mut settings = Settings::default();
     let mut config = TargetConfig::for_target(TargetId::Catsxp);
     config.browser_root = Some(root.clone());
     config.derive_paths_from_root(TargetId::Catsxp);
-    config.channel = ReleaseChannel::Beta;
+    config.channel = selected_channel;
     settings.targets.insert(TargetId::Catsxp, config);
     let config_file = directory.path().join("BrowserHarbor.json");
     let mut state = AppState::new(settings, ConfigStore::new(config_file.clone()));
@@ -101,7 +121,7 @@ async fn installs_catsxp_beta_and_recognizes_the_real_build_after_reload() {
     )
     .unwrap()
     .unwrap();
-    assert_eq!(observation.build.channel, ReleaseChannel::Beta);
+    assert_eq!(observation.build.channel, selected_channel);
     assert_eq!(
         browser_harbor::domain::version::compare_versions(
             &observation.build.version,
@@ -160,17 +180,17 @@ async fn installs_catsxp_beta_and_recognizes_the_real_build_after_reload() {
             assert!(observed);
             match (channel, event.phase) {
                 (
-                    ReleaseChannel::Beta,
+                    channel,
                     OperationPhase::SameVersion {
                         current_version, ..
                     },
-                ) => assert_eq!(current_version, build.version),
+                ) if channel == selected_channel => assert_eq!(current_version, build.version),
                 (
-                    ReleaseChannel::Stable,
+                    channel,
                     OperationPhase::ChannelMismatch {
                         current_channel, ..
                     },
-                ) => assert_eq!(current_channel, ReleaseChannel::Beta),
+                ) if channel != selected_channel => assert_eq!(current_channel, selected_channel),
                 (_, phase) => panic!("unexpected Catsxp preflight result: {phase:?}"),
             }
             break;
@@ -179,9 +199,23 @@ async fn installs_catsxp_beta_and_recognizes_the_real_build_after_reload() {
     std::fs::write(receipt.data_directory.join("keep-user-data.txt"), b"keep").unwrap();
     let ini_path = receipt.browser_directory.join("StartupParm.txt");
     let mut ini = std::fs::read_to_string(&ini_path).unwrap();
+    ini = ini
+        .lines()
+        .map(|line| {
+            if let Some((key, value)) = line.split_once('=')
+                && matches!(key, "--user-data-dir" | "--disk-cache-dir")
+            {
+                format!("{key}=\"{value}\"")
+            } else {
+                line.to_owned()
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("\r\n");
     ini.push_str("\r\n--custom-user-flag\r\n");
     std::fs::write(&ini_path, ini).unwrap();
     let second = InstallService::install(request).unwrap();
+    assert_catsxp_literal_paths(&second);
     assert_eq!(
         std::fs::read(second.data_directory.join("keep-user-data.txt")).unwrap(),
         b"keep"
@@ -218,6 +252,29 @@ async fn installs_catsxp_beta_and_recognizes_the_real_build_after_reload() {
         .unwrap()
         .is_none()
     );
+}
+
+fn assert_catsxp_literal_paths(receipt: &browser_harbor::services::install::InstallReceipt) {
+    let startup =
+        std::fs::read_to_string(receipt.browser_directory.join("StartupParm.txt")).unwrap();
+    for (prefix, expected) in [
+        ("--user-data-dir=", receipt.data_directory.as_path()),
+        (
+            "--disk-cache-dir=",
+            receipt.cache_directory.as_deref().unwrap(),
+        ),
+    ] {
+        let values = startup
+            .lines()
+            .filter_map(|line| line.strip_prefix(prefix))
+            .collect::<Vec<_>>();
+        assert_eq!(values.len(), 1);
+        assert_eq!(
+            std::path::Path::new(values[0]),
+            expected,
+            "Catsxp startup values must contain the literal path without extra quoting"
+        );
+    }
 }
 
 #[tokio::test]

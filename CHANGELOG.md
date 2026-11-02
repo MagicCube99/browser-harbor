@@ -5,6 +5,7 @@
 ## v0.7.0 — Unreleased
 
 - Added Catsxp Beta portable packages, with verified installed-build recognition and channel-switch confirmation. Stable remains the default.
+- Fixed Catsxp Stable and Beta failing to use the selected user-data and cache directories.
 - Recover interrupted installations before retrying, retaining originals if recovery is blocked. Closing the app waits for active installation work to reach a safe stopping point.
 - Fixed updates that kept old Chrome++ files while reporting the new version, and improved detection of portable layouts.
 - Require confirmation before downgrading. Manual checks refresh signed release information and identify cached or embedded results.
