@@ -196,6 +196,9 @@ impl ConfigStore {
             }
         }
         for (target, config) in &mut settings.targets {
+            if !settings.show_local_package {
+                config.local_package = None;
+            }
             config.align_single_directory_paths(*target);
             config.fill_default_paths(*target);
             config.align_single_directory_paths(*target);
@@ -205,6 +208,43 @@ impl ConfigStore {
 
     pub fn path(&self) -> &std::path::Path {
         &self.path
+    }
+
+    pub fn backup_and_reset(&self) -> Result<PathBuf, ConfigError> {
+        let bytes = fs::read(&self.path).map_err(|source| ConfigError::Read {
+            path: self.path.clone(),
+            source,
+        })?;
+        let file_name = self.path.file_name().unwrap_or_default().to_string_lossy();
+        let mut suffix = 1_u64;
+        let (backup, mut file) = loop {
+            let backup = self
+                .path
+                .with_file_name(format!("{file_name}.backup-{suffix}.json"));
+            match OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .open(&backup)
+            {
+                Ok(file) => break (backup, file),
+                Err(error) if error.kind() == io::ErrorKind::AlreadyExists => suffix += 1,
+                Err(source) => {
+                    return Err(ConfigError::Write {
+                        path: backup,
+                        source,
+                    });
+                }
+            }
+        };
+        file.write_all(&bytes)
+            .and_then(|()| file.sync_all())
+            .map_err(|source| ConfigError::Write {
+                path: backup.clone(),
+                source,
+            })?;
+        drop(file);
+        self.save(&Settings::default())?;
+        Ok(backup)
     }
 
     pub fn save(&self, settings: &Settings) -> Result<(), ConfigError> {
@@ -367,6 +407,8 @@ fn edge_application_parent(program: &Path) -> Option<PathBuf> {
 
 #[derive(Debug, Error)]
 pub enum ConfigError {
+    #[error("Chrome++ configuration was not applied: {0}")]
+    ChromePlusSync(String),
     #[error("configuration contains an invalid relative path: {path}")]
     InvalidPath { path: PathBuf },
     #[error("failed to read configuration at {path}")]
@@ -431,7 +473,7 @@ mod tests {
     fn default_settings_include_all_targets_with_default_paths() {
         let settings = Settings::default();
 
-        assert_eq!(settings.schema_version, 11);
+        assert_eq!(settings.schema_version, 12);
         assert_eq!(settings.selected_browser, TargetId::Firefox);
         assert_eq!(settings.theme, ThemeMode::System);
         assert_eq!(settings.language, Language::Chinese);
@@ -475,7 +517,7 @@ mod tests {
         store.save(&Settings::default()).unwrap();
 
         let value: serde_json::Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
-        assert_eq!(value["schemaVersion"], 11);
+        assert_eq!(value["schemaVersion"], 12);
         assert!(value.get("targets").is_none());
         assert!(value.get("network").is_none());
         assert!(value.get("theme").is_none());
@@ -499,7 +541,7 @@ mod tests {
 
         let loaded = store.load().unwrap();
 
-        assert_eq!(loaded.schema_version, 11);
+        assert_eq!(loaded.schema_version, 12);
         assert_eq!(loaded.targets.len(), TargetId::ALL.len());
         assert_eq!(
             loaded.targets[&TargetId::Helium].browser_root,
@@ -638,7 +680,7 @@ mod tests {
 
         let loaded = store.load().unwrap();
 
-        assert_eq!(loaded.schema_version, 11);
+        assert_eq!(loaded.schema_version, 12);
         for (target, installed_version) in [
             (TargetId::Iceweasel, "159.0"),
             (TargetId::SkyKakapo, "158.0.1"),
@@ -655,7 +697,7 @@ mod tests {
         }
         assert!(store.compact_if_needed(&loaded).unwrap());
         let saved: serde_json::Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
-        assert_eq!(saved["schemaVersion"], 11);
+        assert_eq!(saved["schemaVersion"], 12);
     }
 
     #[test]
@@ -679,7 +721,7 @@ mod tests {
 
         let loaded = store.load().unwrap();
 
-        assert_eq!(loaded.schema_version, 11);
+        assert_eq!(loaded.schema_version, 12);
         let edge = &loaded.targets[&TargetId::Edge];
         assert_eq!(
             edge.browser_directory,
@@ -690,7 +732,7 @@ mod tests {
         assert_eq!(edge.installed_version.as_deref(), Some("156.0.4314.42"));
         assert!(store.compact_if_needed(&loaded).unwrap());
         let saved: serde_json::Value = serde_json::from_slice(&fs::read(path).unwrap()).unwrap();
-        assert_eq!(saved["schemaVersion"], 11);
+        assert_eq!(saved["schemaVersion"], 12);
     }
 
     #[test]
@@ -724,7 +766,7 @@ mod tests {
 
         let loaded = store.load().unwrap();
 
-        assert_eq!(loaded.schema_version, 11);
+        assert_eq!(loaded.schema_version, 12);
         assert_eq!(
             loaded.targets[&TargetId::Floorp].profile_directory,
             Some(std::path::PathBuf::from(
@@ -758,7 +800,7 @@ mod tests {
 
         let loaded = store.load().unwrap();
 
-        assert_eq!(loaded.schema_version, 11);
+        assert_eq!(loaded.schema_version, 12);
         assert_eq!(
             loaded.targets[&TargetId::Floorp].profile_directory,
             Some(std::path::PathBuf::from(r"E:\BrowserProfiles\Floorp"))
@@ -778,7 +820,7 @@ mod tests {
         assert!(store.compact_if_needed(&loaded).unwrap());
 
         let saved: serde_json::Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
-        assert_eq!(saved["schemaVersion"], 11);
+        assert_eq!(saved["schemaVersion"], 12);
         assert!(saved.get("targets").is_none());
         assert_eq!(store.load().unwrap(), loaded);
         assert!(!store.compact_if_needed(&loaded).unwrap());
@@ -806,7 +848,7 @@ mod tests {
         assert_eq!(store.load().unwrap(), settings);
         assert!(!directory.path().join("BrowserHarbor.json.tmp").exists());
         let raw = fs::read_to_string(&path).unwrap();
-        assert!(raw.contains("\"schemaVersion\": 11"));
+        assert!(raw.contains("\"schemaVersion\": 12"));
         assert!(raw.contains("\"selectedBrowser\": \"firefox\""));
         assert!(raw.contains("\"theme\": \"dark\""));
         assert!(raw.contains("\"language\": \"english\""));
@@ -919,7 +961,7 @@ mod tests {
             error,
             ConfigError::UnsupportedVersion {
                 found: 999,
-                supported: 11,
+                supported: 12,
                 ..
             }
         ));
@@ -939,7 +981,7 @@ mod tests {
 
         let loaded = store.load().unwrap();
 
-        assert_eq!(loaded.schema_version, 11);
+        assert_eq!(loaded.schema_version, 12);
         assert_eq!(loaded.theme, ThemeMode::System);
         assert_eq!(fs::read(&path).unwrap(), raw);
     }
@@ -962,7 +1004,7 @@ mod tests {
 
         let loaded = store.load().unwrap();
 
-        assert_eq!(loaded.schema_version, 11);
+        assert_eq!(loaded.schema_version, 12);
         assert_eq!(
             loaded.targets[&TargetId::Iceweasel].channel,
             crate::domain::release::ReleaseChannel::Esr
@@ -1001,7 +1043,7 @@ mod tests {
         let loaded = store.load().unwrap();
         let helium = &loaded.targets[&TargetId::Helium];
 
-        assert_eq!(loaded.schema_version, 11);
+        assert_eq!(loaded.schema_version, 12);
         assert_eq!(
             helium.browser_root,
             Some(std::path::PathBuf::from(r".\Helium"))

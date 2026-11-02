@@ -2,6 +2,15 @@
 
 [简体中文](CHANGELOG.zh-CN.md) · English
 
+## v0.7.0 — Unreleased
+
+- Recover interrupted installations before retrying, retaining originals if recovery is blocked. Closing the app waits for active installation work to reach a safe stopping point.
+- Fixed updates that kept old Chrome++ files while reporting the new version, and improved detection of portable layouts.
+- Require confirmation before downgrading. Manual checks refresh signed release information and identify cached or embedded results.
+- Local installer packages are now an opt-in feature under **Global settings → Advanced**. Disabling it clears selections without deleting packages.
+- Keep failed Chrome++ configuration edits pending for retry, and offer a backup-and-reset action for damaged manager settings.
+- Improve cancellation and network errors, check runtime compatibility before downloading, and keep unaffected release information available if one runtime lookup fails.
+
 ## v0.6.12 — 2026-11-01
 
 - Clarified Vivaldi's official password-migration limitation and the recommendation to use Vivaldi Sync before moving to another PC.

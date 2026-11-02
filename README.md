@@ -75,6 +75,7 @@ the current desktop.
 - **Saves immediately.** Every valid edit is persisted. Keep manager state in
   the per-user configuration directory or move `BrowserHarbor.json` beside the EXE
   for a portable setup. Existing `manager.json` files are migrated automatically.
+- **Keeps uncommon choices out of the way.** Enable local installer packages under **Global settings → Advanced** when needed; normal installation uses verified downloads.
 - **Looks at home on Windows.** Follow the system theme or choose light/dark;
   switch between Chinese and English when required.
 - **Notices its own updates.** The footer quietly marks a newer stable Browser

@@ -13,6 +13,7 @@ use super::{
     ServiceError,
     archive::{ArchiveError, ArchiveService},
     download::verify_artifact,
+    install_transaction::{self, FileTransaction},
 };
 use crate::{
     domain::{
@@ -97,19 +98,28 @@ pub enum InstallError {
     ExistingTargetMismatch,
     #[error("required {0} runtime is missing")]
     RuntimeMissing(&'static str),
+    #[error("installed Chrome++ content does not match the verified runtime")]
+    RuntimeContentMismatch,
     #[error("installation rollback failed")]
     Rollback(#[source] std::io::Error),
+    #[error("installation failed: {cause}; recovery failed: {source}; originals kept at {backup}")]
+    RecoveryRequired {
+        cause: String,
+        backup: PathBuf,
+        #[source]
+        source: std::io::Error,
+    },
     #[error("artifact verification failed")]
     Artifact(#[source] ServiceError),
     #[error("installable artifact has no integrity value")]
     ArtifactIntegrityMissing,
-    #[error("archive extraction failed")]
+    #[error("archive extraction failed: {0}")]
     Archive(#[from] ArchiveError),
     #[error("runtime preparation failed: {0}")]
     Runtime(#[from] RuntimeError),
     #[error("process protection check failed")]
     Process(#[from] ProcessError),
-    #[error("file operation failed at {path}")]
+    #[error("file operation failed at {path}: {source}")]
     Io {
         path: PathBuf,
         #[source]
@@ -140,6 +150,57 @@ fn resolve_cache_directory(
 }
 
 impl InstallService {
+    pub fn prepare_retry(target: TargetId, config: &TargetConfig) -> Result<usize, InstallError> {
+        let root = config
+            .browser_root
+            .as_deref()
+            .ok_or(InstallError::MissingPath)?;
+        if !root.is_absolute() {
+            return Err(InstallError::InvalidBrowserRoot);
+        }
+        let program = config.browser_directory.clone().unwrap_or_else(|| {
+            target
+                .spec()
+                .layout
+                .program
+                .map_or_else(|| root.to_path_buf(), |path| root.join(path))
+        });
+        if !is_within(root, &program) {
+            return Err(InstallError::ProgramOutsideRoot);
+        }
+        if root.is_dir() {
+            install_transaction::reject_links(root, &program)
+                .map_err(|source| io_error(&program, source))?;
+        }
+        let protected = [
+            config.data_directory.as_deref(),
+            config.profile_directory.as_deref(),
+            config.cache_directory.as_deref(),
+        ]
+        .into_iter()
+        .flatten()
+        .collect::<Vec<_>>();
+        let mut program_unit = program.clone();
+        if let Some(prefix) = target.spec().layout.package_prefix {
+            let suffix = Path::new(target.spec().layout.program.unwrap_or(prefix))
+                .strip_prefix(prefix)
+                .unwrap_or_else(|_| Path::new(""));
+            for _ in suffix.components() {
+                program_unit.pop();
+            }
+        }
+        if target != TargetId::Turbo {
+            for path in &protected {
+                ensure_not_inside(path, &program_unit)?;
+            }
+        }
+        if root.is_dir() {
+            recover_installation(root, target, &protected)
+        } else {
+            Ok(0)
+        }
+    }
+
     pub fn install(request: InstallRequest) -> Result<InstallReceipt, InstallError> {
         if request.release.artifact.integrity.is_none() {
             return Err(InstallError::ArtifactIntegrityMissing);
@@ -152,6 +213,8 @@ impl InstallService {
         fs::create_dir_all(&request.browser_root)
             .map_err(|source| io_error(&request.browser_root, source))?;
         let browser_root = normalize_path(&request.browser_root);
+        install_transaction::reject_links(&browser_root, &browser_root)
+            .map_err(|source| io_error(&browser_root, source))?;
         let layout = request.release.target.spec().layout;
         let data_directory = absolute_path(
             &browser_root,
@@ -182,6 +245,19 @@ impl InstallService {
         {
             fs::create_dir_all(directory).map_err(|source| io_error(directory, source))?;
         }
+
+        recover_installation(
+            &browser_root,
+            request.release.target,
+            &[
+                Some(data_directory.as_path()),
+                Some(profile_directory.as_path()),
+                cache_directory.as_deref(),
+            ]
+            .into_iter()
+            .flatten()
+            .collect::<Vec<_>>(),
+        )?;
 
         let work = WorkDirectory::create(&browser_root, request.release.target)?;
         let extracted = work.path.join("extracted");
@@ -285,40 +361,48 @@ impl InstallService {
             &profile_directory,
             cache_directory.as_deref(),
         )?;
+        let prepared_hash = prepared_runtime_hash(&staged_program, request.release.target)?;
         if !staged_program.join(&executable_name).is_file()
             || !is_pe_x64(&staged_program.join(&executable_name))?
         {
             return Err(InstallError::InvalidExecutable);
         }
 
+        ensure_target_closed(&commit_root)?;
+        let parent = commit_root
+            .parent()
+            .ok_or(InstallError::ProgramOutsideRoot)?;
+        fs::create_dir_all(parent).map_err(|source| io_error(parent, source))?;
         let backup = work.path.join("backup");
-        let had_previous = commit_root.exists();
-        if had_previous {
-            fs::rename(&commit_root, &backup).map_err(|source| io_error(&commit_root, source))?;
-        }
-        if let Some(parent) = commit_root.parent()
-            && let Err(source) = fs::create_dir_all(parent)
+        install_transaction::reject_links(&browser_root, &commit_root)
+            .map_err(|source| io_error(&commit_root, source))?;
+        let mut transaction =
+            FileTransaction::new(&backup, parent).map_err(|source| io_error(&backup, source))?;
+        let name = commit_root
+            .file_name()
+            .ok_or(InstallError::ProgramOutsideRoot)?;
+        if let Err(source) =
+            transaction.replace(name, Some(&work.staged_root(request.release.placement)))
         {
-            if had_previous {
-                let _ = fs::rename(&backup, &commit_root);
-            }
-            return Err(io_error(parent, source));
+            return Err(rollback_error(
+                &mut transaction,
+                io_error(&commit_root, source),
+                &backup,
+            ));
         }
-        if let Err(source) = fs::rename(work.staged_root(request.release.placement), &commit_root) {
-            if had_previous {
-                fs::rename(&backup, &commit_root).map_err(InstallError::Rollback)?;
-            }
-            return Err(io_error(&commit_root, source));
-        }
-
         let executable = final_program.join(&executable_name);
-        if let Err(error) = verify_installed(&executable, &final_program, request.release.target) {
-            let _ = fs::remove_dir_all(&commit_root);
-            if had_previous {
-                fs::rename(&backup, &commit_root).map_err(InstallError::Rollback)?;
-            }
-            return Err(error);
+        if let Err(error) = verify_installed(&executable, &final_program, request.release.target)
+            .and_then(|()| {
+                verify_runtime_result(
+                    &final_program,
+                    prepared_hash.as_deref(),
+                    chrome_plus_version.as_deref(),
+                )
+            })
+        {
+            return Err(rollback_error(&mut transaction, error, &backup));
         }
+        work.finish()?;
 
         Ok(InstallReceipt {
             version: request.release.version,
@@ -365,6 +449,7 @@ impl ChromePlusUpdateService {
             .profile_directory
             .as_deref()
             .ok_or(InstallError::MissingPath)?;
+        recover_installation(browser_root, target, &[profile_directory])?;
         let executable = locate_executable(target, configured_program)
             .map_err(|_| InstallError::ExecutableNotFound)?;
         let program_directory = executable
@@ -427,6 +512,7 @@ impl ChromePlusUpdateService {
             product: target,
             setdll_runtime_root: setdll_runtime_root.as_deref(),
         })?;
+        let prepared_hash = prepared_runtime_hash(&staging_program, target)?;
 
         if running_process_count_in_directory(configured_program)? > 0 {
             return Err(InstallError::BrowserRunning(executable));
@@ -437,6 +523,19 @@ impl ChromePlusUpdateService {
             &work.path.join("replacement-backup"),
             target,
         )?;
+        if let Err(error) = verify_runtime_result(
+            program_directory,
+            prepared_hash.as_deref(),
+            Some(&request.runtime.version),
+        ) {
+            return Err(recover_error(
+                &work,
+                browser_root,
+                &[profile_directory],
+                error,
+            ));
+        }
+        work.finish()?;
         Ok(ChromePlusUpdateReceipt {
             version: request.runtime.version,
             program_directory: program_directory.to_path_buf(),
@@ -459,28 +558,25 @@ fn commit_chrome_plus_files(
         names.insert(0, "msedge.exe".into());
     }
 
-    let mut installed = Vec::new();
-    let mut backups = Vec::new();
+    let mut transaction =
+        FileTransaction::new(backup, destination).map_err(|source| io_error(backup, source))?;
     for name in names {
         let staged = staging.join(&name);
         if !staged.is_file() {
-            rollback_native(&installed, &backups, destination);
-            return Err(InstallError::RuntimeMissing("Chrome++"));
+            return Err(rollback_error(
+                &mut transaction,
+                InstallError::RuntimeMissing("Chrome++"),
+                backup,
+            ));
         }
         let target_path = destination.join(&name);
-        if target_path.exists() {
-            let saved = backup.join(&name);
-            if let Err(source) = fs::rename(&target_path, &saved) {
-                rollback_native(&installed, &backups, destination);
-                return Err(io_error(&target_path, source));
-            }
-            backups.push((name.clone(), saved));
+        if let Err(source) = transaction.replace(&name, Some(&staged)) {
+            return Err(rollback_error(
+                &mut transaction,
+                io_error(&target_path, source),
+                backup,
+            ));
         }
-        if let Err(source) = fs::rename(&staged, &target_path) {
-            rollback_native(&installed, &backups, destination);
-            return Err(io_error(&target_path, source));
-        }
-        installed.push(target_path);
     }
     Ok(())
 }
@@ -508,7 +604,15 @@ fn install_native_package(
         return Err(InstallError::InvalidExecutable);
     }
 
-    let previous_program = existing_program(browser_root, request.release.target);
+    let configured_previous = request.browser_directory.clone().unwrap_or_else(|| {
+        request.release.target.spec().layout.program.map_or_else(
+            || browser_root.to_path_buf(),
+            |path| browser_root.join(path),
+        )
+    });
+    let previous_program = existing_program(&configured_previous, request.release.target)
+        .or_else(|| existing_program(browser_root, request.release.target));
+    ensure_target_closed(&configured_previous)?;
     let previous_chrome_plus_version = previous_program
         .as_deref()
         .and_then(|program| chromeplus::installed_version(program).ok());
@@ -543,21 +647,12 @@ fn install_native_package(
     if !is_within(browser_root, &destination) {
         return Err(InstallError::ProgramOutsideRoot);
     }
+    install_transaction::reject_links(browser_root, &destination)
+        .map_err(|source| io_error(&destination, source))?;
     if request.release.target == TargetId::Turbo {
         preserve_turbo_legacy_data(browser_root, &browser_root.join("App"))?;
     }
-    let legacy_turbo_app = if request.release.target == TargetId::Turbo {
-        let legacy = browser_root.join("App");
-        if legacy.is_dir() {
-            let backup = work.path.join("turbo-legacy-app");
-            fs::rename(&legacy, &backup).map_err(|error| io_error(&legacy, error))?;
-            Some((legacy, backup))
-        } else {
-            None
-        }
-    } else {
-        None
-    };
+    // Legacy program trees remain until a later, explicit cleanup; never move user data during preparation.
     if layout.package_prefix.is_some() {
         for directory in [
             Some(data_directory),
@@ -567,13 +662,7 @@ fn install_native_package(
         .into_iter()
         .flatten()
         {
-            if is_within(&destination, directory)
-                && staging_package
-                    .join(directory.strip_prefix(&destination).unwrap_or(directory))
-                    .exists()
-            {
-                return Err(InstallError::DataInsideProgram);
-            }
+            ensure_not_inside(directory, &destination)?;
         }
     }
 
@@ -593,11 +682,8 @@ fn install_native_package(
         data_directory,
         cache_directory,
     )?;
-    let preserved_root_files = if layout.package_prefix.is_some() {
-        request.release.target.spec().preserved_program_files
-    } else {
-        &[]
-    };
+    // Prepared runtime files already implement version-aware INI preservation.
+    let preserved_root_files = &[];
     let final_program = destination.join(
         relative_executable
             .parent()
@@ -620,8 +706,10 @@ fn install_native_package(
         profile_directory,
         cache_directory,
     )?;
+    let prepared_hash = prepared_runtime_hash(staged_program, request.release.target)?;
     verify_installed(&staged_executable, staged_program, request.release.target)?;
-    if let Err(error) = commit_native_package(
+    ensure_target_closed(&configured_previous)?;
+    commit_native_package(
         &staging_package,
         &destination,
         &backup,
@@ -629,21 +717,28 @@ fn install_native_package(
         preserved_root_files,
         data_directory,
         cache_directory,
-    ) {
-        if let Some((legacy, backup)) = legacy_turbo_app {
-            let _ = fs::rename(backup, legacy);
-        }
-        return Err(error);
-    }
+    )?;
     let installed_executable = destination.join(relative_executable);
-    if !installed_executable.is_file() || !is_pe_x64(&installed_executable)? {
-        return Err(InstallError::InvalidExecutable);
-    }
-    verify_installed(
+    if let Err(error) = verify_installed(
         &installed_executable,
         &final_program,
         request.release.target,
-    )?;
+    )
+    .and_then(|()| {
+        verify_runtime_result(
+            &final_program,
+            prepared_hash.as_deref(),
+            chrome_plus_version.as_deref(),
+        )
+    }) {
+        return Err(recover_error(
+            work,
+            browser_root,
+            &[data_directory, profile_directory],
+            error,
+        ));
+    }
+    work.finish()?;
     Ok(InstallReceipt {
         version: request.release.version.clone(),
         browser_directory: final_program,
@@ -697,8 +792,19 @@ fn commit_native_package(
             fs::remove_file(&path).map_err(|source| io_error(&path, source))?;
         }
     }
-    let mut installed = Vec::new();
-    let mut backups = Vec::new();
+    let mut transaction =
+        FileTransaction::new(backup, destination).map_err(|source| io_error(backup, source))?;
+    if target == TargetId::Turbo
+        && destination.join("App").is_dir()
+        && find_executable(&destination.join("App"), target).is_ok()
+        && let Err(source) = transaction.replace(std::ffi::OsStr::new("App"), None)
+    {
+        return Err(rollback_error(
+            &mut transaction,
+            io_error(&destination.join("App"), source),
+            backup,
+        ));
+    }
     for entry in fs::read_dir(destination).map_err(|source| io_error(destination, source))? {
         let entry = entry.map_err(|source| io_error(destination, source))?;
         if entry.file_type().is_ok_and(|kind| kind.is_file())
@@ -711,8 +817,13 @@ fn commit_native_package(
         {
             let name = entry.file_name();
             let saved = backup.join(&name);
-            fs::rename(entry.path(), &saved).map_err(|source| io_error(&saved, source))?;
-            backups.push((name, saved));
+            if let Err(source) = transaction.replace(&name, None) {
+                return Err(rollback_error(
+                    &mut transaction,
+                    io_error(&saved, source),
+                    backup,
+                ));
+            }
         }
     }
     let staged_entries = fs::read_dir(staging)
@@ -728,6 +839,22 @@ fn commit_native_package(
         .iter()
         .filter_map(|path| path.file_name().map(|name| name.to_os_string()))
         .collect::<Vec<_>>();
+
+    for name in &replace_names {
+        let program_unit = destination.join(name);
+        let overlaps_data = directory_name_matches(destination, data_directory, name)
+            || cache_directory
+                .is_some_and(|cache| directory_name_matches(destination, cache, name));
+        if overlaps_data && find_executable(&staging.join(name), target).is_ok() {
+            return Err(rollback_error(
+                &mut transaction,
+                InstallError::DataInsideProgram,
+                backup,
+            ));
+        }
+        install_transaction::reject_links(destination, &program_unit)
+            .map_err(|source| io_error(&program_unit, source))?;
+    }
 
     for entry in fs::read_dir(destination)
         .map_err(|source| io_error(destination, source))?
@@ -772,19 +899,13 @@ fn commit_native_package(
             continue;
         }
         let target = destination.join(&name);
-        if target.exists() {
-            let saved = backup.join(&name);
-            if let Err(source) = fs::rename(&target, &saved) {
-                rollback_native(&installed, &backups, destination);
-                return Err(io_error(&target, source));
-            }
-            backups.push((name.clone(), saved));
+        if let Err(source) = transaction.replace(&name, Some(&staged)) {
+            return Err(rollback_error(
+                &mut transaction,
+                io_error(&target, source),
+                backup,
+            ));
         }
-        if let Err(source) = fs::rename(&staged, &target) {
-            rollback_native(&installed, &backups, destination);
-            return Err(io_error(&target, source));
-        }
-        installed.push(target);
     }
     Ok(())
 }
@@ -804,17 +925,104 @@ fn obsolete_native_files(target: TargetId) -> &'static [&'static str] {
     }
 }
 
-fn rollback_native(
-    installed: &[PathBuf],
-    backups: &[(std::ffi::OsString, PathBuf)],
-    destination: &Path,
-) {
-    for path in installed.iter().rev() {
-        let _ = fs::remove_dir_all(path).or_else(|_| fs::remove_file(path));
+fn rollback_error(
+    transaction: &mut FileTransaction,
+    cause: InstallError,
+    backup: &Path,
+) -> InstallError {
+    match transaction.rollback() {
+        Ok(()) => cause,
+        Err(source) => InstallError::RecoveryRequired {
+            cause: cause.to_string(),
+            backup: backup.to_path_buf(),
+            source,
+        },
     }
-    for (name, saved) in backups.iter().rev() {
-        let _ = fs::rename(saved, destination.join(name));
+}
+
+fn recover_error(
+    work: &WorkDirectory,
+    root: &Path,
+    protected: &[&Path],
+    cause: InstallError,
+) -> InstallError {
+    match install_transaction::recover_work(&work.path, root, protected) {
+        Ok(()) => cause,
+        Err(source) => InstallError::RecoveryRequired {
+            cause: cause.to_string(),
+            backup: work.path.clone(),
+            source,
+        },
     }
+}
+
+fn ensure_target_closed(program: &Path) -> Result<(), InstallError> {
+    if running_process_count_in_directory(program)? > 0 {
+        Err(InstallError::BrowserRunning(program.to_path_buf()))
+    } else {
+        Ok(())
+    }
+}
+
+fn prepared_runtime_hash(program: &Path, target: TargetId) -> Result<Option<String>, InstallError> {
+    if target.spec().runtime.uses_chrome_plus() {
+        Ok(Some(chromeplus::sha256_file(&program.join("version.dll"))?))
+    } else {
+        Ok(None)
+    }
+}
+
+fn verify_runtime_result(
+    program: &Path,
+    expected_hash: Option<&str>,
+    expected_version: Option<&str>,
+) -> Result<(), InstallError> {
+    if let Some(expected_hash) = expected_hash {
+        if chromeplus::sha256_file(&program.join("version.dll"))? != expected_hash {
+            return Err(InstallError::RuntimeContentMismatch);
+        }
+        // Hash identity is mandatory; version resources are checked when the upstream DLL provides them.
+        if let (Some(expected), Ok(actual)) =
+            (expected_version, chromeplus::installed_version(program))
+            && crate::domain::version::compare_versions(expected, &actual)
+                != crate::domain::version::VersionRelation::Same
+        {
+            return Err(InstallError::RuntimeContentMismatch);
+        }
+    }
+    Ok(())
+}
+
+fn recover_installation(
+    root: &Path,
+    target: TargetId,
+    protected: &[&Path],
+) -> Result<usize, InstallError> {
+    let prefix = format!(".pbm-work-{}-", target.sort_key());
+    let mut recovered = 0;
+    for entry in fs::read_dir(root).map_err(|source| io_error(root, source))? {
+        let entry = entry.map_err(|source| io_error(root, source))?;
+        if !entry.file_name().to_string_lossy().starts_with(&prefix)
+            || !entry.file_type().is_ok_and(|kind| kind.is_dir())
+        {
+            continue;
+        }
+        let work = entry.path();
+        if !install_transaction::has_journal(&work) {
+            continue;
+        }
+        ensure_target_closed(root)?;
+        install_transaction::recover_work(&work, root, protected).map_err(|source| {
+            InstallError::RecoveryRequired {
+                cause: "previous installation was interrupted".to_owned(),
+                backup: work.clone(),
+                source,
+            }
+        })?;
+        fs::remove_dir_all(&work).map_err(|source| io_error(&work, source))?;
+        recovered += 1;
+    }
+    Ok(recovered)
 }
 
 fn is_reserved_root_entry(name: &std::ffi::OsStr) -> bool {
@@ -1307,6 +1515,9 @@ struct WorkDirectory {
 }
 
 impl WorkDirectory {
+    fn finish(&self) -> Result<(), InstallError> {
+        install_transaction::finish_work(&self.path).map_err(|source| io_error(&self.path, source))
+    }
     fn create(root: &Path, target: TargetId) -> Result<Self, InstallError> {
         let nonce = SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -1327,12 +1538,297 @@ impl WorkDirectory {
 
 impl Drop for WorkDirectory {
     fn drop(&mut self) {
-        let _ = fs::remove_dir_all(&self.path);
+        if !install_transaction::has_journal(&self.path) {
+            let _ = fs::remove_dir_all(&self.path);
+        }
     }
 }
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn failed_rollback_keeps_the_unrecovered_original() {
+        use std::os::windows::fs::OpenOptionsExt;
+        let directory = tempfile::tempdir().unwrap();
+        let root = directory.path().join("Browser");
+        std::fs::create_dir_all(&root).unwrap();
+        let work =
+            super::WorkDirectory::create(&root, crate::domain::target::TargetId::Chrome).unwrap();
+        let backup = work.path.join("replacement-backup");
+        std::fs::create_dir_all(&backup).unwrap();
+        let saved = backup.join("version.dll");
+        let target = root.join("version.dll");
+        std::fs::write(&target, b"original").unwrap();
+        let staged = work.path.join("new-version.dll");
+        std::fs::write(&staged, b"new locked file").unwrap();
+        let mut transaction = super::FileTransaction::new(&backup, &root).unwrap();
+        transaction
+            .replace(std::ffi::OsStr::new("version.dll"), Some(&staged))
+            .unwrap();
+        let lock = std::fs::OpenOptions::new()
+            .read(true)
+            .share_mode(0)
+            .open(&target)
+            .unwrap();
+        assert!(transaction.rollback().is_err());
+        drop(work);
+        assert!(
+            saved.exists(),
+            "failed recovery must never discard the only original"
+        );
+        drop(lock);
+        assert_eq!(
+            super::recover_installation(&root, crate::domain::target::TargetId::Chrome, &[])
+                .unwrap(),
+            1
+        );
+        assert_eq!(std::fs::read(&target).unwrap(), b"original");
+    }
+
+    #[test]
+    fn interrupted_install_is_restored_before_retry_without_resuming_download() {
+        let directory = tempfile::tempdir().unwrap();
+        let root = directory.path().join("Browser");
+        std::fs::create_dir_all(root.join("App")).unwrap();
+        std::fs::write(root.join("App/old-marker"), b"old").unwrap();
+        let work =
+            super::WorkDirectory::create(&root, crate::domain::target::TargetId::Firefox).unwrap();
+        let staging = work.path.join("program");
+        std::fs::create_dir_all(&staging).unwrap();
+        std::fs::write(staging.join("new-marker"), b"new").unwrap();
+        let mut transaction =
+            super::FileTransaction::new(&work.path.join("backup"), &root).unwrap();
+        transaction
+            .replace(std::ffi::OsStr::new("App"), Some(&staging))
+            .unwrap();
+        drop(work);
+        assert!(!root.join("App/old-marker").exists());
+        assert_eq!(
+            super::recover_installation(
+                &root,
+                crate::domain::target::TargetId::Firefox,
+                &[&root.join("Profiles")]
+            )
+            .unwrap(),
+            1
+        );
+        assert_eq!(std::fs::read(root.join("App/old-marker")).unwrap(), b"old");
+        assert!(!root.join("App/new-marker").exists());
+        assert_eq!(
+            super::recover_installation(&root, crate::domain::target::TargetId::Firefox, &[])
+                .unwrap(),
+            0
+        );
+    }
+
+    #[test]
+    fn recovery_rejects_a_journal_pointing_outside_browser_root() {
+        let directory = tempfile::tempdir().unwrap();
+        let root = directory.path().join("Browser");
+        let external = directory.path().join("External");
+        std::fs::create_dir_all(&root).unwrap();
+        std::fs::create_dir_all(&external).unwrap();
+        std::fs::write(external.join("keep"), b"user").unwrap();
+        let work =
+            super::WorkDirectory::create(&root, crate::domain::target::TargetId::Firefox).unwrap();
+        let backup = work.path.join("backup");
+        let _transaction = super::FileTransaction::new(&backup, &external).unwrap();
+        drop(work);
+        assert!(
+            super::recover_installation(&root, crate::domain::target::TargetId::Firefox, &[])
+                .is_err()
+        );
+        assert_eq!(std::fs::read(external.join("keep")).unwrap(), b"user");
+        assert!(backup.join("transaction.json").exists());
+    }
+
+    #[test]
+    fn recovery_protects_profiles_with_case_and_trailing_dot_aliases() {
+        for alias in ["profiles", "Profiles.", "Profiles "] {
+            let directory = tempfile::tempdir().unwrap();
+            let root = directory.path().join("Browser");
+            let profile = root.join("Profiles");
+            fs::create_dir_all(&profile).unwrap();
+            fs::write(profile.join("keep"), b"user data").unwrap();
+            let work = super::WorkDirectory::create(&root, TargetId::Firefox).unwrap();
+            fs::create_dir_all(work.path.join("backup")).unwrap();
+            fs::write(
+                work.path.join("backup/transaction.json"),
+                serde_json::to_vec(&serde_json::json!({
+                    "destination": root, "entries": [{"name":alias,"had_previous":false}]
+                }))
+                .unwrap(),
+            )
+            .unwrap();
+            assert!(
+                super::recover_installation(&root, TargetId::Firefox, &[&profile]).is_err(),
+                "alias must be rejected: {alias}"
+            );
+            assert_eq!(fs::read(profile.join("keep")).unwrap(), b"user data");
+        }
+    }
+
+    #[test]
+    fn install_preflight_rejects_a_program_junction_without_touching_its_target() {
+        use std::os::windows::process::CommandExt;
+        let directory = tempfile::tempdir().unwrap();
+        let root = directory.path().join("Helium");
+        let external = directory.path().join("OtherBrowser");
+        fs::create_dir_all(&root).unwrap();
+        fs::create_dir_all(&external).unwrap();
+        fs::write(external.join("chrome.exe"), b"other browser").unwrap();
+        let status = Command::new(std::env::var_os("COMSPEC").unwrap())
+            .args(["/D", "/C", "mklink", "/J"])
+            .arg(root.join("App"))
+            .arg(&external)
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .creation_flags(0x0800_0000)
+            .status()
+            .unwrap();
+        assert!(status.success(), "could not create test junction");
+        let mut config = TargetConfig::for_target(TargetId::Helium);
+        config.browser_root = Some(root.clone());
+        config.derive_paths_from_root(TargetId::Helium);
+        let result = super::InstallService::prepare_retry(TargetId::Helium, &config);
+        assert!(
+            result.is_err(),
+            "preflight must reject the program junction"
+        );
+        assert_eq!(
+            fs::read(external.join("chrome.exe")).unwrap(),
+            b"other browser"
+        );
+        fs::remove_dir(root.join("App")).unwrap();
+    }
+
+    #[test]
+    fn native_update_rejects_data_inside_program_instead_of_mixing_versions() {
+        let directory = tempfile::tempdir().unwrap();
+        let root = directory.path().join("Zen");
+        std::fs::create_dir_all(root.join("App/core/private-profile")).unwrap();
+        let data = root.join("App/core/private-profile");
+        std::fs::write(data.join("keep"), b"data").unwrap();
+        std::fs::write(root.join("App/core/zen.exe"), b"old").unwrap();
+        let staging = directory.path().join("staging");
+        std::fs::create_dir_all(staging.join("core")).unwrap();
+        std::fs::write(staging.join("core/zen.exe"), fake_x64_exe()).unwrap();
+        let result = super::commit_native_package(
+            &staging,
+            &root.join("App"),
+            &directory.path().join("backup"),
+            crate::domain::target::TargetId::Zen,
+            &[],
+            &data,
+            None,
+        );
+        assert!(matches!(
+            result,
+            Err(super::InstallError::DataInsideProgram)
+        ));
+        assert_eq!(std::fs::read(data.join("keep")).unwrap(), b"data");
+        assert_eq!(
+            std::fs::read(root.join("App/core/zen.exe")).unwrap(),
+            b"old"
+        );
+    }
+
+    #[test]
+    fn same_runtime_update_preserves_custom_ini_in_all_wrapped_chromium_targets() {
+        for target in [
+            TargetId::Brave,
+            TargetId::Helium,
+            TargetId::UngoogledChromium,
+        ] {
+            let directory = tempfile::tempdir().unwrap();
+            let root = directory.path().join(target.display_name());
+            let program = root.join("App");
+            fs::create_dir_all(&program).unwrap();
+            fs::write(
+                program.join(target.spec().executable_candidates[0]),
+                fake_x64_exe(),
+            )
+            .unwrap();
+            fs::write(program.join("version.dll"), b"new-chromeplus-dll").unwrap();
+            let original = "[general]\r\ncustom_key=keep\r\ncommand_line=--custom\r\n";
+            fs::write(program.join("chrome++.ini"), original).unwrap();
+            let archive = directory.path().join("browser.zip");
+            let mut writer = zip::ZipWriter::new(fs::File::create(&archive).unwrap());
+            writer
+                .start_file(
+                    format!("browser/{}", target.spec().executable_candidates[0]),
+                    zip::write::SimpleFileOptions::default(),
+                )
+                .unwrap();
+            writer.write_all(&fake_x64_exe()).unwrap();
+            writer.finish().unwrap();
+            let mut descriptor = release("2.0", &archive);
+            descriptor.target = target;
+            descriptor.placement = ProgramPlacement::NativePackage;
+            let mut install = request(descriptor, &archive, &root);
+            install.chrome_plus_runtime = Some(chrome_plus_runtime(
+                &directory.path().join("runtime.7z"),
+                "1.18.3",
+            ));
+            super::InstallService::install(install).unwrap();
+            assert_eq!(
+                fs::read_to_string(program.join("chrome++.ini")).unwrap(),
+                original,
+                "{target:?}"
+            );
+            assert!(!fs::read_dir(&root).unwrap().flatten().any(|entry| {
+                entry
+                    .file_name()
+                    .to_string_lossy()
+                    .starts_with(".pbm-work-")
+            }));
+        }
+    }
+
+    #[test]
+    fn wrapped_native_update_commits_new_chromeplus_files() {
+        use std::io::Write;
+        let directory = tempfile::tempdir().unwrap();
+        let root = directory.path().join("Helium");
+        std::fs::create_dir_all(root.join("App")).unwrap();
+        std::fs::write(root.join("App/chrome.exe"), fake_x64_exe()).unwrap();
+        std::fs::write(root.join("App/version.dll"), b"old-chromeplus-dll").unwrap();
+        std::fs::write(
+            root.join("App/chrome++.ini"),
+            b"[general]\ncustom_key=must-backup\n",
+        )
+        .unwrap();
+        let archive = directory.path().join("helium.zip");
+        let mut writer = zip::ZipWriter::new(std::fs::File::create(&archive).unwrap());
+        writer
+            .start_file(
+                "helium/chrome.exe",
+                zip::write::SimpleFileOptions::default(),
+            )
+            .unwrap();
+        writer.write_all(&fake_x64_exe()).unwrap();
+        writer.finish().unwrap();
+        let mut descriptor = release("2.0", &archive);
+        descriptor.target = crate::domain::target::TargetId::Helium;
+        descriptor.placement = crate::domain::release::ProgramPlacement::NativePackage;
+        let mut install = request(descriptor, &archive, &root);
+        install.chrome_plus_runtime = Some(chrome_plus_runtime(
+            &directory.path().join("runtime.7z"),
+            "1.18.3",
+        ));
+        super::InstallService::install(install).unwrap();
+        assert_eq!(
+            std::fs::read(root.join("App/version.dll")).unwrap(),
+            b"new-chromeplus-dll"
+        );
+        assert!(
+            std::fs::read_dir(root.join("backups"))
+                .unwrap()
+                .flatten()
+                .any(|entry| std::fs::read(entry.path())
+                    .is_ok_and(|bytes| String::from_utf8_lossy(&bytes).contains("must-backup")))
+        );
+    }
     use std::{
         fs::{self, File},
         io::Write,

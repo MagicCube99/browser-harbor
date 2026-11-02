@@ -87,6 +87,14 @@ pub struct UpstreamCheck {
 pub enum MetadataSource {
     Official,
     SignedManifest,
+    SignedCache,
+    Embedded,
+}
+
+impl MetadataSource {
+    pub fn is_signed(self) -> bool {
+        self != Self::Official
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -147,6 +155,7 @@ pub struct StartOperationRequest {
     pub current_version: Option<String>,
     pub chrome_plus_expected_version: Option<String>,
     pub replace_same_version: bool,
+    pub allow_local_package: bool,
     pub cached_release: Option<CachedReleaseMetadata>,
 }
 
@@ -252,11 +261,17 @@ async fn run_operation(
     let emit = |phase| {
         let _ = sender.send(OperationEvent::new(target, phase));
     };
+    if matches!(
+        request.mode,
+        OperationMode::Install | OperationMode::ChromePlusInstall
+    ) {
+        InstallService::prepare_retry(target, &request.target_config)?;
+    }
     emit(OperationPhase::Resolving);
-    let http = HttpClient::new(&request.network)?;
+    let http = HttpClient::new(&request.network)?.with_operation(Arc::clone(&cancellation));
     if request.mode == OperationMode::ChromePlusCheck {
         let latest_version =
-            resolve_chrome_plus_release(&http, &request.network, &request.cache_dir)
+            resolve_chrome_plus_release(&http, &request.network, &request.cache_dir, true)
                 .await?
                 .version;
         return Ok(OperationResult::ChromePlusChecked {
@@ -266,7 +281,7 @@ async fn run_operation(
     }
     if request.mode == OperationMode::ChromePlusInstall {
         let release =
-            resolve_chrome_plus_release(&http, &request.network, &request.cache_dir).await?;
+            resolve_chrome_plus_release(&http, &request.network, &request.cache_dir, true).await?;
         require_expected_chrome_plus_version(
             request.chrome_plus_expected_version.as_deref(),
             &release.version,
@@ -309,16 +324,17 @@ async fn run_operation(
         });
     }
     let provider = ProviderResolver::new(http.clone());
-    let mut used_signed_metadata = false;
+    let mut metadata_source = MetadataSource::Official;
     let mut metadata_checked_at = None;
-    let descriptor = if let Some(cached) = request.cached_release.clone().filter(|cached| {
-        cached.is_fresh()
+    let mut descriptor = if let Some(cached) = request.cached_release.clone().filter(|cached| {
+        request.mode != OperationMode::Check
+            && cached.is_fresh()
             && cached.release.target == target
             && cached.release.channel == request.target_config.channel
             && cached.release.cpu_build == request.target_config.cpu_build
             && cached.release.artifact.integrity.is_some()
     }) {
-        used_signed_metadata = cached.check.source == MetadataSource::SignedManifest;
+        metadata_source = cached.check.source;
         metadata_checked_at = Some(cached.check.checked_at);
         cached.release
     } else {
@@ -331,24 +347,27 @@ async fn run_operation(
             .await
         {
             Ok(descriptor) if descriptor.artifact.integrity.is_some() => descriptor,
-            Ok(_) => {
-                let metadata = load_trusted_metadata_for_release(
+            Ok(official) => {
+                let (metadata, source) = load_trusted_metadata_for_release(
                     &http,
                     &request.network,
                     &request.cache_dir,
-                    target,
-                    request.target_config.channel,
-                    request.target_config.cpu_build,
+                    (
+                        target,
+                        request.target_config.channel,
+                        request.target_config.cpu_build,
+                    ),
+                    true,
+                    Some(&official.version),
                 )
                 .await
                 .map_err(|error| {
-                    format!("官方元数据缺少可信摘要，签名发布清单也不可用：{error}")
+                    format!(
+                        "已发现 {} 新版 {}，等待校验信息：{error}",
+                        target.display_name(),
+                        official.version
+                    )
                 })?;
-                if metadata.is_expired() {
-                    emit(OperationPhase::Notice(
-                        "签名发布清单已过期，但使用它完成本次安装".to_owned(),
-                    ));
-                }
                 let descriptor = metadata
                     .release(
                         target,
@@ -364,32 +383,30 @@ async fn run_operation(
                             request.target_config.cpu_build
                         )
                     })?;
-                used_signed_metadata = true;
+                metadata_source = source;
                 metadata_checked_at = Some(metadata.generated_at);
                 descriptor
             }
             Err(error) => {
-                let metadata = load_trusted_metadata_for_release(
+                let (metadata, source) = load_trusted_metadata_for_release(
                     &http,
                     &request.network,
                     &request.cache_dir,
-                    target,
-                    request.target_config.channel,
-                    request.target_config.cpu_build,
+                    (
+                        target,
+                        request.target_config.channel,
+                        request.target_config.cpu_build,
+                    ),
+                    request.mode == OperationMode::Check,
+                    None,
                 )
                 .await
                 .map_err(|signed_error| {
                     format!("官方元数据不可用：{error}；签名发布清单也不可用：{signed_error}")
                 })?;
-                if metadata.is_expired() {
-                    emit(OperationPhase::Notice(
-                        "官方元数据不可用；签名发布清单已过期，但使用它完成本次安装".to_owned(),
-                    ));
-                } else {
-                    emit(OperationPhase::Notice(
-                        "官方元数据不可用，使用签名发布清单".to_owned(),
-                    ));
-                }
+                emit(OperationPhase::Notice(
+                    "官方元数据不可用，使用已验证签名快照".to_owned(),
+                ));
                 let descriptor = metadata
                     .release(
                         target,
@@ -405,12 +422,17 @@ async fn run_operation(
                             request.target_config.cpu_build
                         )
                     })?;
-                used_signed_metadata = true;
+                metadata_source = source;
                 metadata_checked_at = Some(metadata.generated_at);
                 descriptor
             }
         }
     };
+    if descriptor.artifact.size.is_none()
+        && let Ok(embedded) = TrustedMetadata::load_embedded()
+    {
+        embedded.complete_release_size(&mut descriptor);
+    }
     if cancellation.load(Ordering::Relaxed) {
         return Err(Box::new(crate::services::ServiceError::Cancelled));
     }
@@ -418,11 +440,7 @@ async fn run_operation(
         version: descriptor.version.clone(),
         channel: descriptor.channel,
         cpu_build: descriptor.cpu_build,
-        source: if used_signed_metadata {
-            MetadataSource::SignedManifest
-        } else {
-            MetadataSource::Official
-        },
+        source: metadata_source,
         checked_at: metadata_checked_at.unwrap_or_else(unix_now),
     };
     if request.mode == OperationMode::Check {
@@ -445,6 +463,16 @@ async fn run_operation(
         });
     }
 
+    if target.spec().runtime == crate::domain::runtime::RuntimeKind::Libportable
+        && !runtime::libportable::is_compatible(target, &descriptor.version)
+    {
+        return Err(format!(
+            "Libportable 暂不支持 {} 版本 {}，请等待适配或选择兼容版本。",
+            target.display_name(),
+            descriptor.version
+        )
+        .into());
+    }
     let (direct_client, fallback_client) = HttpClient::download_clients(&request.network)?;
     let downloader = Downloader::with_fallback_clients(
         direct_client,
@@ -453,7 +481,12 @@ async fn run_operation(
         cancellation.clone(),
     );
     emit(OperationPhase::Preparing);
-    let browser_artifact = if let Some(local) = request.target_config.local_package.as_ref() {
+    let browser_artifact = if let Some(local) = request
+        .target_config
+        .local_package
+        .as_ref()
+        .filter(|_| request.allow_local_package)
+    {
         if !local.is_file() {
             return Err(format!("本地安装包不存在：{}", local.display()).into());
         }
@@ -469,6 +502,8 @@ async fn run_operation(
         )
         .await?
     };
+    // Downloads can take hours; the next metadata phase gets its own resolution budget.
+    let http = http.renew_resolution_budget();
     if let Some(signature_url) = &descriptor.artifact.signature_url {
         let signature = http.get_bytes(signature_url).await?;
         let content = std::fs::read(&browser_artifact)?;
@@ -567,7 +602,11 @@ fn requires_replacement_confirmation(
     upstream: &str,
 ) -> bool {
     !replace_same_version
-        && compare_versions(current, upstream) == crate::domain::version::VersionRelation::Same
+        && matches!(
+            compare_versions(current, upstream),
+            crate::domain::version::VersionRelation::Same
+                | crate::domain::version::VersionRelation::UpstreamOlder
+        )
 }
 
 fn unix_now() -> u64 {
@@ -580,65 +619,94 @@ async fn load_trusted_metadata(
     http: &HttpClient,
     network: &NetworkSettings,
     cache_dir: &std::path::Path,
+    force_refresh: bool,
 ) -> Result<TrustedMetadata, Box<dyn std::error::Error + Send + Sync>> {
     select_verified_metadata(
         TrustedMetadata::load_cached(cache_dir).ok().flatten(),
         cached_metadata_is_recent(cache_dir),
+        force_refresh,
         |_| true,
         fetch_trusted_metadata(http, network, cache_dir, |_| true),
     )
     .await
+    .map(|(metadata, _)| metadata)
 }
 
 async fn load_trusted_metadata_for_release(
     http: &HttpClient,
     network: &NetworkSettings,
     cache_dir: &std::path::Path,
-    target: TargetId,
-    channel: ReleaseChannel,
-    cpu_build: CpuBuild,
-) -> Result<TrustedMetadata, Box<dyn std::error::Error + Send + Sync>> {
+    (target, channel, cpu_build): (TargetId, ReleaseChannel, CpuBuild),
+    force_refresh: bool,
+    expected_version: Option<&str>,
+) -> Result<(TrustedMetadata, MetadataSource), Box<dyn std::error::Error + Send + Sync>> {
     if target == TargetId::Edge {
         return Err(
             "Edge 下载信息需从 Microsoft 实时获取，不能使用旧 MSI 签名记录；请检查网络后重试"
                 .into(),
         );
     }
-    let accepts =
-        |metadata: &TrustedMetadata| metadata.release(target, channel, cpu_build).is_some();
+    let accepts = |metadata: &TrustedMetadata| {
+        metadata
+            .release(target, channel, cpu_build)
+            .is_some_and(|release| {
+                expected_version.is_none_or(|version| {
+                    signed_version_matches_discovery(version, &release.version)
+                })
+            })
+    };
     select_verified_metadata(
         TrustedMetadata::load_cached(cache_dir).ok().flatten(),
         cached_metadata_is_recent(cache_dir),
+        force_refresh,
         &accepts,
         fetch_trusted_metadata(http, network, cache_dir, &accepts),
     )
     .await
 }
 
+fn signed_version_matches_discovery(discovered: &str, signed: &str) -> bool {
+    matches!(
+        compare_versions(discovered, signed),
+        crate::domain::version::VersionRelation::Same
+            | crate::domain::version::VersionRelation::UpstreamNewer
+    )
+}
+
 async fn select_verified_metadata(
     cached: Option<TrustedMetadata>,
     recent: bool,
+    force_refresh: bool,
     accepts: impl Fn(&TrustedMetadata) -> bool,
     live: impl std::future::Future<
         Output = Result<TrustedMetadata, Box<dyn std::error::Error + Send + Sync>>,
     >,
-) -> Result<TrustedMetadata, Box<dyn std::error::Error + Send + Sync>> {
+) -> Result<(TrustedMetadata, MetadataSource), Box<dyn std::error::Error + Send + Sync>> {
     if let Some(metadata) = cached
         .as_ref()
-        .filter(|metadata| recent && accepts(metadata))
+        .filter(|metadata| !force_refresh && recent && accepts(metadata))
     {
-        return Ok(metadata.clone());
+        return Ok((metadata.clone(), MetadataSource::SignedCache));
     }
     let error = match live.await {
-        Ok(metadata) if accepts(&metadata) => return Ok(metadata),
+        Ok(metadata) if accepts(&metadata) => {
+            return Ok((metadata, MetadataSource::SignedManifest));
+        }
         Ok(_) => "live signed metadata has no compatible release entry".to_owned(),
+        Err(error)
+            if error
+                .downcast_ref::<crate::services::ServiceError>()
+                .is_some_and(|error| matches!(error, crate::services::ServiceError::Cancelled)) =>
+        {
+            return Err(error);
+        }
         Err(error) => error.to_string(),
     };
     if let Some(cached) = cached.filter(&accepts) {
-        return Ok(cached);
+        return Ok((cached, MetadataSource::SignedCache));
     }
     match TrustedMetadata::load_embedded() {
-        Ok(metadata) if accepts(&metadata) => Ok(metadata),
+        Ok(metadata) if accepts(&metadata) => Ok((metadata, MetadataSource::Embedded)),
         Ok(_) => Err(format!("live signed metadata failed: {error}; cached and embedded metadata have no compatible release entry").into()),
         Err(embedded_error) => Err(format!(
             "live signed metadata failed: {error}; embedded metadata failed: {embedded_error}"
@@ -677,6 +745,15 @@ async fn fetch_trusted_metadata(
         .await;
         match result {
             Ok(metadata) => return Ok(metadata),
+            Err(error)
+                if error
+                    .downcast_ref::<crate::services::ServiceError>()
+                    .is_some_and(|error| {
+                        matches!(error, crate::services::ServiceError::Cancelled)
+                    }) =>
+            {
+                return Err(error);
+            }
             Err(error) => last_error = Some(error),
         }
     }
@@ -764,6 +841,7 @@ async fn resolve_chrome_plus_release(
     http: &HttpClient,
     network: &NetworkSettings,
     cache_dir: &std::path::Path,
+    force_refresh: bool,
 ) -> Result<ChromePlusRelease, Box<dyn std::error::Error + Send + Sync>> {
     match runtime::chromeplus::resolve_latest(http).await {
         Ok(release)
@@ -772,7 +850,7 @@ async fn resolve_chrome_plus_release(
         {
             Ok(release)
         }
-        Ok(_) | Err(_) => load_trusted_metadata(http, network, cache_dir)
+        Ok(_) | Err(_) => load_trusted_metadata(http, network, cache_dir, force_refresh)
             .await?
             .chrome_plus
             .ok_or_else(|| "签名发布清单没有 Chrome++ 完整记录".into()),
@@ -848,7 +926,8 @@ async fn prepare_runtime_archives(
     match request.target.spec().runtime {
         RuntimeKind::ChromePlusFull | RuntimeKind::ChromePlusDataOnly => {
             let release =
-                resolve_chrome_plus_release(http, &request.network, &request.cache_dir).await?;
+                resolve_chrome_plus_release(http, &request.network, &request.cache_dir, false)
+                    .await?;
             if request.chrome_plus_expected_version.is_some() {
                 require_expected_chrome_plus_version(
                     request.chrome_plus_expected_version.as_deref(),
@@ -863,10 +942,12 @@ async fn prepare_runtime_archives(
         RuntimeKind::Libportable => {
             let release = match runtime::libportable::resolve_latest(http).await {
                 Ok(release) if release.artifact.integrity.is_some() => release,
-                Ok(_) | Err(_) => load_trusted_metadata(http, &request.network, &request.cache_dir)
-                    .await?
-                    .libportable
-                    .ok_or("签名发布清单没有 Libportable 记录")?,
+                Ok(_) | Err(_) => {
+                    load_trusted_metadata(http, &request.network, &request.cache_dir, false)
+                        .await?
+                        .libportable
+                        .ok_or("签名发布清单没有 Libportable 记录")?
+                }
             };
             let descriptor = ReleaseDescriptor {
                 target: request.target,
@@ -926,6 +1007,46 @@ impl OperationPhase {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn discovery_gate_accepts_newer_verified_metadata_but_never_older() {
+        assert!(super::signed_version_matches_discovery(
+            "8.2.4133.94",
+            "8.2.4133.96"
+        ));
+        assert!(super::signed_version_matches_discovery(
+            "8.2.4133.96",
+            "8.2.4133.96"
+        ));
+        assert!(!super::signed_version_matches_discovery(
+            "8.2.4133.96",
+            "8.2.4133.94"
+        ));
+        assert!(!super::signed_version_matches_discovery("1.0a", "1.0b"));
+    }
+    #[tokio::test]
+    async fn cancelled_chromeplus_check_does_not_report_a_cached_success() {
+        let directory = tempfile::tempdir().unwrap();
+        let metadata = crate::services::trusted_metadata::TrustedMetadata::load_embedded().unwrap();
+        metadata
+            .store(
+                include_bytes!("../../assets/trusted-metadata.json"),
+                include_str!("../../assets/trusted-metadata.sig"),
+                directory.path(),
+            )
+            .unwrap();
+        let cancelled = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(true));
+        let network = crate::domain::settings::NetworkSettings::default();
+        let http = crate::services::http::HttpClient::new(&network)
+            .unwrap()
+            .with_operation(cancelled);
+        let result =
+            super::resolve_chrome_plus_release(&http, &network, directory.path(), true).await;
+        assert!(
+            result.is_err(),
+            "cancelled checks must not finish successfully from cache"
+        );
+        assert!(result.unwrap_err().to_string().contains("cancelled"));
+    }
     use std::fs;
     use std::{
         io::{Read, Write},
@@ -1084,6 +1205,7 @@ mod tests {
         let selected = super::select_verified_metadata(
             Some(cached),
             true,
+            false,
             |m| {
                 m.release(
                     crate::domain::target::TargetId::Vivaldi,
@@ -1098,6 +1220,7 @@ mod tests {
         .unwrap();
         assert!(
             selected
+                .0
                 .release(
                     crate::domain::target::TargetId::Vivaldi,
                     ReleaseChannel::Stable,
@@ -1115,6 +1238,7 @@ mod tests {
         let selected = super::select_verified_metadata(
             Some(cached),
             true,
+            false,
             |m| {
                 m.release(
                     crate::domain::target::TargetId::Vivaldi,
@@ -1129,6 +1253,7 @@ mod tests {
         .unwrap();
         assert!(
             selected
+                .0
                 .release(
                     crate::domain::target::TargetId::Vivaldi,
                     ReleaseChannel::Stable,
@@ -1149,6 +1274,7 @@ mod tests {
         let selected = super::select_verified_metadata(
             Some(cached.clone()),
             true,
+            false,
             |m| {
                 m.release(
                     crate::domain::target::TargetId::Edge,
@@ -1174,9 +1300,13 @@ mod tests {
             &http,
             &crate::domain::settings::NetworkSettings::default(),
             directory.path(),
-            crate::domain::target::TargetId::Edge,
-            ReleaseChannel::Stable,
-            CpuBuild::X64,
+            (
+                crate::domain::target::TargetId::Edge,
+                ReleaseChannel::Stable,
+                CpuBuild::X64,
+            ),
+            true,
+            None,
         )
         .await;
         assert!(result.unwrap_err().to_string().contains("Microsoft"));
@@ -1259,6 +1389,218 @@ mod tests {
     }
 
     #[test]
+    fn older_upstream_requires_explicit_replacement_confirmation() {
+        assert!(requires_replacement_confirmation(false, "160.0", "156.0"));
+        assert!(!requires_replacement_confirmation(true, "160.0", "156.0"));
+    }
+
+    #[tokio::test]
+    async fn manual_refresh_does_not_reuse_a_complete_recent_manifest() {
+        let cached = crate::services::trusted_metadata::TrustedMetadata::load_embedded().unwrap();
+        let mut live = cached.clone();
+        live.generated_at = cached.generated_at + 1;
+        let selected =
+            super::select_verified_metadata(Some(cached.clone()), true, true, |_| true, async {
+                Ok(live)
+            })
+            .await
+            .unwrap();
+        assert_eq!(selected.0.generated_at, cached.generated_at + 1);
+        assert_eq!(selected.1, MetadataSource::SignedManifest);
+    }
+
+    #[tokio::test]
+    async fn failed_refresh_keeps_the_cache_source_and_original_generation_time() {
+        let mut cached =
+            crate::services::trusted_metadata::TrustedMetadata::load_embedded().unwrap();
+        cached.generated_at = 123;
+        let (metadata, source) =
+            super::select_verified_metadata(Some(cached), true, true, |_| true, async {
+                Err("offline".into())
+            })
+            .await
+            .unwrap();
+        assert_eq!(metadata.generated_at, 123);
+        assert_eq!(source, MetadataSource::SignedCache);
+    }
+
+    #[tokio::test]
+    async fn a_new_official_version_cannot_select_an_older_signed_snapshot() {
+        let mut cached =
+            crate::services::trusted_metadata::TrustedMetadata::load_embedded().unwrap();
+        let mut old = descriptor();
+        old.version = "1.0".to_owned();
+        cached.releases = vec![old.clone()];
+        let mut live = cached.clone();
+        old.version = "2.0".to_owned();
+        live.releases = vec![old];
+        let accepts = |metadata: &crate::services::trusted_metadata::TrustedMetadata| {
+            metadata
+                .release(
+                    crate::domain::target::TargetId::Brave,
+                    ReleaseChannel::Stable,
+                    CpuBuild::X64,
+                )
+                .is_some_and(|release| release.version == "2.0")
+        };
+        let (selected, source) =
+            super::select_verified_metadata(Some(cached.clone()), true, true, accepts, async {
+                Ok(live)
+            })
+            .await
+            .unwrap();
+        assert_eq!(selected.releases[0].version, "2.0");
+        assert_eq!(source, MetadataSource::SignedManifest);
+        let result =
+            super::select_verified_metadata(Some(cached.clone()), true, true, accepts, async {
+                Ok(cached)
+            })
+            .await;
+        assert!(
+            result.is_err(),
+            "an older signed release must not hide the newly discovered official release"
+        );
+    }
+
+    #[tokio::test]
+    async fn unsupported_libportable_is_rejected_before_using_a_browser_package() {
+        let directory = tempfile::tempdir().unwrap();
+        let target = crate::domain::target::TargetId::Firefox;
+        let mut release = descriptor();
+        release.target = target;
+        release.version = "999.0".to_owned();
+        let mut config = crate::domain::settings::TargetConfig::for_target(target);
+        config.browser_root = Some(directory.path().join("browser-root"));
+        config.derive_paths_from_root(target);
+        config.local_package = Some(directory.path().join("missing-package.zip"));
+        let (sender, _) = std::sync::mpsc::channel();
+        let result = super::run_operation(
+            super::StartOperationRequest {
+                target,
+                mode: super::OperationMode::Install,
+                target_config: config,
+                network: crate::domain::settings::NetworkSettings::default(),
+                cache_dir: directory.path().to_path_buf(),
+                current_version: None,
+                chrome_plus_expected_version: None,
+                replace_same_version: false,
+                allow_local_package: true,
+                cached_release: Some(CachedReleaseMetadata {
+                    check: super::UpstreamCheck::fresh(
+                        "999.0".to_owned(),
+                        ReleaseChannel::Stable,
+                        CpuBuild::X64,
+                    ),
+                    release,
+                    observed_at: unix_now(),
+                }),
+            },
+            sender,
+            std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
+        )
+        .await;
+        let error = result
+            .err()
+            .expect("unsupported browser must be rejected")
+            .to_string();
+        assert!(error.contains("Libportable"), "{error}");
+        assert!(error.contains("999.0"), "{error}");
+    }
+
+    #[tokio::test]
+    async fn install_preflight_rejects_unsafe_paths_before_creating_http_clients() {
+        let directory = tempfile::tempdir().unwrap();
+        let target = crate::domain::target::TargetId::Firefox;
+        let mut config = crate::domain::settings::TargetConfig::for_target(target);
+        let root = directory.path().join("browser-root");
+        config.browser_root = Some(root.clone());
+        config.browser_directory = Some(root.join("App"));
+        config.data_directory = Some(root.join("App/private-profile"));
+        let (sender, _) = std::sync::mpsc::channel();
+        let result = super::run_operation(
+            super::StartOperationRequest {
+                target,
+                mode: super::OperationMode::Install,
+                target_config: config,
+                network: crate::domain::settings::NetworkSettings {
+                    proxy: Some("://".to_owned()),
+                    ..Default::default()
+                },
+                cache_dir: directory.path().join("cache"),
+                current_version: None,
+                chrome_plus_expected_version: None,
+                replace_same_version: false,
+                allow_local_package: false,
+                cached_release: None,
+            },
+            sender,
+            std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
+        )
+        .await;
+        let error = result
+            .err()
+            .expect("unsafe paths must be rejected")
+            .to_string();
+        assert!(error.contains("inside the program directory"), "{error}");
+        assert!(!root.exists());
+        assert!(!directory.path().join("cache").exists());
+    }
+
+    #[tokio::test]
+    async fn disabled_local_packages_ignore_a_persisted_selection() {
+        use sha2::{Digest, Sha256};
+        let directory = tempfile::tempdir().unwrap();
+        let bytes = b"verified browser artifact";
+        let digest = hex::encode(Sha256::digest(bytes));
+        let cache = directory.path().join(format!("{digest}.artifact"));
+        fs::write(&cache, bytes).unwrap();
+        let mut release = descriptor();
+        release.artifact.size = Some(bytes.len() as u64);
+        release.artifact.integrity = Some(Integrity::Sha256(digest));
+        // Stop at signature URL validation after selecting and verifying the browser artifact.
+        release.artifact.signature_url = Some("://".to_owned());
+        let target = release.target;
+        let mut config = crate::domain::settings::TargetConfig::for_target(target);
+        config.browser_root = Some(directory.path().join("browser-root"));
+        config.derive_paths_from_root(target);
+        config.local_package = Some(directory.path().join("missing-local-package.zip"));
+        let (sender, _) = std::sync::mpsc::channel();
+        let result = super::run_operation(
+            super::StartOperationRequest {
+                target,
+                mode: super::OperationMode::Install,
+                target_config: config,
+                network: Default::default(),
+                cache_dir: directory.path().to_path_buf(),
+                current_version: None,
+                chrome_plus_expected_version: None,
+                replace_same_version: false,
+                allow_local_package: false,
+                cached_release: Some(CachedReleaseMetadata {
+                    check: super::UpstreamCheck::fresh(
+                        "1.0.0".to_owned(),
+                        ReleaseChannel::Stable,
+                        CpuBuild::X64,
+                    ),
+                    release,
+                    observed_at: unix_now(),
+                }),
+            },
+            sender,
+            std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
+        )
+        .await;
+        assert_eq!(
+            result
+                .err()
+                .expect("signature URL must be rejected")
+                .to_string(),
+            "URL is invalid"
+        );
+        assert_eq!(fs::read(cache).unwrap(), bytes);
+    }
+
+    #[test]
     fn chromeplus_update_rejects_a_changed_checked_version() {
         assert!(require_expected_chrome_plus_version(Some("1.18.3"), "1.18.3").is_ok());
         assert!(require_expected_chrome_plus_version(Some("1.18.3"), "1.18.4").is_err());
@@ -1311,12 +1653,12 @@ mod tests {
     async fn recent_complete_metadata_cache_avoids_a_redundant_fetch() {
         let cached = crate::services::trusted_metadata::TrustedMetadata::load_embedded().unwrap();
         let selected =
-            super::select_verified_metadata(Some(cached.clone()), true, |_| true, async {
+            super::select_verified_metadata(Some(cached.clone()), true, false, |_| true, async {
                 panic!("a complete recent cache must be reused")
             })
             .await
             .unwrap();
-        assert_eq!(selected, cached);
+        assert_eq!(selected, (cached, MetadataSource::SignedCache));
     }
 
     #[tokio::test]
@@ -1336,6 +1678,7 @@ mod tests {
                 current_version: None,
                 chrome_plus_expected_version: None,
                 replace_same_version: false,
+                allow_local_package: false,
                 cached_release: None,
             },
             sender,

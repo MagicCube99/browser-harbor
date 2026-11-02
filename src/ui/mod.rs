@@ -319,6 +319,8 @@ pub struct BrowserHarborApp {
     observed_window_position: Option<WindowPosition>,
     pending_window_position: Option<WindowPosition>,
     window_position_changed_at: Option<Instant>,
+    close_after_operation: bool,
+    rebuilding_config: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -410,6 +412,8 @@ impl BrowserHarborApp {
             observed_window_position,
             pending_window_position: None,
             window_position_changed_at: None,
+            close_after_operation: false,
+            rebuilding_config: false,
         };
         let target = app.state.selected_target();
         app.refresh_local_version(target);
@@ -789,9 +793,14 @@ impl BrowserHarborApp {
             return;
         }
         if let (Some(current), Some(upstream)) = (current, upstream)
-            && compare_versions(&current.version, &upstream.version) == VersionRelation::Same
+            && matches!(
+                compare_versions(&current.version, &upstream.version),
+                VersionRelation::Same | VersionRelation::UpstreamOlder
+            )
         {
-            if let Some((chrome_plus_current, chrome_plus_latest)) = chrome_plus_update {
+            if compare_versions(&current.version, &upstream.version) == VersionRelation::Same
+                && let Some((chrome_plus_current, chrome_plus_latest)) = chrome_plus_update
+            {
                 self.status_message = Some("浏览器版本相同；替换操作还会更新 Chrome++".to_owned());
                 self.browser_upgrade_prompt = Some(BrowserUpgradePrompt {
                     target,
@@ -924,6 +933,19 @@ impl BrowserHarborApp {
         let current_version = self
             .detected_local_version(target)
             .map(|version| version.version.clone());
+        if mode == OperationMode::Install
+            && !replace_same_version
+            && let Some(current) = current_version.as_ref()
+            && let Some(upstream) = self.latest_check(target, &config).cloned()
+            && compare_versions(current, &upstream.version) == VersionRelation::UpstreamOlder
+        {
+            self.same_version_prompt = Some(SameVersionPrompt {
+                current_version: current.clone(),
+                upstream,
+            });
+            self.status_message = Some(localized("降级需要确认，旧版可能无法读取现有用户数据"));
+            return;
+        }
         if matches!(
             mode,
             OperationMode::Install | OperationMode::ChromePlusInstall
@@ -986,13 +1008,26 @@ impl BrowserHarborApp {
             chrome_plus_expected_version,
             replace_same_version,
             cached_release,
+            allow_local_package: self.state.draft().show_local_package,
         }));
     }
 
     fn poll_operation(&mut self) {
-        let events = self.operation.as_ref().map_or_else(Vec::new, |operation| {
-            operation.receiver.try_iter().collect::<Vec<_>>()
-        });
+        let mut events = Vec::new();
+        let mut disconnected = false;
+        if let Some(operation) = &self.operation {
+            loop {
+                match operation.receiver.try_recv() {
+                    Ok(event) => events.push(event),
+                    Err(std::sync::mpsc::TryRecvError::Empty) => break,
+                    Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                        disconnected = true;
+                        break;
+                    }
+                }
+            }
+        }
+        let terminal_received = events.iter().any(|event| event.phase.is_terminal());
         for event in events {
             if event.phase.is_terminal() {
                 self.operation = None;
@@ -1003,12 +1038,14 @@ impl BrowserHarborApp {
                     let source = localized(match check.source {
                         MetadataSource::Official => "上游版本",
                         MetadataSource::SignedManifest => "签名发布清单",
+                        MetadataSource::SignedCache => "已缓存签名快照",
+                        MetadataSource::Embedded => "内置签名快照",
                     });
                     self.status_message = Some(format!(
                         "{} {source}：{}（{}）",
                         event.target.display_name(),
                         check.version,
-                        checked_age(check.checked_at)
+                        localized(checked_age(check.checked_at))
                     ));
                 }
                 OperationPhase::SameVersion {
@@ -1026,10 +1063,6 @@ impl BrowserHarborApp {
                 OperationPhase::Installed { receipt } => {
                     if let Some(config) = self.state.draft().targets.get(&event.target) {
                         let key = (event.target, config.channel, config.cpu_build);
-                        self.latest_versions.insert(
-                            key,
-                            UpstreamCheck::fresh(receipt.version.clone(), key.1, key.2),
-                        );
                         self.checked_releases.remove(&key);
                     }
                     self.chrome_plus_versions
@@ -1128,6 +1161,38 @@ impl BrowserHarborApp {
                 _ => {}
             }
             self.operation_phase = Some(event.phase);
+        }
+        if disconnected && !terminal_received {
+            self.operation = None;
+            self.status_message = None;
+            self.operation_phase = Some(OperationPhase::Failed {
+                message: localized(
+                    "后台任务意外中断，请重试；上次安装若未完成，将先恢复后重新安装。",
+                ),
+            });
+        }
+    }
+
+    fn handle_window_close(&mut self, ctx: &egui::Context) {
+        if ctx.input(|input| input.viewport().close_requested())
+            && let Some(operation) = &self.operation
+        {
+            ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
+            self.close_after_operation = true;
+            if self
+                .operation_phase
+                .as_ref()
+                .is_none_or(operation_cancelable)
+            {
+                operation.cancel();
+                self.status_message = Some(localized("正在取消任务，完成后关闭窗口"));
+            } else {
+                self.status_message = Some(localized("正在安全完成安装，请等待后关闭窗口"));
+            }
+        }
+        if self.close_after_operation && self.operation.is_none() {
+            self.close_after_operation = false;
+            ctx.send_viewport_cmd(egui::ViewportCommand::Close);
         }
     }
 
@@ -1311,10 +1376,11 @@ impl BrowserHarborApp {
                 current_hover.clone(),
             )
         };
-        let local_package_selected = config.local_package.is_some();
+        let show_local_package = self.state.draft().show_local_package;
+        let local_package_selected = show_local_package && config.local_package.is_some();
         let install_label = if channel_mismatch.is_some() && upstream.is_some() {
             if local_package_selected {
-                format!("使用本地 {} 离线包安装", config.channel.display_name())
+                format!("使用本地 {} 安装包安装", config.channel.display_name())
             } else {
                 format!("使用 {} 渠道安装", config.channel.display_name())
             }
@@ -1462,12 +1528,22 @@ impl BrowserHarborApp {
                     .extend(),
                 );
                 if let Some(age) = latest_checked.as_deref() {
-                    response.localized_hover(format!(
-                        "{}检查时间：{age}",
-                        match upstream.as_ref().map(|check| check.source) {
-                            Some(MetadataSource::SignedManifest) => "签名发布清单；",
-                            Some(MetadataSource::Official) | None => "",
-                        }
+                    let source = upstream.as_ref().map(|check| check.source);
+                    let label = match source {
+                        Some(MetadataSource::SignedManifest) => "签名发布清单",
+                        Some(MetadataSource::SignedCache) => "已缓存签名快照",
+                        Some(MetadataSource::Embedded) => "内置签名快照",
+                        Some(MetadataSource::Official) | None => "上游版本",
+                    };
+                    response.on_hover_text(format!(
+                        "{}；{}：{}",
+                        localized(label),
+                        localized(if source.is_some_and(MetadataSource::is_signed) {
+                            "快照生成时间"
+                        } else {
+                            "检查时间"
+                        }),
+                        localized(age)
                     ));
                 }
                 if let Some((text, tone)) = relation_text {
@@ -1504,6 +1580,7 @@ impl BrowserHarborApp {
                 {
                     requested_action = Some(OperationMode::Install);
                 }
+                if show_local_package {
                 let package_label = if config.local_package.is_some() {
                     "更换本地安装包"
                 } else {
@@ -1530,6 +1607,7 @@ impl BrowserHarborApp {
                         ui.close();
                     }
                 });
+                }
             });
             if pick_local_package
                 && let Some(selected) = folder_picker::pick_file(
@@ -1711,6 +1789,7 @@ impl BrowserHarborApp {
     }
 
     fn show_network(&mut self, ui: &mut egui::Ui) {
+        ui.spacing_mut().item_spacing.y = 3.0;
         let palette = palette(ui);
         let cache_usage = self.state.download_cache_usage().ok();
         let mut network = self.state.draft().network.clone();
@@ -1720,6 +1799,7 @@ impl BrowserHarborApp {
         let mut validation_error = None;
         let mut clear_cache = false;
         let mut requested_config_location = None;
+        let mut show_local_package = self.state.draft().show_local_package;
 
         changed |= section(ui, "下载加速", |ui| {
             let mut section_changed = ui
@@ -1983,6 +2063,14 @@ impl BrowserHarborApp {
             );
         });
 
+        ui.add_space(5.0);
+        let mut advanced_changed = false;
+        egui::CollapsingHeader::new(localized("高级"))
+            .id_salt("advanced_settings")
+            .show(ui, |ui| {
+                advanced_changed = ui.localized_checkbox(&mut show_local_package, "启用本地安装包").changed();
+                ui.localized_label(RichText::new("仅替代浏览器安装包下载；仍须校验版本、大小和摘要，并可能联网获取元数据和便携运行时。关闭会清除所有选择记录，不删除文件。").size(10.5).color(palette.muted));
+            });
         self.accelerator_input = accelerator_input;
         if clear_cache {
             self.status_message = Some(match self.state.clear_download_cache() {
@@ -1992,14 +2080,23 @@ impl BrowserHarborApp {
                 Err(error) => format!("清理下载缓存失败：{error}"),
             });
         }
-        if changed {
+        if changed || advanced_changed {
             self.status_message = None;
             self.operation_phase = None;
-            self.state
-                .update_draft(|settings| settings.network = network);
+            self.state.update_draft(|settings| {
+                settings.network = network;
+                settings.show_local_package = show_local_package;
+                if !show_local_package {
+                    for config in settings.targets.values_mut() {
+                        config.local_package = None;
+                    }
+                }
+            });
             self.auto_save();
         }
-        if let Some(portable) = requested_config_location {
+        if let Some(portable) = requested_config_location
+            && self.startup_error.is_none()
+        {
             match self.state.switch_config_location(portable) {
                 Ok(()) => {
                     self.status_message = Some(format!(
@@ -2059,7 +2156,14 @@ impl BrowserHarborApp {
         let mut changed = config.chrome_plus_version != stored_chrome_plus_version;
         let mut ini_changed = false;
         let mut pending_status = None;
-        if !self.chrome_plus_ini_loaded.contains(&target)
+        if self.state.has_pending_chromeplus()
+            && ui.localized_button("重试应用 Chrome++ 配置").clicked()
+            && self.auto_save()
+        {
+            self.status_message = Some("Chrome++ 配置已自动写入".to_owned());
+        }
+        if !self.state.has_pending_chromeplus()
+            && !self.chrome_plus_ini_loaded.contains(&target)
             && let Some(path) = &ini_path
         {
             match crate::runtime::chromeplus::read_config_from_ini(path, &config.chrome_plus) {
@@ -2556,19 +2660,21 @@ impl BrowserHarborApp {
                 },
             );
         }
-        if changed {
-            self.update_target_config(target, config.clone());
-        }
         if ini_changed
             && mode == ChromePlusMode::Full
             && let Some(path) = &ini_path
         {
             self.status_message = Some(
-                match crate::runtime::chromeplus::update_existing_ini(path, &config.chrome_plus) {
+                match self
+                    .state
+                    .update_chromeplus_config(target, config.clone(), path.clone())
+                {
                     Ok(()) => "Chrome++ 配置已自动写入".to_owned(),
-                    Err(error) => format!("自动写入 Chrome++ 配置失败：{error}"),
+                    Err(error) => format!("{}：{error}", localized("Chrome++ 配置未应用，可重试")),
                 },
             );
+        } else if changed {
+            self.update_target_config(target, config.clone());
         }
         if let Some(message) = pending_status {
             self.status_message = Some(message);
@@ -2592,6 +2698,9 @@ impl BrowserHarborApp {
         target: TargetId,
         config: crate::domain::settings::TargetConfig,
     ) -> bool {
+        if self.state.has_pending_chromeplus() && !self.auto_save() {
+            return false;
+        }
         let program_path_changed =
             self.state
                 .draft()
@@ -2642,6 +2751,10 @@ impl BrowserHarborApp {
             Some((error.clone(), palette.error))
         } else if let Some(warning) = &identity_warning {
             Some((warning.clone(), palette.warning))
+        } else if operation_active && self.close_after_operation {
+            self.status_message
+                .as_ref()
+                .map(|message| (message.clone(), palette.muted))
         } else if operation_active {
             self.operation_phase
                 .as_ref()
@@ -2955,6 +3068,7 @@ impl eframe::App for BrowserHarborApp {
         self.maybe_check_app_update();
         self.poll_app_update();
         self.poll_operation();
+        self.handle_window_close(ui.ctx());
         let window_position = frame.winit_window().and_then(|window| {
             let position = window.outer_position().ok()?;
             let position = position.to_logical::<f32>(window.scale_factor());
@@ -2978,6 +3092,27 @@ impl eframe::App for BrowserHarborApp {
                     .inner_margin(Margin::symmetric(12, 6)),
             )
             .show(ui, |ui| {
+                if self.startup_error.is_some() {
+                    ui.horizontal(|ui| {
+                        if ui.localized_button("打开配置目录").clicked()
+                            && let Some(parent) = self.state.config_path().parent()
+                            && let Err(error) = std::process::Command::new("explorer.exe")
+                                .arg(parent)
+                                .spawn()
+                        {
+                            self.status_message =
+                                Some(format!("{}：{error}", localized("打开配置目录失败")));
+                        }
+                        if ui.localized_button("备份后重建管理器配置").clicked() {
+                            self.rebuilding_config = true;
+                        }
+                        if ui.localized_button("复制诊断详情").clicked()
+                            && let Some(error) = &self.startup_error
+                        {
+                            ui.ctx().copy_text(error.clone());
+                        }
+                    });
+                }
                 let forms_enabled = self.operation.is_none();
                 ui.add_enabled_ui(forms_enabled, |ui| {
                     if self.active_tab != DetailTab::Network {
@@ -3616,7 +3751,10 @@ fn operation_progress(phase: &OperationPhase) -> Option<(u64, Option<u64>)> {
 fn operation_cancelable(phase: &OperationPhase) -> bool {
     matches!(
         phase,
-        OperationPhase::Preparing | OperationPhase::Resolving | OperationPhase::Downloading { .. }
+        OperationPhase::Preparing
+            | OperationPhase::Resolving
+            | OperationPhase::Notice(_)
+            | OperationPhase::Downloading { .. }
     )
 }
 

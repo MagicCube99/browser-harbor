@@ -16,7 +16,9 @@ use sha2::{Digest, Sha256, Sha512};
 
 use super::{
     ServiceError,
-    http::{UrlRouter, accelerator_hosts, url_uses_accelerator},
+    http::{
+        UrlRouter, accelerator_hosts, transport_error, url_uses_accelerator, wait_for_cancellation,
+    },
 };
 use crate::domain::{
     release::{Artifact, Integrity},
@@ -72,6 +74,9 @@ impl Downloader {
         network: &NetworkSettings,
         mut progress: impl FnMut(DownloadProgress) + Send,
     ) -> Result<PathBuf, ServiceError> {
+        if self.cancellation.load(Ordering::Relaxed) {
+            return Err(ServiceError::Cancelled);
+        }
         fs::create_dir_all(&self.cache_dir)
             .map_err(|error| ServiceError::io(&self.cache_dir, error))?;
         let cached = self.cached_path(artifact);
@@ -109,6 +114,9 @@ impl Downloader {
                 }
                 Err(error) => {
                     let _ = fs::remove_file(&part);
+                    if matches!(error, ServiceError::Cancelled) {
+                        return Err(error);
+                    }
                     last_error = Some(error);
                 }
             }
@@ -135,11 +143,11 @@ impl Downloader {
             } else {
                 &self.fallback_client
             };
-            let response = client
-                .get(url.clone())
-                .send()
-                .await
-                .map_err(|error| ServiceError::Network(error.without_url()))?;
+            let response = tokio::select! {
+                biased;
+                _ = wait_for_cancellation(&self.cancellation) => return Err(ServiceError::Cancelled),
+                result = client.get(url.clone()).send() => result.map_err(|error| transport_error(&url, error))?,
+            };
             let status = response.status();
             if status.is_success() {
                 return self
@@ -148,7 +156,11 @@ impl Downloader {
             }
             let retryable = status.as_u16() == 429 || status.is_server_error();
             if retryable && attempt < 3 {
-                tokio::time::sleep(std::time::Duration::from_millis(400 * attempt)).await;
+                tokio::select! {
+                    biased;
+                    _ = wait_for_cancellation(&self.cancellation) => return Err(ServiceError::Cancelled),
+                    _ = tokio::time::sleep(std::time::Duration::from_millis(400 * attempt)) => {}
+                }
                 continue;
             }
             return Err(ServiceError::Status {
@@ -166,6 +178,7 @@ impl Downloader {
         progress: &mut impl FnMut(DownloadProgress),
     ) -> Result<(), ServiceError> {
         let total = response.content_length().or(artifact.size);
+        let response_url = response.url().clone();
         if let (Some(expected), Some(actual)) = (artifact.size, response.content_length())
             && expected != actual
         {
@@ -176,11 +189,14 @@ impl Downloader {
         let mut stream = response.bytes_stream();
         let mut downloaded = 0u64;
         let mut hasher = StreamingHasher::new(artifact.integrity.as_ref());
-        while let Some(chunk) = stream.next().await {
-            if self.cancellation.load(Ordering::Relaxed) {
-                return Err(ServiceError::Cancelled);
-            }
-            let chunk = chunk.map_err(|error| ServiceError::Network(error.without_url()))?;
+        loop {
+            let chunk = tokio::select! {
+                biased;
+                _ = wait_for_cancellation(&self.cancellation) => return Err(ServiceError::Cancelled),
+                chunk = stream.next() => chunk,
+            };
+            let Some(chunk) = chunk else { break };
+            let chunk = chunk.map_err(|error| transport_error(&response_url, error))?;
             file.write_all(&chunk)
                 .map_err(|error| ServiceError::io(part, error))?;
             if let Some(hasher) = &mut hasher {
@@ -399,6 +415,53 @@ mod tests {
             .unwrap();
 
         assert_eq!(std::fs::read(path).unwrap(), bytes);
+    }
+
+    #[tokio::test]
+    async fn cancellation_interrupts_waiting_for_headers_and_the_next_chunk() {
+        for send_headers in [false, true] {
+            let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+            let address = listener.local_addr().unwrap();
+            let (accepted, waiting) = std::sync::mpsc::channel();
+            thread::spawn(move || {
+                let (mut socket, _) = listener.accept().unwrap();
+                let mut request = [0; 2048];
+                let _ = socket.read(&mut request);
+                if send_headers {
+                    socket
+                        .write_all(
+                            b"HTTP/1.1 200 OK\r\nContent-Length: 1\r\nConnection: close\r\n\r\n",
+                        )
+                        .unwrap();
+                }
+                accepted.send(()).unwrap();
+                thread::sleep(std::time::Duration::from_secs(2));
+            });
+            let cancellation = Arc::new(AtomicBool::new(false));
+            let signal = Arc::clone(&cancellation);
+            thread::spawn(move || {
+                waiting.recv().unwrap();
+                thread::sleep(std::time::Duration::from_millis(25));
+                signal.store(true, std::sync::atomic::Ordering::Relaxed);
+            });
+            let directory = tempdir().unwrap();
+            let downloader = Downloader::new(
+                reqwest::Client::new(),
+                directory.path().to_path_buf(),
+                cancellation,
+            );
+            let release = artifact(format!("http://{address}/artifact.zip"), b"x");
+            let result = tokio::time::timeout(
+                std::time::Duration::from_millis(500),
+                downloader.download(&release, &NetworkSettings::default(), |_| {}),
+            )
+            .await;
+            assert!(
+                matches!(result, Ok(Err(crate::services::ServiceError::Cancelled))),
+                "cancel must interrupt stalled network I/O"
+            );
+            assert!(!directory.path().join("fixture.zip.part").exists());
+        }
     }
 
     #[tokio::test]

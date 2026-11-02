@@ -105,6 +105,51 @@ fn exact_translation(text: &str) -> Option<&'static str> {
         "外观：浅色" => "Appearance: Light",
         "外观：深色" => "Appearance: Dark",
         "浏览器" => "Browser",
+        "高级" => "Advanced",
+        "后台任务意外中断，请重试；上次安装若未完成，将先恢复后重新安装。" => {
+            "Background task ended unexpectedly. Retry; an interrupted installation will be recovered before reinstalling."
+        }
+        "正在取消任务，完成后关闭窗口" => "Cancelling the task before closing",
+        "正在安全完成安装，请等待后关闭窗口" => {
+            "Completing the installation safely before closing"
+        }
+        "打开配置目录" => "Open config folder",
+        "打开配置目录失败" => "Could not open config folder",
+        "备份后重建管理器配置" => "Back up and reset config",
+        "复制诊断详情" => "Copy diagnostics",
+        "重建管理器配置" => "Reset manager config",
+        "将先备份原 BrowserHarbor.json，再重建默认管理器设置。浏览器程序、Profile 和用户数据不会修改。" => {
+            "Back up BrowserHarbor.json, then restore the default manager settings. Browser programs, profiles and user data stay unchanged."
+        }
+        "确认备份并重建" => "Confirm backup and reset",
+        "管理器配置已重建，原文件备份到" => {
+            "Manager config reset; original backed up to"
+        }
+        "备份或重建配置失败" => "Config backup or reset failed",
+        "已缓存签名快照" => "Cached signed snapshot",
+        "官方元数据不可用，使用已验证签名快照" => {
+            "Official metadata unavailable; using a verified signed snapshot"
+        }
+        "程序路径已改变，请先恢复原位置并重试待应用配置" => {
+            "Program path changed. Restore the original location before retrying pending settings."
+        }
+        "内置签名快照" => "Embedded signed snapshot",
+        "启用本地安装包" => "Enable local installer packages",
+        "仅替代浏览器安装包下载；仍须校验版本、大小和摘要，并可能联网获取元数据和便携运行时。关闭会清除所有选择记录，不删除文件。" => {
+            "Replaces the browser download only. Version, size and digest checks still apply, and metadata or portable runtimes may need a network connection. Turning this off clears selections and keeps files."
+        }
+        "Chrome++ 配置未应用，可重试" => {
+            "Chrome++ settings were not applied; retry is available"
+        }
+        "重试应用 Chrome++ 配置" => "Retry applying Chrome++ settings",
+        "确认降级浏览器" => "Confirm browser downgrade",
+        "降级需要确认，旧版可能无法读取现有用户数据" => {
+            "Confirm the downgrade; an older version may not read existing user data"
+        }
+        "确认降级" => "Confirm downgrade",
+        "旧版浏览器可能无法读取已由新版迁移的用户数据。请先备份数据，再确认降级。" => {
+            "An older browser may not read user data migrated by a newer version. Back up your data before confirming the downgrade."
+        }
         "当前浏览器" => "Current browser",
         "浏览器程序" => "Browser program",
         "渠道" => "Channel",
@@ -136,10 +181,11 @@ fn exact_translation(text: &str) -> Option<&'static str> {
         "使用 ESR 渠道安装" => "Install using ESR channel",
         "使用 Release 渠道安装" => "Install using Release channel",
         "使用 Stable 渠道安装" => "Install using Stable channel",
-        "使用本地 Beta 离线包安装" => "Install from local Beta package",
-        "使用本地 ESR 离线包安装" => "Install from local ESR package",
-        "使用本地 Release 离线包安装" => "Install from local Release package",
-        "使用本地 Stable 离线包安装" => "Install from local Stable package",
+        "使用本地 Beta 安装包安装" => "Install from local Beta package",
+        "使用本地 ESR 安装包安装" => "Install from local ESR package",
+        "使用本地 Release 安装包安装" => "Install from local Release package",
+        "使用本地 Stable 安装包安装" => "Install from local Stable package",
+        "快照生成时间" => "Snapshot generated",
         "路径与用户数据" => "Paths and user data",
         "检查配置" => "Check configuration",
         "快捷方式：开" => "Shortcut: On",
@@ -501,6 +547,14 @@ fn exact_translation(text: &str) -> Option<&'static str> {
 }
 
 fn dynamic_translation(text: &str) -> String {
+    if let Some(rest) = text.strip_prefix("已发现 ")
+        && let Some((browser, rest)) = rest.split_once(" 新版 ")
+        && let Some((version, reason)) = rest.split_once("，等待校验信息：")
+    {
+        return format!(
+            "{browser} {version} was found; awaiting verification information: {reason}"
+        );
+    }
     if let Some(rest) = text.strip_prefix("官方元数据不可用：")
         && let Some((official, signed)) = rest.split_once("；签名发布清单也不可用：")
     {
@@ -544,6 +598,16 @@ fn dynamic_translation(text: &str) -> String {
     }
     for (prefix, replacement) in [
         ("当前浏览器：", "Current browser: "),
+        (
+            "Chrome++ 配置未应用，可重试：",
+            "Chrome++ settings were not applied; retry is available: ",
+        ),
+        (
+            "管理器配置已重建，原文件备份到：",
+            "Manager config reset; original backed up to: ",
+        ),
+        ("备份或重建配置失败：", "Config backup or reset failed: "),
+        ("打开配置目录失败：", "Could not open config folder: "),
         ("浏览器：", "Browser: "),
         ("当前目标：", "Current target: "),
         ("当前安装：", "Currently installed: "),
@@ -705,6 +769,23 @@ fn dynamic_translation(text: &str) -> String {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn reliability_waiting_and_snapshot_messages_are_localized() {
+        super::set_language(crate::domain::settings::Language::English);
+        assert_eq!(
+            super::localized("官方元数据不可用，使用已验证签名快照"),
+            "Official metadata unavailable; using a verified signed snapshot"
+        );
+        assert_eq!(
+            super::localized("已发现 Vivaldi 新版 9.1，等待校验信息：unavailable"),
+            "Vivaldi 9.1 was found; awaiting verification information: unavailable"
+        );
+        assert_eq!(
+            super::localized("程序路径已改变，请先恢复原位置并重试待应用配置"),
+            "Program path changed. Restore the original location before retrying pending settings."
+        );
+        super::set_language(crate::domain::settings::Language::Chinese);
+    }
     use super::{localized, set_language, translate};
     use crate::domain::settings::Language;
 
@@ -746,7 +827,7 @@ mod tests {
         assert_eq!(localized("渠道不同"), "Channel mismatch");
         assert_eq!(localized("使用 ESR 渠道安装"), "Install using ESR channel");
         assert_eq!(
-            localized("使用本地 ESR 离线包安装"),
+            localized("使用本地 ESR 安装包安装"),
             "Install from local ESR package"
         );
         assert_eq!(

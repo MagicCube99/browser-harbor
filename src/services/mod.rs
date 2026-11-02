@@ -5,6 +5,7 @@ pub mod download;
 pub mod health;
 pub mod http;
 pub mod install;
+mod install_transaction;
 pub mod trusted_metadata;
 pub mod update_check;
 pub mod version_probe;
@@ -19,6 +20,8 @@ use crate::domain::release::Integrity;
 pub enum ServiceError {
     #[error("network request failed")]
     Network(#[source] reqwest::Error),
+    #[error("network request failed for {host}: {reason}")]
+    Transport { host: String, reason: String },
     #[error("remote server returned HTTP {status} for {host}")]
     Status { status: u16, host: String },
     #[error("response exceeds the allowed metadata size")]
@@ -35,6 +38,8 @@ pub enum ServiceError {
     HashMismatch { expected: String, actual: String },
     #[error("download was cancelled")]
     Cancelled,
+    #[error("release metadata lookup timed out; check the network and try again")]
+    ResolutionTimedOut,
     #[error("file operation failed at {path}")]
     Io {
         path: PathBuf,

@@ -1,14 +1,13 @@
 use std::{
     fs,
-    os::windows::process::CommandExt,
     path::{Path, PathBuf},
-    process::{Command, Stdio},
+    process::Command,
 };
 
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
 
-use super::{RuntimeError, download_artifact, io_error, pe_imports_dll};
+use super::{RuntimeError, download_artifact, helper::run_helper, io_error, pe_imports_dll};
 use crate::{
     domain::{
         runtime::{ChromePlusConfig, ChromePlusInstallation, ChromePlusRelease},
@@ -24,7 +23,6 @@ use crate::{
 
 const CHROME_PLUS_LATEST: &str =
     "https://api.github.com/repos/Bush2021/chrome_plus/releases/latest";
-const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 const BROWSER_DEFAULT_CACHE_DIR: &str = "none";
 
 #[derive(Debug, Deserialize)]
@@ -182,19 +180,12 @@ fn inject_edge_import(program_dir: &Path, setdll_root: Option<&Path>) -> Result<
     if !helper.is_file() || !executable.is_file() {
         return Err(RuntimeError::MissingComponent);
     }
-    let status = Command::new(&helper)
-        .arg("/d:version.dll")
-        .arg(&executable)
-        .current_dir(program_dir)
-        .stdin(Stdio::null())
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .creation_flags(CREATE_NO_WINDOW)
-        .status()
-        .map_err(|source| io_error(&helper, source))?;
-    if !status.success() {
-        return Err(RuntimeError::HelperFailed(status.code().unwrap_or(-1)));
-    }
+    run_helper(
+        Command::new(&helper)
+            .arg("/d:version.dll")
+            .arg(&executable)
+            .current_dir(program_dir),
+    )?;
     if !pe_imports_dll(&executable, "version.dll")
         .map_err(|source| io_error(&executable, source))?
     {
@@ -507,7 +498,7 @@ fn data_only_ini(data_dir: &Path, cache_dir: &Path) -> String {
     )
 }
 
-fn sha256_file(path: &Path) -> Result<String, RuntimeError> {
+pub(crate) fn sha256_file(path: &Path) -> Result<String, RuntimeError> {
     let bytes = fs::read(path).map_err(|source| io_error(path, source))?;
     Ok(hex::encode(Sha256::digest(bytes)))
 }

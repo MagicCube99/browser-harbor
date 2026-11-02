@@ -10,7 +10,7 @@ use super::{
     target::TargetId,
 };
 
-pub const CURRENT_SCHEMA_VERSION: u32 = 11;
+pub const CURRENT_SCHEMA_VERSION: u32 = 12;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -27,6 +27,8 @@ pub struct Settings {
     pub theme: ThemeMode,
     #[serde(default, skip_serializing_if = "Language::is_chinese")]
     pub language: Language,
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub show_local_package: bool,
 }
 
 impl Default for Settings {
@@ -42,6 +44,7 @@ impl Default for Settings {
             network: NetworkSettings::default(),
             theme: ThemeMode::System,
             language: Language::Chinese,
+            show_local_package: false,
         }
     }
 }

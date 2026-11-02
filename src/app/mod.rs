@@ -35,6 +35,7 @@ pub struct AppState {
     portable_config_path: PathBuf,
     tool_root: PathBuf,
     last_error: Option<String>,
+    pending_chromeplus: Option<(TargetId, PathBuf)>,
 }
 
 impl AppState {
@@ -82,6 +83,7 @@ impl AppState {
             portable_config_path,
             tool_root,
             last_error: None,
+            pending_chromeplus: None,
         }
     }
 
@@ -113,11 +115,23 @@ impl AppState {
         self.store.path()
     }
 
+    pub fn rebuild_manager_config(&mut self) -> Result<PathBuf, ConfigError> {
+        let backup = self.store.backup_and_reset()?;
+        self.saved = Settings::default();
+        self.draft = self.saved.clone();
+        self.pending_chromeplus = None;
+        self.last_error = None;
+        Ok(backup)
+    }
+
     pub fn is_portable_config(&self) -> bool {
         self.store.path() == self.portable_config_path
     }
 
     pub fn switch_config_location(&mut self, portable: bool) -> Result<(), ConfigError> {
+        if self.pending_chromeplus.is_some() {
+            self.save()?;
+        }
         let target_path = if portable {
             self.portable_config_path.clone()
         } else {
@@ -170,8 +184,11 @@ impl AppState {
             .cache_directory
             .map(|path| resolve_tool_path(self.tool_root(), path))
             .transpose()?;
-        config.local_package = config
-            .local_package
+        config.local_package = self
+            .draft
+            .show_local_package
+            .then_some(config.local_package)
+            .flatten()
             .map(|path| resolve_tool_path(self.tool_root(), path))
             .transpose()?;
         Ok(config)
@@ -188,6 +205,9 @@ impl AppState {
     pub fn save(&mut self) -> Result<(), ConfigError> {
         let mut next = self.draft.clone();
         normalize_settings_paths(&mut next, &self.tool_root)?;
+        if let Some((target, ini)) = self.pending_chromeplus.clone() {
+            return self.save_chromeplus_transaction(next, target, &ini);
+        }
         match self.store.save(&next) {
             Ok(()) => {
                 self.saved = next.clone();
@@ -202,8 +222,101 @@ impl AppState {
         }
     }
 
+    pub fn update_chromeplus_config(
+        &mut self,
+        target: TargetId,
+        config: TargetConfig,
+        ini: PathBuf,
+    ) -> Result<(), ConfigError> {
+        self.draft.targets.insert(target, config);
+        self.pending_chromeplus = Some((target, ini));
+        self.save()
+    }
+
+    pub fn has_pending_chromeplus(&self) -> bool {
+        self.pending_chromeplus.is_some()
+    }
+
+    fn save_chromeplus_transaction(
+        &mut self,
+        next: Settings,
+        target: TargetId,
+        ini: &Path,
+    ) -> Result<(), ConfigError> {
+        let result = (|| {
+            let config = &next.targets[&target];
+            let program = config.browser_directory.as_deref().ok_or_else(|| {
+                ConfigError::ChromePlusSync(
+                    "程序路径已改变，请先恢复原位置并重试待应用配置".to_owned(),
+                )
+            })?;
+            let executable = crate::services::version_probe::locate_executable(target, program)
+                .map_err(|_| {
+                    ConfigError::ChromePlusSync(
+                        "程序路径已改变，请先恢复原位置并重试待应用配置".to_owned(),
+                    )
+                })?;
+            let expected_ini = executable
+                .parent()
+                .ok_or_else(|| ConfigError::InvalidPath {
+                    path: program.to_path_buf(),
+                })?
+                .join("chrome++.ini");
+            let actual = fs::canonicalize(ini)
+                .map_err(|error| ConfigError::ChromePlusSync(error.to_string()))?;
+            let expected = fs::canonicalize(expected_ini)
+                .map_err(|error| ConfigError::ChromePlusSync(error.to_string()))?;
+            if actual != expected {
+                return Err(ConfigError::ChromePlusSync(
+                    "程序路径已改变，请先恢复原位置并重试待应用配置".to_owned(),
+                ));
+            }
+            let root = config
+                .browser_root
+                .as_deref()
+                .ok_or_else(|| ConfigError::InvalidPath {
+                    path: ini.to_path_buf(),
+                })?;
+            let backup =
+                crate::runtime::chromeplus::backup_ini(ini, &root.join("backups"), "pending-save")
+                    .map_err(|error| ConfigError::ChromePlusSync(error.to_string()))?;
+            if let Err(error) =
+                crate::runtime::chromeplus::update_existing_ini(ini, &config.chrome_plus)
+            {
+                return Err(ConfigError::ChromePlusSync(format!(
+                    "{error}; original backup: {}",
+                    backup.display()
+                )));
+            }
+            if let Err(error) = self.store.save(&next) {
+                if let Err(rollback) = fs::rename(&backup, ini) {
+                    return Err(ConfigError::ChromePlusSync(format!(
+                        "{error}; INI rollback failed: {rollback}; original backup: {}",
+                        backup.display()
+                    )));
+                }
+                return Err(error);
+            }
+            let _ = fs::remove_file(backup);
+            Ok(())
+        })();
+        match result {
+            Ok(()) => {
+                self.saved = next.clone();
+                self.draft = next;
+                self.pending_chromeplus = None;
+                self.last_error = None;
+                Ok(())
+            }
+            Err(error) => {
+                self.last_error = Some(error.to_string());
+                Err(error)
+            }
+        }
+    }
+
     pub fn save_if_dirty(&mut self) -> Result<bool, ConfigError> {
-        if self.draft == self.saved {
+        if self.draft == self.saved && self.pending_chromeplus.is_none() {
             return Ok(false);
         }
         self.save()?;
@@ -213,6 +326,7 @@ impl AppState {
     pub fn discard(&mut self) {
         self.draft = self.saved.clone();
         self.last_error = None;
+        self.pending_chromeplus = None;
     }
 
     pub fn record_install_success(
@@ -341,6 +455,9 @@ impl AppState {
 
 fn normalize_settings_paths(settings: &mut Settings, tool_root: &Path) -> Result<(), ConfigError> {
     for (target, config) in &mut settings.targets {
+        if !settings.show_local_package {
+            config.local_package = None;
+        }
         if *config == TargetConfig::for_target(*target) {
             continue;
         }
@@ -395,6 +512,79 @@ fn resolve_tool_path(root: &Path, path: PathBuf) -> Result<PathBuf, PathResoluti
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn pending_ini_cannot_be_written_after_the_program_path_changes() {
+        use std::os::windows::fs::OpenOptionsExt;
+        let directory = tempfile::tempdir().unwrap();
+        let first = directory.path().join("A");
+        let second = directory.path().join("B");
+        for root in [&first, &second] {
+            std::fs::create_dir_all(root.join("App")).unwrap();
+            std::fs::write(root.join("App/chrome.exe"), b"fixture").unwrap();
+            std::fs::write(
+                root.join("App/chrome++.ini"),
+                "[general]\ncommand_line=--original\n",
+            )
+            .unwrap();
+        }
+        let mut settings = crate::domain::settings::Settings::default();
+        let config = settings
+            .targets
+            .get_mut(&crate::domain::target::TargetId::Chrome)
+            .unwrap();
+        config.browser_root = Some(first.clone());
+        config.derive_paths_from_root(crate::domain::target::TargetId::Chrome);
+        let mut state = super::AppState::with_tool_root(
+            settings,
+            crate::config::ConfigStore::new(directory.path().join("BrowserHarbor.json")),
+            directory.path().to_path_buf(),
+        );
+        state.save().unwrap();
+        let ini = first.join("App/chrome++.ini");
+        let lock = std::fs::OpenOptions::new()
+            .read(true)
+            .share_mode(1)
+            .open(&ini)
+            .unwrap();
+        let mut changed = state.draft().targets[&crate::domain::target::TargetId::Chrome].clone();
+        changed.chrome_plus.command_line = "--pending".into();
+        assert!(
+            state
+                .update_chromeplus_config(
+                    crate::domain::target::TargetId::Chrome,
+                    changed,
+                    ini.clone()
+                )
+                .is_err()
+        );
+        drop(lock);
+        state.update_draft(|settings| {
+            let config = settings
+                .targets
+                .get_mut(&crate::domain::target::TargetId::Chrome)
+                .unwrap();
+            config.browser_root = Some(second.clone());
+            config.derive_paths_from_root(crate::domain::target::TargetId::Chrome);
+        });
+        assert!(
+            state.save().is_err(),
+            "a stale pending INI must not be applied to a new program path"
+        );
+        for root in [&first, &second] {
+            assert!(
+                !std::fs::read_to_string(root.join("App/chrome++.ini"))
+                    .unwrap()
+                    .contains("--pending")
+            );
+        }
+        assert!(state.has_pending_chromeplus());
+        assert_eq!(
+            state.saved().targets[&crate::domain::target::TargetId::Chrome]
+                .browser_root
+                .as_ref(),
+            Some(&first)
+        );
+    }
     use std::{fs, path::PathBuf};
 
     use tempfile::tempdir;
@@ -542,7 +732,10 @@ mod tests {
         let data_directory = tempdir().unwrap();
         let tool_directory = tempdir().unwrap();
         let state = AppState::with_tool_root(
-            Settings::default(),
+            Settings {
+                show_local_package: true,
+                ..Settings::default()
+            },
             ConfigStore::new(data_directory.path().join("BrowserHarbor.json")),
             tool_directory.path().to_path_buf(),
         );
@@ -577,7 +770,10 @@ mod tests {
         let tool_directory = tempdir().unwrap();
         let browser_root = tool_directory.path().join("Thorium_AVX512");
         let mut state = AppState::with_tool_root(
-            Settings::default(),
+            Settings {
+                show_local_package: true,
+                ..Settings::default()
+            },
             ConfigStore::new(data_directory.path().join("BrowserHarbor.json")),
             tool_directory.path().to_path_buf(),
         );
