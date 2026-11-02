@@ -64,6 +64,8 @@ Browser Harbor 会在修改安装前检查浏览器版本和下载完整性。�
 
 ## 目录
 
+Catsxp 提供 Stable 和 Beta，默认选择 Stable。Beta 的不同修订可能使用相同的 EXE 版本，程序会核对实际程序文件后再识别修订号。没有可验证记录的既有安装不会被猜测为某一渠道或修订；通过本工具重新安装后即可建立记录。切换渠道会替换当前安装，不会另建一套浏览器；从 Beta 改回 Stable 前请备份用户数据。
+
 每个 Browser Target 独立保存：
 
 - Browser Root

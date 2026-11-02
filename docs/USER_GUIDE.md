@@ -73,6 +73,8 @@ If an installation was interrupted, start the app again and retry the selected b
 
 ## Directories
 
+Catsxp offers Stable and Beta, with Stable selected by default. Beta revisions may share an EXE version; Browser Harbor checks installed program files before identifying the revision. Existing installations without a verified build record remain unconfirmed until reinstalled through Browser Harbor. Changing channels replaces the selected installation; it does not create a second installation. Back up your user data before switching from Beta to Stable.
+
 Each Browser Target has its own:
 
 - Browser Root

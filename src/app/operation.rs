@@ -38,6 +38,13 @@ pub const UPSTREAM_REUSE_SECONDS: u64 = 10 * 60;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum OperationPhase {
+    CatsxpIdentified {
+        observation: Option<crate::services::catsxp::Observation>,
+    },
+    ChannelMismatch {
+        current_version: String,
+        current_channel: ReleaseChannel,
+    },
     Preparing,
     Resolving,
     Notice(String),
@@ -147,6 +154,7 @@ impl OperationController {
 
 #[derive(Debug, Clone)]
 pub struct StartOperationRequest {
+    pub channel_change_confirmed: bool,
     pub target: TargetId,
     pub mode: OperationMode,
     pub target_config: TargetConfig,
@@ -190,6 +198,18 @@ pub fn start_operation(request: StartOperationRequest) -> OperationController {
         let target = request.target;
         let result = runtime.block_on(run_operation(request, sender.clone(), worker_cancellation));
         match result {
+            Ok(OperationResult::ChannelMismatch {
+                current_version,
+                current_channel,
+            }) => {
+                let _ = sender.send(OperationEvent::new(
+                    target,
+                    OperationPhase::ChannelMismatch {
+                        current_version,
+                        current_channel,
+                    },
+                ));
+            }
             Ok(OperationResult::Checked { check, release }) => {
                 let _ = sender.send(OperationEvent::new(
                     target,
@@ -324,6 +344,41 @@ async fn run_operation(
         });
     }
     let provider = ProviderResolver::new(http.clone());
+    let mut current_version = request.current_version.clone();
+    let mut catsxp_channel = None;
+    if target == TargetId::Catsxp {
+        let observation = if let Some(program) = request.target_config.browser_directory.as_deref()
+        {
+            match crate::services::catsxp::observe(
+                program,
+                request.target_config.catsxp_build.as_ref(),
+                &cancellation,
+            ) {
+                Ok(value) => value,
+                Err(error) if error.kind() == std::io::ErrorKind::Interrupted => {
+                    return Err(Box::new(crate::services::ServiceError::Cancelled));
+                }
+                Err(_) => None,
+            }
+        } else {
+            None
+        };
+        current_version = observation
+            .as_ref()
+            .map(|value| value.build.version.clone())
+            .or_else(|| {
+                request
+                    .target_config
+                    .browser_directory
+                    .as_deref()
+                    .and_then(|program| {
+                        crate::services::version_probe::probe_local_version(target, program).ok()
+                    })
+                    .map(|probe| probe.version)
+            });
+        catsxp_channel = observation.as_ref().map(|value| value.build.channel);
+        emit(OperationPhase::CatsxpIdentified { observation });
+    }
     let mut metadata_source = MetadataSource::Official;
     let mut metadata_checked_at = None;
     let mut descriptor = if let Some(cached) = request.cached_release.clone().filter(|cached| {
@@ -449,12 +504,27 @@ async fn run_operation(
             release: descriptor,
         });
     }
-    if let Some(current_version) = request.current_version.as_deref()
-        && requires_replacement_confirmation(
+    if !request.channel_change_confirmed
+        && !request.replace_same_version
+        && let Some(current_channel) =
+            catsxp_channel.filter(|channel| *channel != descriptor.channel)
+    {
+        return Ok(OperationResult::ChannelMismatch {
+            current_channel,
+            current_version: current_version.clone().unwrap_or_default(),
+        });
+    }
+    if let Some(current_version) = current_version.as_deref()
+        && (requires_replacement_confirmation(
             request.replace_same_version,
             current_version,
             &descriptor.version,
-        )
+        ) || (!request.replace_same_version
+            && target == TargetId::Catsxp
+            && catsxp_channel.is_none()
+            && crate::services::catsxp::base_version(&descriptor.version, descriptor.channel)
+                .as_deref()
+                == Some(current_version)))
     {
         return Ok(OperationResult::SameVersion {
             current_version: current_version.to_owned(),
@@ -783,6 +853,10 @@ async fn fetch_trusted_metadata_candidate(
 }
 
 enum OperationResult {
+    ChannelMismatch {
+        current_version: String,
+        current_channel: ReleaseChannel,
+    },
     Checked {
         check: UpstreamCheck,
         release: ReleaseDescriptor,
@@ -995,6 +1069,7 @@ impl OperationPhase {
         matches!(
             self,
             Self::Checked { .. }
+                | Self::ChannelMismatch { .. }
                 | Self::SameVersion { .. }
                 | Self::Installed { .. }
                 | Self::ChromePlusChecked { .. }
@@ -1477,6 +1552,7 @@ mod tests {
         let result = super::run_operation(
             super::StartOperationRequest {
                 target,
+                channel_change_confirmed: false,
                 mode: super::OperationMode::Install,
                 target_config: config,
                 network: crate::domain::settings::NetworkSettings::default(),
@@ -1520,6 +1596,7 @@ mod tests {
         let result = super::run_operation(
             super::StartOperationRequest {
                 target,
+                channel_change_confirmed: false,
                 mode: super::OperationMode::Install,
                 target_config: config,
                 network: crate::domain::settings::NetworkSettings {
@@ -1568,6 +1645,7 @@ mod tests {
         let result = super::run_operation(
             super::StartOperationRequest {
                 target,
+                channel_change_confirmed: false,
                 mode: super::OperationMode::Install,
                 target_config: config,
                 network: Default::default(),
@@ -1669,6 +1747,7 @@ mod tests {
         let result = super::run_operation(
             super::StartOperationRequest {
                 target: crate::domain::target::TargetId::Vivaldi,
+                channel_change_confirmed: false,
                 mode: super::OperationMode::Check,
                 target_config: crate::domain::settings::TargetConfig::for_target(
                     crate::domain::target::TargetId::Vivaldi,

@@ -303,6 +303,7 @@ pub struct BrowserHarborApp {
     chrome_plus_versions: BTreeMap<TargetId, Option<String>>,
     chrome_plus_ini_loaded: BTreeSet<TargetId>,
     local_versions: BTreeMap<TargetId, LocalVersionState>,
+    catsxp_observation: Option<crate::services::catsxp::Observation>,
     health_dialog: Option<HealthDialog>,
     same_version_prompt: Option<SameVersionPrompt>,
     chrome_plus_update_prompt: Option<ChromePlusUpdatePrompt>,
@@ -396,6 +397,7 @@ impl BrowserHarborApp {
             chrome_plus_versions: BTreeMap::new(),
             chrome_plus_ini_loaded: BTreeSet::new(),
             local_versions: BTreeMap::new(),
+            catsxp_observation: None,
             health_dialog: None,
             same_version_prompt: None,
             chrome_plus_update_prompt: None,
@@ -490,10 +492,24 @@ impl BrowserHarborApp {
                         LocalVersionState::MissingDirectory(program.to_path_buf())
                     } else {
                         match probe_local_version(target, program) {
-                            Ok(probe) => LocalVersionState::Detected(LocalVersion {
-                                version: probe.version,
-                                source: probe.source,
-                            }),
+                            Ok(probe) => {
+                                let mut version = probe.version;
+                                if target == TargetId::Catsxp {
+                                    if let Some(observation) = self
+                                        .catsxp_observation
+                                        .as_ref()
+                                        .filter(|value| value.is_current(program, &version))
+                                    {
+                                        version = observation.build.version.clone();
+                                    } else {
+                                        self.catsxp_observation = None;
+                                    }
+                                }
+                                LocalVersionState::Detected(LocalVersion {
+                                    version,
+                                    source: probe.source,
+                                })
+                            }
                             Err(VersionProbeError::ExecutableNotFound(path)) => {
                                 LocalVersionState::Incomplete(path)
                             }
@@ -536,6 +552,22 @@ impl BrowserHarborApp {
             relocation_warning: None,
             confirming_repair: false,
         });
+    }
+
+    fn current_channel_label(
+        &self,
+        target: TargetId,
+        version: &str,
+        product_name: &str,
+    ) -> Option<&'static str> {
+        if target == TargetId::Catsxp {
+            return self
+                .catsxp_observation
+                .as_ref()
+                .filter(|value| value.build.version == version)
+                .map(|value| value.build.channel.display_name());
+        }
+        installed_channel_label(target, version, product_name)
     }
 
     fn repair_current_chromeplus_paths(&mut self) {
@@ -688,6 +720,7 @@ impl BrowserHarborApp {
                     false,
                     false,
                     Some(prompt.latest_version),
+                    false,
                 );
             }
             Ok(count) => {
@@ -779,7 +812,7 @@ impl BrowserHarborApp {
         };
         if let Some(current) = &current
             && let Some(current_channel) =
-                installed_channel_label(target, &current.version, product_name)
+                self.current_channel_label(target, &current.version, product_name)
             && current_channel != config.channel.display_name()
         {
             self.status_message = Some("现有安装渠道与当前选择不一致，等待确认".to_owned());
@@ -911,6 +944,7 @@ impl BrowserHarborApp {
             replace_same_version,
             identity_confirmed,
             None,
+            false,
         );
     }
 
@@ -920,6 +954,7 @@ impl BrowserHarborApp {
         replace_same_version: bool,
         identity_confirmed: bool,
         chrome_plus_expected_version: Option<String>,
+        channel_change_confirmed: bool,
     ) {
         if self.operation.is_some() {
             return;
@@ -999,6 +1034,7 @@ impl BrowserHarborApp {
         self.status_message = None;
         self.operation_phase = Some(OperationPhase::Preparing);
         self.operation = Some(start_operation(StartOperationRequest {
+            channel_change_confirmed,
             target,
             mode,
             target_config: config,
@@ -1033,6 +1069,24 @@ impl BrowserHarborApp {
                 self.operation = None;
             }
             match &event.phase {
+                OperationPhase::CatsxpIdentified { observation } => {
+                    self.catsxp_observation = observation.clone();
+                    self.refresh_local_version(TargetId::Catsxp);
+                }
+                OperationPhase::ChannelMismatch {
+                    current_version,
+                    current_channel,
+                } => {
+                    let selected_channel = self.state.draft().targets[&event.target].channel;
+                    self.channel_mismatch_prompt = Some(ChannelMismatchPrompt {
+                        target: event.target,
+                        current_channel: current_channel.display_name().to_owned(),
+                        selected_channel,
+                        local_version: current_version.clone(),
+                        product_name: String::new(),
+                    });
+                    self.status_message = Some(localized("现有安装渠道与当前选择不一致，等待确认"));
+                }
                 OperationPhase::Checked { check, release } => {
                     self.record_checked_release(event.target, check.clone(), release.clone());
                     let source = localized(match check.source {
@@ -1110,6 +1164,14 @@ impl BrowserHarborApp {
                         }
                     }
                     self.status_message = Some(message);
+                    if let Some(build) = receipt.catsxp_build.clone() {
+                        self.catsxp_observation =
+                            crate::services::catsxp::Observation::from_installed(
+                                &receipt.browser_directory,
+                                build,
+                            )
+                            .ok();
+                    }
                     self.refresh_local_version(event.target);
                 }
                 OperationPhase::ChromePlusChecked {
@@ -1323,6 +1385,18 @@ impl BrowserHarborApp {
                 palette.error,
             ),
         };
+        let current_hover = if target == TargetId::Catsxp && detected_version.is_some() {
+            format!(
+                "{current_hover}；{}",
+                localized(if self.catsxp_observation.is_some() {
+                    "已核对 EXE 与核心 DLL；第五段为 Beta 修订号"
+                } else {
+                    "Catsxp 渠道与 Beta 修订尚未确认，将在检查更新时核对程序文件"
+                })
+            )
+        } else {
+            current_hover
+        };
         let current_hover = config
             .installed_version
             .as_ref()
@@ -1340,13 +1414,22 @@ impl BrowserHarborApp {
                 | ProgramIdentity::Unknown { product_name } => product_name.as_str(),
                 _ => "",
             };
-            installed_channel_label(target, &current.version, product_name)
+            self.current_channel_label(target, &current.version, product_name)
         });
         let channel_mismatch =
             installed_channel.filter(|&installed| installed != config.channel.display_name());
         let relation = match (detected_version.as_ref(), upstream.as_ref()) {
             (Some(current), Some(upstream)) => {
-                compare_versions(&current.version, &upstream.version)
+                if target == TargetId::Catsxp
+                    && self.catsxp_observation.is_none()
+                    && crate::services::catsxp::base_version(&upstream.version, upstream.channel)
+                        .as_deref()
+                        == Some(current.version.as_str())
+                {
+                    VersionRelation::Unknown
+                } else {
+                    compare_versions(&current.version, &upstream.version)
+                }
             }
             _ => VersionRelation::Unknown,
         };
@@ -3700,6 +3783,10 @@ fn resolve_preview_path(root: &std::path::Path, path: &std::path::Path) -> Optio
 
 fn operation_status(phase: &OperationPhase) -> String {
     match phase {
+        OperationPhase::CatsxpIdentified { .. } => "已核对 Catsxp 程序文件".to_owned(),
+        OperationPhase::ChannelMismatch { .. } => {
+            "现有安装渠道与当前选择不一致，等待确认".to_owned()
+        }
         OperationPhase::Preparing => "正在准备任务…".to_owned(),
         OperationPhase::Resolving => "正在检查官方发布…".to_owned(),
         OperationPhase::Notice(message) => message.clone(),
@@ -3752,6 +3839,7 @@ fn operation_cancelable(phase: &OperationPhase) -> bool {
     matches!(
         phase,
         OperationPhase::Preparing
+            | OperationPhase::CatsxpIdentified { .. }
             | OperationPhase::Resolving
             | OperationPhase::Notice(_)
             | OperationPhase::Downloading { .. }

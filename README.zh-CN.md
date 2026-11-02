@@ -65,7 +65,7 @@
 | **Chromium** | Brave、Catsxp、Chrome、Edge、Helium、Thorium、Turbo、Ungoogled Chromium、Vivaldi |
 | **Firefox** | Firefox、Floorp、Iceweasel、LibreWolf、SkyKakapo、Zen |
 
-Chrome 和 Edge 提供 Stable 与 Beta；Brave 提供 Stable 与 Beta；
+Chrome、Edge、Brave 和 Catsxp 提供 Stable 与 Beta；
 Firefox 提供 Stable、ESR 与 Beta；Iceweasel 提供 ESR 与 Release。
 Thorium 提供面向 SSE3、SSE4、AVX、AVX2 和 AVX512 的 CPU 构建。
 

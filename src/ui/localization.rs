@@ -98,6 +98,17 @@ pub fn localize_widget_text(text: impl Into<WidgetText>) -> WidgetText {
 
 fn exact_translation(text: &str) -> Option<&'static str> {
     Some(match text {
+        "已核对 Catsxp 程序文件" => "Catsxp program files verified",
+        "已核对 EXE 与核心 DLL；第五段为 Beta 修订号" => {
+            "EXE and core DLL verified; the fifth component identifies the Beta revision"
+        }
+        "Catsxp 渠道与 Beta 修订尚未确认，将在检查更新时核对程序文件" => {
+            "Catsxp channel and Beta revision are unconfirmed; checking for updates will verify the program files"
+        }
+        "确认替换 Catsxp" => "Confirm Catsxp replacement",
+        "当前 EXE 的基础版本相同，但无法确认渠道或 Beta 修订。继续将安装当前选择的渠道和修订。" => {
+            "The EXE base version matches, but its channel or Beta revision is unknown. Continue to install the selected channel and revision."
+        }
         "跟随系统" => "Follow system",
         "浅色" => "Light",
         "深色" => "Dark",

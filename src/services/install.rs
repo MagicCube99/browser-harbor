@@ -68,6 +68,7 @@ pub struct InstallRequest {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct InstallReceipt {
     pub version: String,
+    pub catsxp_build: Option<crate::domain::release::CatsxpBuildIdentity>,
     pub browser_directory: PathBuf,
     pub data_directory: PathBuf,
     pub profile_directory: PathBuf,
@@ -406,6 +407,7 @@ impl InstallService {
 
         Ok(InstallReceipt {
             version: request.release.version,
+            catsxp_build: None,
             browser_directory: stored_browser_directory(
                 request.release.placement,
                 &commit_root,
@@ -719,6 +721,7 @@ fn install_native_package(
         cache_directory,
     )?;
     let installed_executable = destination.join(relative_executable);
+    let mut catsxp_build = None;
     if let Err(error) = verify_installed(
         &installed_executable,
         &final_program,
@@ -730,6 +733,17 @@ fn install_native_package(
             prepared_hash.as_deref(),
             chrome_plus_version.as_deref(),
         )
+    })
+    .and_then(|()| {
+        if request.release.target == TargetId::Catsxp {
+            catsxp_build = super::catsxp::capture(
+                &final_program,
+                &request.release.version,
+                request.release.channel,
+            )
+            .map_err(|source| io_error(&final_program, source))?;
+        }
+        Ok(())
     }) {
         return Err(recover_error(
             work,
@@ -741,6 +755,7 @@ fn install_native_package(
     work.finish()?;
     Ok(InstallReceipt {
         version: request.release.version.clone(),
+        catsxp_build,
         browser_directory: final_program,
         data_directory: data_directory.to_path_buf(),
         profile_directory: profile_directory.to_path_buf(),

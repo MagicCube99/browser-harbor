@@ -116,7 +116,7 @@ const TARGET_SPECS: [TargetSpec; 15] = [
         provider: ProviderKind::Catsxp,
         runtime: RuntimeKind::CatsxpLauncher,
         default_channel: ReleaseChannel::Stable,
-        channels: STABLE,
+        channels: BETA,
         default_cpu_build: CpuBuild::X64,
         cpu_builds: X64_ONLY,
         placement: ProgramPlacement::NativePackage,
@@ -957,7 +957,10 @@ mod tests {
             TargetId::Brave.spec().channels,
             &[ReleaseChannel::Stable, ReleaseChannel::Beta]
         );
-        assert_eq!(TargetId::Catsxp.spec().channels, &[ReleaseChannel::Stable]);
+        assert_eq!(
+            TargetId::Catsxp.spec().channels,
+            &[ReleaseChannel::Stable, ReleaseChannel::Beta]
+        );
         assert_eq!(
             TargetId::Iceweasel.spec().channels,
             &[ReleaseChannel::Esr, ReleaseChannel::Release]

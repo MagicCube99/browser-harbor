@@ -90,7 +90,7 @@ the current desktop.
 | **Chromium** | Brave, Catsxp, Chrome, Edge, Helium, Thorium, Turbo, Ungoogled Chromium, Vivaldi |
 | **Firefox** | Firefox, Floorp, Iceweasel, LibreWolf, SkyKakapo, Zen |
 
-Chrome and Edge support Stable and Beta; Brave supports Stable and Beta; Firefox
+Chrome, Edge, Brave, and Catsxp support Stable and Beta; Firefox
 supports Stable, ESR, and Beta. Iceweasel supports ESR and Release. Thorium
 provides CPU-specific builds for SSE3, SSE4, AVX, AVX2, and AVX512.
 

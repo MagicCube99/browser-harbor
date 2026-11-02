@@ -276,6 +276,8 @@ fn show_same_version_prompt(app: &mut BrowserHarborApp, ctx: &egui::Context) {
     let mut cancel = false;
     let downgrade = compare_versions(&prompt.current_version, &prompt.upstream.version)
         == VersionRelation::UpstreamOlder;
+    let catsxp_unknown =
+        app.state.selected_target() == TargetId::Catsxp && app.catsxp_observation.is_none();
     let response = egui::Modal::new(egui::Id::unique("same_version_confirmation"))
             .frame(
                 Frame::new()
@@ -286,7 +288,7 @@ fn show_same_version_prompt(app: &mut BrowserHarborApp, ctx: &egui::Context) {
             )
             .show(ctx, |ui| {
                 ui.set_width(390.0);
-                ui.heading(localized(if downgrade { "确认降级浏览器" } else { "版本与上游相同" }));
+                ui.heading(localized(if downgrade { "确认降级浏览器" } else if catsxp_unknown { "确认替换 Catsxp" } else { "版本与上游相同" }));
                 ui.add_space(7.0);
                 egui::Grid::new("same_version_meta")
                     .num_columns(2)
@@ -309,6 +311,9 @@ fn show_same_version_prompt(app: &mut BrowserHarborApp, ctx: &egui::Context) {
                         ui.end_row();
                     });
                 ui.add_space(8.0);
+                if catsxp_unknown {
+                    ui.localized_label("当前 EXE 的基础版本相同，但无法确认渠道或 Beta 修订。继续将安装当前选择的渠道和修订。");
+                }
                 if downgrade {
                     ui.localized_label(RichText::new(format!("{} → {}", prompt.current_version, prompt.upstream.version)).strong().color(palette.warning));
                     ui.localized_label(RichText::new("旧版浏览器可能无法读取已由新版迁移的用户数据。请先备份数据，再确认降级。").color(palette.warning));
@@ -473,6 +478,7 @@ fn show_browser_upgrade_prompt(app: &mut BrowserHarborApp, ctx: &egui::Context) 
             prompt.replace_same_version,
             false,
             Some(prompt.chrome_plus_latest),
+            false,
         );
     } else if cancel {
         app.browser_upgrade_prompt = None;
@@ -595,7 +601,7 @@ fn show_channel_mismatch_prompt(app: &mut BrowserHarborApp, ctx: &egui::Context)
     }
     if confirm {
         app.channel_mismatch_prompt = None;
-        app.start_operation(OperationMode::Install, false);
+        app.start_operation_checked_with_expected(OperationMode::Install, false, false, None, true);
     } else if cancel {
         app.channel_mismatch_prompt = None;
         app.operation_phase = None;

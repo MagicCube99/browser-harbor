@@ -18,6 +18,141 @@ use browser_harbor::{
 use tempfile::tempdir;
 
 #[tokio::test]
+#[ignore = "downloads the signed Catsxp Beta ZIP and verifies portable installation without launching it"]
+async fn installs_catsxp_beta_and_recognizes_the_real_build_after_reload() {
+    use browser_harbor::{
+        app::AppState,
+        config::ConfigStore,
+        domain::{
+            release::CpuBuild,
+            settings::{Settings, TargetConfig},
+        },
+        services::{catsxp, trusted_metadata::TrustedMetadata, version_probe::probe_local_version},
+    };
+    let metadata = TrustedMetadata::load_embedded().unwrap();
+    let release = metadata
+        .release(TargetId::Catsxp, ReleaseChannel::Beta, CpuBuild::X64)
+        .expect("signed Catsxp Beta entry is required")
+        .clone();
+    let directory = tempdir().unwrap();
+    let network = NetworkSettings::default();
+    let artifact = if let Some(path) = std::env::var_os("BROWSER_HARBOR_CATSXP_PACKAGE") {
+        path.into()
+    } else {
+        let (direct, fallback) = HttpClient::download_clients(&network).unwrap();
+        Downloader::with_fallback_clients(
+            direct,
+            fallback,
+            directory.path().join("cache"),
+            Arc::new(AtomicBool::new(false)),
+        )
+        .download(&release.artifact, &network, |_| {})
+        .await
+        .unwrap()
+    };
+    let root = directory.path().join("Catsxp Beta");
+    let request = InstallRequest {
+        release,
+        browser_artifact: artifact,
+        browser_root: root.clone(),
+        browser_directory: None,
+        data_directory: None,
+        profile_directory: None,
+        cache_directory: None,
+        chrome_plus_config: ChromePlusConfig::default(),
+        chrome_plus_runtime: None,
+        libportable_runtime: None,
+    };
+    let receipt = InstallService::install(request.clone()).unwrap();
+    assert_eq!(receipt.browser_directory, root.join("App"));
+    assert_eq!(receipt.data_directory, root.join("Profiles"));
+    let build = receipt
+        .catsxp_build
+        .as_ref()
+        .expect("a real Catsxp package must establish its file identity");
+    let raw = probe_local_version(TargetId::Catsxp, &receipt.browser_directory)
+        .unwrap()
+        .version;
+    assert_eq!(
+        catsxp::base_version(&build.version, build.channel).as_deref(),
+        Some(raw.as_str())
+    );
+    assert_ne!(build.version, raw);
+    let mut settings = Settings::default();
+    let mut config = TargetConfig::for_target(TargetId::Catsxp);
+    config.browser_root = Some(root.clone());
+    config.derive_paths_from_root(TargetId::Catsxp);
+    settings.targets.insert(TargetId::Catsxp, config);
+    let config_file = directory.path().join("BrowserHarbor.json");
+    let mut state = AppState::new(settings, ConfigStore::new(config_file.clone()));
+    state
+        .record_install_success(TargetId::Catsxp, &receipt)
+        .unwrap();
+    let loaded = ConfigStore::new(config_file).load().unwrap();
+    let persisted = loaded.targets[&TargetId::Catsxp]
+        .catsxp_build
+        .as_ref()
+        .unwrap();
+    let observation = catsxp::observe(
+        &receipt.browser_directory,
+        Some(persisted),
+        &AtomicBool::new(false),
+    )
+    .unwrap()
+    .unwrap();
+    assert_eq!(observation.build.channel, ReleaseChannel::Beta);
+    assert_eq!(
+        browser_harbor::domain::version::compare_versions(
+            &observation.build.version,
+            &request.release.version
+        ),
+        browser_harbor::domain::version::VersionRelation::Same
+    );
+    std::fs::write(receipt.data_directory.join("keep-user-data.txt"), b"keep").unwrap();
+    let ini_path = receipt.browser_directory.join("StartupParm.txt");
+    let mut ini = std::fs::read_to_string(&ini_path).unwrap();
+    ini.push_str("\r\n--custom-user-flag\r\n");
+    std::fs::write(&ini_path, ini).unwrap();
+    let second = InstallService::install(request).unwrap();
+    assert_eq!(
+        std::fs::read(second.data_directory.join("keep-user-data.txt")).unwrap(),
+        b"keep"
+    );
+    assert!(
+        std::fs::read_to_string(&ini_path)
+            .unwrap()
+            .contains("--custom-user-flag")
+    );
+    let moved = directory.path().join("Moved Catsxp");
+    std::fs::rename(&root, &moved).unwrap();
+    assert!(
+        catsxp::observe(
+            &moved.join("App"),
+            second.catsxp_build.as_ref(),
+            &AtomicBool::new(false)
+        )
+        .unwrap()
+        .is_some()
+    );
+    use std::io::Write;
+    std::fs::OpenOptions::new()
+        .append(true)
+        .open(moved.join("App").join(raw).join("chrome.dll"))
+        .unwrap()
+        .write_all(b"changed")
+        .unwrap();
+    assert!(
+        catsxp::observe(
+            &moved.join("App"),
+            second.catsxp_build.as_ref(),
+            &AtomicBool::new(false)
+        )
+        .unwrap()
+        .is_none()
+    );
+}
+
+#[tokio::test]
 #[ignore = "downloads newly enabled Beta/ESR channels and their portable runtimes"]
 async fn installs_new_release_channels() {
     let network = NetworkSettings::default();

@@ -523,6 +523,7 @@ fn beta_channels_are_exposed_for_selected_targets() {
 
     for target in [
         TargetId::Brave,
+        TargetId::Catsxp,
         TargetId::Chrome,
         TargetId::Edge,
         TargetId::Firefox,
@@ -834,6 +835,7 @@ fn app_with_operation_receiver(
     network.proxy = Some("http://[".to_owned());
     // Invalid proxy fails before any network I/O; replace only the event receiver.
     let mut operation = start_operation(StartOperationRequest {
+        channel_change_confirmed: false,
         target: TargetId::Firefox,
         mode: OperationMode::Check,
         target_config: settings.targets[&TargetId::Firefox].clone(),
@@ -2660,4 +2662,19 @@ fn global_settings_switch_shows_permission_guidance_when_access_denied() {
     harness.run();
 
     harness.get_by_label_contains("当前目录受系统权限保护");
+}
+#[test]
+fn catsxp_identity_observation_keeps_metadata_checks_cancelable() {
+    use crate::app::operation::OperationPhase;
+    assert!(super::operation_cancelable(
+        &OperationPhase::CatsxpIdentified { observation: None }
+    ));
+    assert!(!OperationPhase::CatsxpIdentified { observation: None }.is_terminal());
+    assert!(
+        OperationPhase::ChannelMismatch {
+            current_version: "156.6.11.1.3".into(),
+            current_channel: ReleaseChannel::Beta
+        }
+        .is_terminal()
+    );
 }
