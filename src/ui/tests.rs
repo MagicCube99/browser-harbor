@@ -2678,3 +2678,16 @@ fn catsxp_identity_observation_keeps_metadata_checks_cancelable() {
         .is_terminal()
     );
 }
+
+#[test]
+fn catsxp_downgrade_does_not_claim_an_equal_base_version() {
+    let mut harness = harness();
+    harness.state_mut().state.select(TargetId::Catsxp);
+    harness.state_mut().same_version_prompt = Some(super::SameVersionPrompt {
+        current_version: "156.6.12.1".into(),
+        upstream: UpstreamCheck::fresh("156.6.11.1.3".into(), ReleaseChannel::Beta, CpuBuild::X64),
+    });
+    harness.run();
+    harness.get_by_label("确认降级浏览器");
+    assert!(harness.query_by_label("当前 EXE 的基础版本相同，但无法确认渠道或 Beta 修订。继续将安装当前选择的渠道和修订。").is_none());
+}

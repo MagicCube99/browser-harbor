@@ -276,8 +276,11 @@ fn show_same_version_prompt(app: &mut BrowserHarborApp, ctx: &egui::Context) {
     let mut cancel = false;
     let downgrade = compare_versions(&prompt.current_version, &prompt.upstream.version)
         == VersionRelation::UpstreamOlder;
-    let catsxp_unknown =
-        app.state.selected_target() == TargetId::Catsxp && app.catsxp_observation.is_none();
+    let catsxp_unknown = app.state.selected_target() == TargetId::Catsxp
+        && app.catsxp_observation.is_none()
+        && crate::services::catsxp::base_version(&prompt.upstream.version, prompt.upstream.channel)
+            .as_deref()
+            == Some(prompt.current_version.as_str());
     let response = egui::Modal::new(egui::Id::unique("same_version_confirmation"))
             .frame(
                 Frame::new()

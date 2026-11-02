@@ -82,6 +82,7 @@ async fn installs_catsxp_beta_and_recognizes_the_real_build_after_reload() {
     let mut config = TargetConfig::for_target(TargetId::Catsxp);
     config.browser_root = Some(root.clone());
     config.derive_paths_from_root(TargetId::Catsxp);
+    config.channel = ReleaseChannel::Beta;
     settings.targets.insert(TargetId::Catsxp, config);
     let config_file = directory.path().join("BrowserHarbor.json");
     let mut state = AppState::new(settings, ConfigStore::new(config_file.clone()));
@@ -108,6 +109,73 @@ async fn installs_catsxp_beta_and_recognizes_the_real_build_after_reload() {
         ),
         browser_harbor::domain::version::VersionRelation::Same
     );
+    use browser_harbor::app::operation::{
+        CachedReleaseMetadata, OperationMode, OperationPhase, StartOperationRequest, UpstreamCheck,
+        start_operation,
+    };
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs();
+    for channel in [ReleaseChannel::Beta, ReleaseChannel::Stable] {
+        let descriptor = metadata
+            .release(TargetId::Catsxp, channel, CpuBuild::X64)
+            .unwrap()
+            .clone();
+        let mut config = loaded.targets[&TargetId::Catsxp].clone();
+        config.channel = channel;
+        let operation = start_operation(StartOperationRequest {
+            target: TargetId::Catsxp,
+            mode: OperationMode::Install,
+            target_config: config,
+            network: network.clone(),
+            cache_dir: directory.path().join("worker-cache"),
+            current_version: Some("999.0.0.0".into()),
+            chrome_plus_expected_version: None,
+            replace_same_version: false,
+            channel_change_confirmed: false,
+            allow_local_package: false,
+            cached_release: Some(CachedReleaseMetadata {
+                check: UpstreamCheck::fresh(descriptor.version.clone(), channel, CpuBuild::X64),
+                release: descriptor,
+                observed_at: now,
+            }),
+        });
+        let mut observed = false;
+        loop {
+            let event = operation
+                .receiver
+                .recv_timeout(std::time::Duration::from_secs(15))
+                .unwrap();
+            if let OperationPhase::CatsxpIdentified {
+                observation: Some(ref identity),
+            } = event.phase
+            {
+                observed = true;
+                assert_eq!(identity.build.version, build.version);
+            }
+            if !event.phase.is_terminal() {
+                continue;
+            }
+            assert!(observed);
+            match (channel, event.phase) {
+                (
+                    ReleaseChannel::Beta,
+                    OperationPhase::SameVersion {
+                        current_version, ..
+                    },
+                ) => assert_eq!(current_version, build.version),
+                (
+                    ReleaseChannel::Stable,
+                    OperationPhase::ChannelMismatch {
+                        current_channel, ..
+                    },
+                ) => assert_eq!(current_channel, ReleaseChannel::Beta),
+                (_, phase) => panic!("unexpected Catsxp preflight result: {phase:?}"),
+            }
+            break;
+        }
+    }
     std::fs::write(receipt.data_directory.join("keep-user-data.txt"), b"keep").unwrap();
     let ini_path = receipt.browser_directory.join("StartupParm.txt");
     let mut ini = std::fs::read_to_string(&ini_path).unwrap();
