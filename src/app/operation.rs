@@ -637,7 +637,7 @@ fn verify_local_package(
     descriptor: &ReleaseDescriptor,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let expected_package = format!(
-        "{} {} {} 的 {} {}",
+        "{} {} {} / {} / {}",
         descriptor.target.display_name(),
         descriptor.channel.display_name(),
         descriptor.cpu_build.display_name(),
@@ -650,11 +650,11 @@ fn verify_local_package(
             expected: expected_bytes,
             actual: actual_bytes,
         }) => Err(format!(
-            "本地安装包与当前目标不匹配：应为 {expected_package}；文件大小应为 {expected_bytes} 字节，实际为 {actual_bytes} 字节。"
+            "仅支持本次检查到的发布版本，本地安装包不匹配：应为 {expected_package}；文件大小应为 {expected_bytes} 字节，实际为 {actual_bytes} 字节。"
         )
         .into()),
         Err(crate::services::ServiceError::HashMismatch { .. }) => Err(format!(
-            "本地安装包摘要与当前目标不匹配：请确认版本、渠道和构建，并选择 {expected_package}。"
+            "仅支持本次检查到的发布版本，本地安装包摘要不匹配：请选择 {expected_package}。"
         )
         .into()),
         Err(crate::services::ServiceError::Io { .. }) => Err(format!(

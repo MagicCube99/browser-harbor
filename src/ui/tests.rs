@@ -595,7 +595,7 @@ fn overview_uses_inline_metadata_and_action_rows() {
 
     let check = harness.get_by_label("检查更新").rect();
     let install = harness.get_by_label("下载并安装").rect();
-    let local = harness.get_by_label("选择本地安装包").rect();
+    let local = harness.get_by_label("选择当前版本包").rect();
     assert!((check.center().y - install.center().y).abs() < 1.0);
     assert!((install.center().y - local.center().y).abs() < 1.0);
     assert!(check.max.x < install.min.x && install.max.x < local.min.x);
@@ -734,7 +734,7 @@ fn local_package_is_hidden_until_advanced_setting_is_enabled() {
     let mut harness = harness();
     harness.run();
 
-    assert!(harness.query_by_label("选择本地安装包").is_none());
+    assert!(harness.query_by_label("选择当前版本包").is_none());
 }
 
 #[test]
@@ -761,9 +761,9 @@ fn advanced_local_package_toggle_persists_and_clears_every_selection_without_del
         let mut harness = harness_for(app);
         harness.run();
         let (advanced, toggle) = if language.is_english() {
-            ("Advanced", "Enable local installer packages")
+            ("Advanced", "Use a local package instead of downloading")
         } else {
-            ("高级", "启用本地安装包")
+            ("高级", "使用本地包替代下载")
         };
         harness.get_by_label(advanced).click();
         harness.run();
@@ -820,7 +820,7 @@ fn disabled_local_package_ignores_legacy_selection() {
     harness.run();
     harness.get_by_label("下载并安装");
     assert!(harness.query_by_label("使用本地包安装").is_none());
-    assert!(harness.query_by_label("更换本地安装包").is_none());
+    assert!(harness.query_by_label("更换当前版本包").is_none());
 }
 
 fn app_with_operation_receiver(
@@ -1063,9 +1063,9 @@ fn selected_local_package_changes_action_names() {
     let mut harness = harness_for(BrowserHarborApp::new(state));
     harness.run();
 
-    harness.get_by_label("更换本地安装包");
+    harness.get_by_label("更换当前版本包");
     harness.get_by_label("使用本地包安装");
-    assert!(harness.query_by_label("选择本地安装包").is_none());
+    assert!(harness.query_by_label("选择当前版本包").is_none());
     assert!(harness.query_by_label("下载并安装").is_none());
 }
 

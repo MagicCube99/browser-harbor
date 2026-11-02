@@ -51,11 +51,7 @@ Open the browser page and choose one of these actions:
 - **Check for updates**: refresh upstream release information.
 - **Download and install/upgrade**: download, verify, and install the selected target.
 - **Download again and replace**: replace the current program when the upstream version is the same.
-- **Choose local installer package**: use an official package you already
-  downloaded. Enable this optional entry under **Global settings → Advanced →
-  Enable local installer packages** first; it is hidden by default. It must match the selected browser, channel, build, and upstream
-  version. Browser Harbor still verifies size, digest, and any required
-  signature, and may still need network access for portable runtimes.
+- **Choose current release package**: use a local copy of the official release found by this check. Enable **Global settings → Advanced → Use a local package instead of downloading** first; it is off by default. The package must match the selected browser, channel, build, and checked version. Importing other versions is not supported. Size, digest, and required signatures are still verified, and a network connection may still be needed.
 
 Browser Harbor checks the browser version and download integrity before changing the installation. Same-version replacement remains available but requires confirmation.
 

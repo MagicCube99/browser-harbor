@@ -1665,16 +1665,16 @@ impl BrowserHarborApp {
                 }
                 if show_local_package {
                 let package_label = if config.local_package.is_some() {
-                    "更换本地安装包"
+                    "更换当前版本包"
                 } else {
-                    "选择本地安装包"
+                    "选择当前版本包"
                 };
                 let package_hint = config.local_package.as_ref().map_or_else(
                     || {
-                        "选择当前浏览器、渠道和构建对应的官方安装包；安装时仍会校验版本、大小和摘要，并可能需要联网准备便携运行时"
+                        "仅支持本次检查到的官方发布版本，须与浏览器、渠道和构建一致。不支持导入其他版本，仍可能需要联网。"
                             .to_owned()
                     },
-                    |path| format!("当前本地安装包：{}；点击更换", path.display()),
+                    |path| format!("{}\n{}{}", localized("仅支持本次检查到的官方发布版本，须与浏览器、渠道和构建一致。不支持导入其他版本，仍可能需要联网。"), localized("当前本地安装包："), path.display()),
                 );
                 let package = ui
                     .localized_button(package_label)
@@ -1694,7 +1694,7 @@ impl BrowserHarborApp {
             });
             if pick_local_package
                 && let Some(selected) = folder_picker::pick_file(
-                    &localized("选择本地安装包"),
+                    &localized("选择当前版本包"),
                     config.local_package.as_deref(),
                 )
             {
@@ -2151,8 +2151,8 @@ impl BrowserHarborApp {
         egui::CollapsingHeader::new(localized("高级"))
             .id_salt("advanced_settings")
             .show(ui, |ui| {
-                advanced_changed = ui.localized_checkbox(&mut show_local_package, "启用本地安装包").changed();
-                ui.localized_label(RichText::new("仅替代浏览器安装包下载；仍须校验版本、大小和摘要，并可能联网获取元数据和便携运行时。关闭会清除所有选择记录，不删除文件。").size(10.5).color(palette.muted));
+                advanced_changed = ui.localized_checkbox(&mut show_local_package, "使用本地包替代下载").changed();
+                ui.localized_label(RichText::new("仅替代当前发布包的下载，不支持导入其他版本。仍会校验大小、摘要和必要的签名，并可能需要联网。关闭会清除选择记录，不删除文件。").size(10.5).color(palette.muted));
             });
         self.accelerator_input = accelerator_input;
         if clear_cache {

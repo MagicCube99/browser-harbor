@@ -9,7 +9,7 @@
 - Recover interrupted installations before retrying, retaining originals if recovery is blocked. Closing the app waits for active installation work to reach a safe stopping point.
 - Fixed updates that kept old Chrome++ files while reporting the new version, and improved detection of portable layouts.
 - Require confirmation before downgrading. Manual checks refresh signed release information and identify cached or embedded results.
-- Local installer packages are now an opt-in feature under **Global settings → Advanced**. Disabling it clears selections without deleting packages.
+- **Choose current release package** is available under **Global settings → Advanced → Use a local package instead of downloading**, off by default. It only accepts the checked release, not arbitrary older versions. Turning it off clears selections without deleting packages.
 - Keep failed Chrome++ configuration edits pending for retry, and offer a backup-and-reset action for damaged manager settings.
 - Improve cancellation and network errors, check runtime compatibility before downloading, and keep unaffected release information available if one runtime lookup fails.
 

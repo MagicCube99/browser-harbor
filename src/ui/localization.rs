@@ -145,9 +145,9 @@ fn exact_translation(text: &str) -> Option<&'static str> {
             "Program path changed. Restore the original location before retrying pending settings."
         }
         "内置签名快照" => "Embedded signed snapshot",
-        "启用本地安装包" => "Enable local installer packages",
-        "仅替代浏览器安装包下载；仍须校验版本、大小和摘要，并可能联网获取元数据和便携运行时。关闭会清除所有选择记录，不删除文件。" => {
-            "Replaces the browser download only. Version, size and digest checks still apply, and metadata or portable runtimes may need a network connection. Turning this off clears selections and keeps files."
+        "使用本地包替代下载" => "Use a local package instead of downloading",
+        "仅替代当前发布包的下载，不支持导入其他版本。仍会校验大小、摘要和必要的签名，并可能需要联网。关闭会清除选择记录，不删除文件。" => {
+            "Replaces the current release download only; importing other versions is not supported. Size, digest and required signatures are still verified, and a network connection may be needed. Turning this off clears selections and keeps files."
         }
         "Chrome++ 配置未应用，可重试" => {
             "Chrome++ settings were not applied; retry is available"
@@ -177,15 +177,15 @@ fn exact_translation(text: &str) -> Option<&'static str> {
             "Edge download information must be fetched live from Microsoft. An old MSI manifest entry cannot be used; check the network and try again."
         }
         "重新下载并替换" => "Download again and replace",
-        "选择本地安装包" => "Choose local installer package",
-        "更换本地安装包" => "Change local installer package",
+        "选择当前版本包" => "Choose current release package",
+        "更换当前版本包" => "Change current release package",
         "清除本地安装包" => "Clear local installer package",
         "使用本地包重新安装" => "Reinstall from local package",
         "使用本地包升级" => "Upgrade from local package",
         "使用本地包安装" => "Install from local package",
         "使用本地包安装/升级" => "Install/upgrade from local package",
-        "选择当前浏览器、渠道和构建对应的官方安装包；安装时仍会校验版本、大小和摘要，并可能需要联网准备便携运行时" => {
-            "Choose the official installer for the current browser, channel, and build. Installation still verifies version, size, and digest, and may require network access for portable runtimes."
+        "仅支持本次检查到的官方发布版本，须与浏览器、渠道和构建一致。不支持导入其他版本，仍可能需要联网。" => {
+            "Only the official release found by this check is accepted. The browser, channel and build must match. Importing other versions is not supported; a network connection may still be needed."
         }
         "渠道不同" => "Channel mismatch",
         "使用 Beta 渠道安装" => "Install using Beta channel",
@@ -558,6 +558,24 @@ fn exact_translation(text: &str) -> Option<&'static str> {
 }
 
 fn dynamic_translation(text: &str) -> String {
+    if let Some(rest) = text.strip_prefix("仅支持本次检查到的发布版本，本地安装包不匹配：应为 ")
+    {
+        let detail = rest
+            .replace("；文件大小应为 ", ". Expected size: ")
+            .replace(" 字节，实际为 ", " bytes; actual size: ")
+            .replace(" 字节。", " bytes.");
+        return format!(
+            "Only the release found by this check is supported. Local package mismatch. Expected: {detail}"
+        );
+    }
+    if let Some(rest) =
+        text.strip_prefix("仅支持本次检查到的发布版本，本地安装包摘要不匹配：请选择 ")
+    {
+        return format!(
+            "Only the release found by this check is supported. Local package digest mismatch. Choose {}.",
+            rest.trim_end_matches('。')
+        );
+    }
     if let Some(rest) = text.strip_prefix("已发现 ")
         && let Some((browser, rest)) = rest.split_once(" 新版 ")
         && let Some((version, reason)) = rest.split_once("，等待校验信息：")
@@ -810,6 +828,18 @@ mod tests {
         assert_eq!(translate("当前浏览器：Firefox"), "Current browser: Firefox");
         assert_eq!(translate("159.0（上次安装）"), "159.0 (last install)");
         assert_eq!(localized("检查更新"), "Check for updates");
+        assert_eq!(
+            localized(
+                "仅支持本次检查到的发布版本，本地安装包不匹配：应为 Edge Stable x64 / 156.0.4314.58 / Edge.exe；文件大小应为 10 字节，实际为 9 字节。"
+            ),
+            "Only the release found by this check is supported. Local package mismatch. Expected: Edge Stable x64 / 156.0.4314.58 / Edge.exe. Expected size: 10 bytes; actual size: 9 bytes."
+        );
+        assert_eq!(
+            localized(
+                "仅支持本次检查到的发布版本，本地安装包摘要不匹配：请选择 Edge Beta x64 / 157.0.4341.30 / Edge.exe。"
+            ),
+            "Only the release found by this check is supported. Local package digest mismatch. Choose Edge Beta x64 / 157.0.4341.30 / Edge.exe."
+        );
         assert_eq!(localized("本地版本较新"), "Local version is newer");
         let edge_failure = localized(
             "官方元数据不可用：timeout；签名发布清单也不可用：Edge 下载信息需从 Microsoft 实时获取，不能使用旧 MSI 签名记录；请检查网络后重试",
