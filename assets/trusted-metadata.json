@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": 1793524972,
+  "generatedAt": 1793592008,
   "expiresAt": 253402300799,
   "releases": [
     {
@@ -67,8 +67,31 @@
         },
         "urls": [
           "https://b2.catsxp.com/catsxp_portable/win_x64/portable_x64_release_156_6_10_5.zip",
-          "https://drfs.ctcontents.com/file/2911401/17569908722886/3f3753/catsxp_portable/win_x64/portable_x64_release_156_6_10_5.zip",
           "https://r2.catsxp.com/catsxp_portable/win_x64/portable_x64_release_156_6_10_5.zip"
+        ],
+        "signatureUrl": null
+      },
+      "placement": "native_package",
+      "innerArchive": null,
+      "source": "https://www.catsxp.com/",
+      "publishedAt": null
+    },
+    {
+      "target": "catsxp",
+      "version": "156.6.11.1.3",
+      "channel": "beta",
+      "cpuBuild": "x64",
+      "provider": "catsxp",
+      "artifact": {
+        "fileName": "portable_x64_beta_156_6_11_1_3.zip",
+        "format": "zip",
+        "size": 231157906,
+        "integrity": {
+          "algorithm": "sha256",
+          "value": "74243f4614b9b4ec8c4039925dda6c336a10720d57079d79b3c08cdd785ca277"
+        },
+        "urls": [
+          "https://b2.catsxp.com/catsxp_portable/win_x64/portable_x64_beta_156_6_11_1_3.zip"
         ],
         "signatureUrl": null
       },
@@ -497,44 +520,44 @@
     },
     {
       "target": "ungoogled_chromium",
-      "version": "156.0.8078.73",
+      "version": "156.0.8078.79",
       "channel": "stable",
       "cpuBuild": "x64",
       "provider": "git_hub_release",
       "artifact": {
-        "fileName": "ungoogled-chromium_156.0.8078.73-1.1_windows_x64.zip",
+        "fileName": "ungoogled-chromium_156.0.8078.79-1.1_windows_x64.zip",
         "format": "zip",
-        "size": 200854085,
+        "size": 200807142,
         "integrity": {
           "algorithm": "sha256",
-          "value": "360406931fb55b04ac276bcf409511bd86e4e67e6950029fc45ca5ca63443090"
+          "value": "a97c5378e16075967660f85cc34150444a9cfbc79733f048b9c6b42a851e4eb9"
         },
         "urls": [
-          "https://github.com/ungoogled-software/ungoogled-chromium-windows/releases/download/156.0.8078.73-1.1/ungoogled-chromium_156.0.8078.73-1.1_windows_x64.zip"
+          "https://github.com/ungoogled-software/ungoogled-chromium-windows/releases/download/156.0.8078.79-1.1/ungoogled-chromium_156.0.8078.79-1.1_windows_x64.zip"
         ],
         "signatureUrl": null
       },
       "placement": "native_package",
       "innerArchive": null,
-      "source": "https://github.com/ungoogled-software/ungoogled-chromium-windows/releases/tag/156.0.8078.73-1.1",
-      "publishedAt": "2026-10-30T22:27:37Z"
+      "source": "https://github.com/ungoogled-software/ungoogled-chromium-windows/releases/tag/156.0.8078.79-1.1",
+      "publishedAt": "2026-11-01T22:55:23Z"
     },
     {
       "target": "vivaldi",
-      "version": "8.2.4133.96",
+      "version": "8.2.4133.94",
       "channel": "stable",
       "cpuBuild": "x64",
       "provider": "vivaldi",
       "artifact": {
-        "fileName": "Vivaldi.8.2.4133.96.x64.exe",
+        "fileName": "Vivaldi.8.2.4133.94.x64.exe",
         "format": "sevenzip",
-        "size": null,
+        "size": 156217256,
         "integrity": {
           "algorithm": "sha256",
-          "value": "cd3374dbbffe20ccc8dd1f621c171831ae4e79548af1d41db4dadadf3decb034"
+          "value": "6f2eee78fd43c9cb5d04150487aa786625c3361c96c43e6032f753909850a893"
         },
         "urls": [
-          "https://downloads.vivaldi.com/stable/Vivaldi.8.2.4133.96.x64.exe"
+          "https://downloads.vivaldi.com/stable/Vivaldi.8.2.4133.94.x64.exe"
         ],
         "signatureUrl": null
       },
@@ -598,17 +621,17 @@
     }
   },
   "libportable": {
-    "version": "v9.0.10",
+    "version": "v9.0.12",
     "artifact": {
       "fileName": "portable_bin.7z",
       "format": "sevenzip",
-      "size": 1962168,
+      "size": 1825752,
       "integrity": {
         "algorithm": "sha256",
-        "value": "7a7c85c311734dea187b9a088263514110ab7ae806095d6eef62287a93d8d6e6"
+        "value": "41441cb3c729920ba0d830b581d2aee731444d92f2119cc7b02e9e2186c517c8"
       },
       "urls": [
-        "https://github.com/adonais/libportable/releases/download/v9.0.10/portable_bin.7z"
+        "https://github.com/adonais/libportable/releases/download/v9.0.12/portable_bin.7z"
       ],
       "signatureUrl": null
     }
