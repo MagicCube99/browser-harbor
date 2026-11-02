@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": 1793592008,
+  "generatedAt": 1793612188,
   "expiresAt": 253402300799,
   "releases": [
     {
@@ -29,27 +29,27 @@
     },
     {
       "target": "brave",
-      "version": "1.100.45",
+      "version": "1.100.46",
       "channel": "beta",
       "cpuBuild": "x64",
       "provider": "git_hub_release",
       "artifact": {
-        "fileName": "brave-v1.100.45-win32-x64.zip",
+        "fileName": "brave-v1.100.46-win32-x64.zip",
         "format": "zip",
-        "size": 253010331,
+        "size": 255100614,
         "integrity": {
           "algorithm": "sha256",
-          "value": "51247a81650a78cc0397efb8d1802da3efcee9c07ea645248437e330db3cc9a4"
+          "value": "6ca33aa15522007de5d16fb3b2bc3101738f824351e32de9749b68cdc4445c10"
         },
         "urls": [
-          "https://github.com/brave/brave-browser/releases/download/v1.100.45/brave-v1.100.45-win32-x64.zip"
+          "https://github.com/brave/brave-browser/releases/download/v1.100.46/brave-v1.100.46-win32-x64.zip"
         ],
         "signatureUrl": null
       },
       "placement": "native_package",
       "innerArchive": null,
-      "source": "https://github.com/brave/brave-browser/releases/tag/v1.100.45",
-      "publishedAt": "2026-10-30T05:17:51Z"
+      "source": "https://github.com/brave/brave-browser/releases/tag/v1.100.46",
+      "publishedAt": "2026-11-02T05:20:02Z"
     },
     {
       "target": "catsxp",
@@ -592,30 +592,30 @@
     }
   ],
   "chromePlus": {
-    "version": "1.18.3",
+    "version": "1.19.0",
     "artifact": {
-      "fileName": "Chrome++_v1.18.3_x86_x64_arm64.7z",
+      "fileName": "Chrome++_v1.19.0_x86_x64_arm64.7z",
       "format": "sevenzip",
-      "size": 181011,
+      "size": 195408,
       "integrity": {
         "algorithm": "sha256",
-        "value": "bfcca14dd07fc9823a639f4a46b7c53ce11fc86ef1da19eab818c800cf49a159"
+        "value": "090c192efd83637b495e37f4cf01bc89c508b74591ac9110843c30bec99c5a22"
       },
       "urls": [
-        "https://github.com/Bush2021/chrome_plus/releases/download/1.18.3/Chrome%2B%2B_v1.18.3_x86_x64_arm64.7z"
+        "https://github.com/Bush2021/chrome_plus/releases/download/1.19.0/Chrome%2B%2B_v1.19.0_x86_x64_arm64.7z"
       ],
       "signatureUrl": null
     },
     "setdllArtifact": {
       "fileName": "setdll.7z",
       "format": "sevenzip",
-      "size": 271708,
+      "size": 286313,
       "integrity": {
         "algorithm": "sha256",
-        "value": "07a0dbd78062fdfbeff8806de7ea42e983c287367bd998abec070d600dfaf3f6"
+        "value": "9d6813564d2f54ca2d8dece4c4952143f5040fa00cd1d8462af444eda0fef7a9"
       },
       "urls": [
-        "https://github.com/Bush2021/chrome_plus/releases/download/1.18.3/setdll.7z"
+        "https://github.com/Bush2021/chrome_plus/releases/download/1.19.0/setdll.7z"
       ],
       "signatureUrl": null
     }
