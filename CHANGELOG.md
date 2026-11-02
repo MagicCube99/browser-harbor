@@ -2,16 +2,16 @@
 
 [简体中文](CHANGELOG.zh-CN.md) · English
 
-## v0.7.0 — Unreleased
+## v0.7.0 — 2026-11-02
 
 - Added Catsxp Beta portable packages, with verified installed-build recognition and channel-switch confirmation. Stable remains the default.
 - Fixed Catsxp Stable and Beta failing to use the selected user-data and cache directories.
-- Recover interrupted installations before retrying, retaining originals if recovery is blocked. Closing the app waits for active installation work to reach a safe stopping point.
+- Improved recovery when retrying interrupted installations and safer handling of closing the app during an installation.
 - Fixed updates that kept old Chrome++ files while reporting the new version, and improved detection of portable layouts.
 - Require confirmation before downgrading. Manual checks refresh signed release information and identify cached or embedded results.
 - **Choose current release package** is available under **Global settings → Advanced → Use a local package instead of downloading**, off by default. It only accepts the checked release, not arbitrary older versions. Turning it off clears selections without deleting packages.
 - Keep failed Chrome++ configuration edits pending for retry, and offer a backup-and-reset action for damaged manager settings.
-- Improve cancellation and network errors, check runtime compatibility before downloading, and keep unaffected release information available if one runtime lookup fails.
+- Improved cancellation and network error messages, and check portable compatibility before downloading the browser package.
 
 ## v0.6.12 — 2026-11-01
 
