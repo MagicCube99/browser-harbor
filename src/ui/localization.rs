@@ -98,6 +98,17 @@ pub fn localize_widget_text(text: impl Into<WidgetText>) -> WidgetText {
 
 fn exact_translation(text: &str) -> Option<&'static str> {
     Some(match text {
+        "已核对 Catsxp 程序文件" => "Catsxp program files verified",
+        "已核对 EXE 与核心 DLL；第五段为 Beta 修订号" => {
+            "EXE and core DLL verified; the fifth component identifies the Beta revision"
+        }
+        "Catsxp 渠道与 Beta 修订尚未确认，将在检查更新时核对程序文件" => {
+            "Catsxp channel and Beta revision are unconfirmed; checking for updates will verify the program files"
+        }
+        "确认替换 Catsxp" => "Confirm Catsxp replacement",
+        "当前 EXE 的基础版本相同，但无法确认渠道或 Beta 修订。继续将安装当前选择的渠道和修订。" => {
+            "The EXE base version matches, but its channel or Beta revision is unknown. Continue to install the selected channel and revision."
+        }
         "跟随系统" => "Follow system",
         "浅色" => "Light",
         "深色" => "Dark",
@@ -105,6 +116,51 @@ fn exact_translation(text: &str) -> Option<&'static str> {
         "外观：浅色" => "Appearance: Light",
         "外观：深色" => "Appearance: Dark",
         "浏览器" => "Browser",
+        "高级" => "Advanced",
+        "后台任务意外中断，请重试；上次安装若未完成，将先恢复后重新安装。" => {
+            "Background task ended unexpectedly. Retry; an interrupted installation will be recovered before reinstalling."
+        }
+        "正在取消任务，完成后关闭窗口" => "Cancelling the task before closing",
+        "正在安全完成安装，请等待后关闭窗口" => {
+            "Completing the installation safely before closing"
+        }
+        "打开配置目录" => "Open config folder",
+        "打开配置目录失败" => "Could not open config folder",
+        "备份后重建管理器配置" => "Back up and reset config",
+        "复制诊断详情" => "Copy diagnostics",
+        "重建管理器配置" => "Reset manager config",
+        "将先备份原 BrowserHarbor.json，再重建默认管理器设置。浏览器程序、Profile 和用户数据不会修改。" => {
+            "Back up BrowserHarbor.json, then restore the default manager settings. Browser programs, profiles and user data stay unchanged."
+        }
+        "确认备份并重建" => "Confirm backup and reset",
+        "管理器配置已重建，原文件备份到" => {
+            "Manager config reset; original backed up to"
+        }
+        "备份或重建配置失败" => "Config backup or reset failed",
+        "已缓存签名快照" => "Cached signed snapshot",
+        "官方元数据不可用，使用已验证签名快照" => {
+            "Official metadata unavailable; using a verified signed snapshot"
+        }
+        "程序路径已改变，请先恢复原位置并重试待应用配置" => {
+            "Program path changed. Restore the original location before retrying pending settings."
+        }
+        "内置签名快照" => "Embedded signed snapshot",
+        "使用本地包替代下载" => "Use a local package instead of downloading",
+        "仅替代当前发布包的下载，不支持导入其他版本。仍会校验大小、摘要和必要的签名，并可能需要联网。关闭会清除选择记录，不删除文件。" => {
+            "Replaces the current release download only; importing other versions is not supported. Size, digest and required signatures are still verified, and a network connection may be needed. Turning this off clears selections and keeps files."
+        }
+        "Chrome++ 配置未应用，可重试" => {
+            "Chrome++ settings were not applied; retry is available"
+        }
+        "重试应用 Chrome++ 配置" => "Retry applying Chrome++ settings",
+        "确认降级浏览器" => "Confirm browser downgrade",
+        "降级需要确认，旧版可能无法读取现有用户数据" => {
+            "Confirm the downgrade; an older version may not read existing user data"
+        }
+        "确认降级" => "Confirm downgrade",
+        "旧版浏览器可能无法读取已由新版迁移的用户数据。请先备份数据，再确认降级。" => {
+            "An older browser may not read user data migrated by a newer version. Back up your data before confirming the downgrade."
+        }
         "当前浏览器" => "Current browser",
         "浏览器程序" => "Browser program",
         "渠道" => "Channel",
@@ -121,25 +177,26 @@ fn exact_translation(text: &str) -> Option<&'static str> {
             "Edge download information must be fetched live from Microsoft. An old MSI manifest entry cannot be used; check the network and try again."
         }
         "重新下载并替换" => "Download again and replace",
-        "选择本地安装包" => "Choose local installer package",
-        "更换本地安装包" => "Change local installer package",
+        "选择当前版本包" => "Choose current release package",
+        "更换当前版本包" => "Change current release package",
         "清除本地安装包" => "Clear local installer package",
         "使用本地包重新安装" => "Reinstall from local package",
         "使用本地包升级" => "Upgrade from local package",
         "使用本地包安装" => "Install from local package",
         "使用本地包安装/升级" => "Install/upgrade from local package",
-        "选择当前浏览器、渠道和构建对应的官方安装包；安装时仍会校验版本、大小和摘要，并可能需要联网准备便携运行时" => {
-            "Choose the official installer for the current browser, channel, and build. Installation still verifies version, size, and digest, and may require network access for portable runtimes."
+        "仅支持本次检查到的官方发布版本，须与浏览器、渠道和构建一致。不支持导入其他版本，仍可能需要联网。" => {
+            "Only the official release found by this check is accepted. The browser, channel and build must match. Importing other versions is not supported; a network connection may still be needed."
         }
         "渠道不同" => "Channel mismatch",
         "使用 Beta 渠道安装" => "Install using Beta channel",
         "使用 ESR 渠道安装" => "Install using ESR channel",
         "使用 Release 渠道安装" => "Install using Release channel",
         "使用 Stable 渠道安装" => "Install using Stable channel",
-        "使用本地 Beta 离线包安装" => "Install from local Beta package",
-        "使用本地 ESR 离线包安装" => "Install from local ESR package",
-        "使用本地 Release 离线包安装" => "Install from local Release package",
-        "使用本地 Stable 离线包安装" => "Install from local Stable package",
+        "使用本地 Beta 安装包安装" => "Install from local Beta package",
+        "使用本地 ESR 安装包安装" => "Install from local ESR package",
+        "使用本地 Release 安装包安装" => "Install from local Release package",
+        "使用本地 Stable 安装包安装" => "Install from local Stable package",
+        "快照生成时间" => "Snapshot generated",
         "路径与用户数据" => "Paths and user data",
         "检查配置" => "Check configuration",
         "快捷方式：开" => "Shortcut: On",
@@ -501,6 +558,32 @@ fn exact_translation(text: &str) -> Option<&'static str> {
 }
 
 fn dynamic_translation(text: &str) -> String {
+    if let Some(rest) = text.strip_prefix("仅支持本次检查到的发布版本，本地安装包不匹配：应为 ")
+    {
+        let detail = rest
+            .replace("；文件大小应为 ", ". Expected size: ")
+            .replace(" 字节，实际为 ", " bytes; actual size: ")
+            .replace(" 字节。", " bytes.");
+        return format!(
+            "Only the release found by this check is supported. Local package mismatch. Expected: {detail}"
+        );
+    }
+    if let Some(rest) =
+        text.strip_prefix("仅支持本次检查到的发布版本，本地安装包摘要不匹配：请选择 ")
+    {
+        return format!(
+            "Only the release found by this check is supported. Local package digest mismatch. Choose {}.",
+            rest.trim_end_matches('。')
+        );
+    }
+    if let Some(rest) = text.strip_prefix("已发现 ")
+        && let Some((browser, rest)) = rest.split_once(" 新版 ")
+        && let Some((version, reason)) = rest.split_once("，等待校验信息：")
+    {
+        return format!(
+            "{browser} {version} was found; awaiting verification information: {reason}"
+        );
+    }
     if let Some(rest) = text.strip_prefix("官方元数据不可用：")
         && let Some((official, signed)) = rest.split_once("；签名发布清单也不可用：")
     {
@@ -544,6 +627,16 @@ fn dynamic_translation(text: &str) -> String {
     }
     for (prefix, replacement) in [
         ("当前浏览器：", "Current browser: "),
+        (
+            "Chrome++ 配置未应用，可重试：",
+            "Chrome++ settings were not applied; retry is available: ",
+        ),
+        (
+            "管理器配置已重建，原文件备份到：",
+            "Manager config reset; original backed up to: ",
+        ),
+        ("备份或重建配置失败：", "Config backup or reset failed: "),
+        ("打开配置目录失败：", "Could not open config folder: "),
         ("浏览器：", "Browser: "),
         ("当前目标：", "Current target: "),
         ("当前安装：", "Currently installed: "),
@@ -705,6 +798,23 @@ fn dynamic_translation(text: &str) -> String {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn reliability_waiting_and_snapshot_messages_are_localized() {
+        super::set_language(crate::domain::settings::Language::English);
+        assert_eq!(
+            super::localized("官方元数据不可用，使用已验证签名快照"),
+            "Official metadata unavailable; using a verified signed snapshot"
+        );
+        assert_eq!(
+            super::localized("已发现 Vivaldi 新版 9.1，等待校验信息：unavailable"),
+            "Vivaldi 9.1 was found; awaiting verification information: unavailable"
+        );
+        assert_eq!(
+            super::localized("程序路径已改变，请先恢复原位置并重试待应用配置"),
+            "Program path changed. Restore the original location before retrying pending settings."
+        );
+        super::set_language(crate::domain::settings::Language::Chinese);
+    }
     use super::{localized, set_language, translate};
     use crate::domain::settings::Language;
 
@@ -718,6 +828,18 @@ mod tests {
         assert_eq!(translate("当前浏览器：Firefox"), "Current browser: Firefox");
         assert_eq!(translate("159.0（上次安装）"), "159.0 (last install)");
         assert_eq!(localized("检查更新"), "Check for updates");
+        assert_eq!(
+            localized(
+                "仅支持本次检查到的发布版本，本地安装包不匹配：应为 Edge Stable x64 / 156.0.4314.58 / Edge.exe；文件大小应为 10 字节，实际为 9 字节。"
+            ),
+            "Only the release found by this check is supported. Local package mismatch. Expected: Edge Stable x64 / 156.0.4314.58 / Edge.exe. Expected size: 10 bytes; actual size: 9 bytes."
+        );
+        assert_eq!(
+            localized(
+                "仅支持本次检查到的发布版本，本地安装包摘要不匹配：请选择 Edge Beta x64 / 157.0.4341.30 / Edge.exe。"
+            ),
+            "Only the release found by this check is supported. Local package digest mismatch. Choose Edge Beta x64 / 157.0.4341.30 / Edge.exe."
+        );
         assert_eq!(localized("本地版本较新"), "Local version is newer");
         let edge_failure = localized(
             "官方元数据不可用：timeout；签名发布清单也不可用：Edge 下载信息需从 Microsoft 实时获取，不能使用旧 MSI 签名记录；请检查网络后重试",
@@ -746,7 +868,7 @@ mod tests {
         assert_eq!(localized("渠道不同"), "Channel mismatch");
         assert_eq!(localized("使用 ESR 渠道安装"), "Install using ESR channel");
         assert_eq!(
-            localized("使用本地 ESR 离线包安装"),
+            localized("使用本地 ESR 安装包安装"),
             "Install from local ESR package"
         );
         assert_eq!(

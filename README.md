@@ -75,6 +75,7 @@ the current desktop.
 - **Saves immediately.** Every valid edit is persisted. Keep manager state in
   the per-user configuration directory or move `BrowserHarbor.json` beside the EXE
   for a portable setup. Existing `manager.json` files are migrated automatically.
+- **Reuses a matching local package.** Enable **Use a local package instead of downloading** under **Global settings → Advanced**. The package must match the checked release; importing other versions is not supported.
 - **Looks at home on Windows.** Follow the system theme or choose light/dark;
   switch between Chinese and English when required.
 - **Notices its own updates.** The footer quietly marks a newer stable Browser
@@ -89,7 +90,7 @@ the current desktop.
 | **Chromium** | Brave, Catsxp, Chrome, Edge, Helium, Thorium, Turbo, Ungoogled Chromium, Vivaldi |
 | **Firefox** | Firefox, Floorp, Iceweasel, LibreWolf, SkyKakapo, Zen |
 
-Chrome and Edge support Stable and Beta; Brave supports Stable and Beta; Firefox
+Chrome, Edge, Brave, and Catsxp support Stable and Beta; Firefox
 supports Stable, ESR, and Beta. Iceweasel supports ESR and Release. Thorium
 provides CPU-specific builds for SSE3, SSE4, AVX, AVX2, and AVX512.
 

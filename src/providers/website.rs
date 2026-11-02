@@ -36,9 +36,13 @@ pub async fn resolve_catsxp(
     channel: ReleaseChannel,
     cpu_build: CpuBuild,
 ) -> Result<ReleaseDescriptor, ProviderError> {
-    validate_stable_x64(channel, cpu_build)?;
+    if !matches!(channel, ReleaseChannel::Stable | ReleaseChannel::Beta)
+        || cpu_build != CpuBuild::X64
+    {
+        return Err(ProviderError::UnsupportedSelection);
+    }
     let html = http.get_text(CATSXP_HOME).await?;
-    let parsed = parse_catsxp(&html)?;
+    let parsed = parse_catsxp(&html, channel)?;
     Ok(ReleaseDescriptor {
         target: TargetId::Catsxp,
         version: parsed.version,
@@ -270,7 +274,12 @@ struct WebsiteArtifact {
     urls: Vec<String>,
 }
 
-fn parse_catsxp(html: &str) -> Result<WebsiteArtifact, ProviderError> {
+fn parse_catsxp(html: &str, channel: ReleaseChannel) -> Result<WebsiteArtifact, ProviderError> {
+    let prefix = match channel {
+        ReleaseChannel::Stable => "portable_x64_release_",
+        ReleaseChannel::Beta => "portable_x64_beta_",
+        _ => return Err(ProviderError::UnsupportedSelection),
+    };
     let encoded = Regex::new(r#"data-url="([A-Za-z0-9+/=]+)""#)
         .map_err(|error| ProviderError::Parse(error.to_string()))?;
     let mut urls = BTreeSet::new();
@@ -278,8 +287,18 @@ fn parse_catsxp(html: &str) -> Result<WebsiteArtifact, ProviderError> {
         let Some(decoded) = decode_catsxp_url(&capture[1]) else {
             continue;
         };
-        if decoded.contains("/catsxp_portable/win_x64/portable_x64_release_")
-            && decoded.ends_with(".zip")
+        let Ok(url) = Url::parse(&decoded) else {
+            continue;
+        };
+        let expected_path = format!("/catsxp_portable/win_x64/{prefix}");
+        if url.scheme() == "https"
+            && matches!(url.host_str(), Some("b2.catsxp.com" | "r2.catsxp.com"))
+            && url.username().is_empty()
+            && url.password().is_none()
+            && url.query().is_none()
+            && url.fragment().is_none()
+            && url.path().starts_with(&expected_path)
+            && url.path().ends_with(".zip")
         {
             urls.insert(decoded);
         }
@@ -295,10 +314,23 @@ fn parse_catsxp(html: &str) -> Result<WebsiteArtifact, ProviderError> {
         .ok_or(ProviderError::NoCompatibleAsset)?;
     let file_name = file_name_from_url(primary)?;
     let version = file_name
-        .strip_prefix("portable_x64_release_")
+        .strip_prefix(prefix)
         .and_then(|value| value.strip_suffix(".zip"))
         .map(|value| value.replace('_', "."))
         .ok_or(ProviderError::NoCompatibleAsset)?;
+    let parts = version.split('.').collect::<Vec<_>>();
+    let expected_parts = if channel == ReleaseChannel::Beta {
+        5
+    } else {
+        4
+    };
+    if parts.len() != expected_parts
+        || parts
+            .iter()
+            .any(|part| part.is_empty() || part.parse::<u32>().is_err())
+    {
+        return Err(ProviderError::NoCompatibleAsset);
+    }
     Ok(WebsiteArtifact {
         version,
         file_name,
@@ -494,9 +526,41 @@ mod tests {
             r#"<span class="version-value">156.0.8078.50</span><a data-url="{}">download</a>"#,
             encode_catsxp(url)
         );
-        let parsed = parse_catsxp(&html).unwrap();
+        let parsed = parse_catsxp(&html, crate::domain::release::ReleaseChannel::Stable).unwrap();
         assert_eq!(parsed.version, "156.6.10.4");
         assert_eq!(parsed.url, url);
+    }
+
+    #[test]
+    fn catsxp_beta_portable_keeps_the_beta_revision() {
+        let url =
+            "https://b2.catsxp.com/catsxp_portable/win_x64/portable_x64_beta_156_6_11_1_3.zip";
+        let html = format!(r#"<a data-url="{}">Beta</a>"#, encode_catsxp(url));
+        let parsed = parse_catsxp(&html, crate::domain::release::ReleaseChannel::Beta).unwrap();
+        assert_eq!(parsed.version, "156.6.11.1.3");
+        assert_eq!(parsed.url, url);
+    }
+
+    #[test]
+    fn catsxp_channels_do_not_select_each_others_packages_or_unofficial_hosts() {
+        use crate::domain::release::ReleaseChannel::{Beta, Stable};
+        let html = [
+            "https://b2.catsxp.com/catsxp_portable/win_x64/portable_x64_release_156_6_10_5.zip",
+            "https://r2.catsxp.com/catsxp_portable/win_x64/portable_x64_beta_156_6_11_1_3.zip",
+            "https://other.invalid/catsxp_portable/win_x64/portable_x64_beta_999_9_9_9_9.zip",
+        ]
+        .map(|url| format!(r#"<a data-url="{}">download</a>"#, encode_catsxp(url)))
+        .join("");
+        assert_eq!(parse_catsxp(&html, Stable).unwrap().version, "156.6.10.5");
+        assert_eq!(parse_catsxp(&html, Beta).unwrap().version, "156.6.11.1.3");
+        assert!(parse_catsxp(&html, crate::domain::release::ReleaseChannel::Esr).is_err());
+        let malformed = format!(
+            r#"<a data-url="{}">download</a>"#,
+            encode_catsxp(
+                "https://b2.catsxp.com/catsxp_portable/win_x64/portable_x64_beta_156_6_11_1.zip"
+            )
+        );
+        assert!(parse_catsxp(&malformed, Beta).is_err());
     }
 
     #[test]

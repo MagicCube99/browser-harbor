@@ -218,12 +218,13 @@ async fn refresh(
                     Ok(Some(descriptor)) => releases.push(descriptor),
                     Ok(None) => {}
                     Err(error) => {
+                        let reason = safe_refresh_error(error.as_ref());
                         if let Some(previous) = baseline.release(target, *channel, *cpu_build) {
                             if target == TargetId::Edge
                                 && previous.artifact.format == ArchiveFormat::Msi
                             {
                                 eprintln!(
-                                    "{} / {} / {} refresh failed; dropping stale MSI baseline: {error}",
+                                    "{} / {} / {} refresh failed; dropping stale MSI baseline: {reason}",
                                     target.display_name(),
                                     channel.display_name(),
                                     cpu_build.display_name()
@@ -231,14 +232,14 @@ async fn refresh(
                                 continue;
                             }
                             eprintln!(
-                                "{} / {} / {} refresh failed; keeping baseline: {error}",
+                                "{} / {} / {} refresh failed; keeping baseline: {reason}",
                                 target.display_name(),
                                 channel.display_name(),
                                 cpu_build.display_name()
                             );
                             releases.push(previous.clone());
                         } else {
-                            return Err(error);
+                            return Err(reason.into());
                         }
                     }
                 }
@@ -247,20 +248,26 @@ async fn refresh(
     }
 
     println!("Refreshing Chrome++");
-    let chrome_plus = ensure_chrome_plus_integrity(
-        resolve_chrome_plus(&http).await?,
-        &baseline,
-        &downloader,
-        &network,
-    )
+    let chrome_plus = refresh_component("Chrome++", baseline.chrome_plus.as_ref(), async {
+        ensure_chrome_plus_integrity(
+            resolve_chrome_plus(&http).await?,
+            &baseline,
+            &downloader,
+            &network,
+        )
+        .await
+    })
     .await?;
     println!("Refreshing Libportable");
-    let libportable = ensure_libportable_integrity(
-        resolve_libportable(&http).await?,
-        &baseline,
-        &downloader,
-        &network,
-    )
+    let libportable = refresh_component("Libportable", baseline.libportable.as_ref(), async {
+        ensure_libportable_integrity(
+            resolve_libportable(&http).await?,
+            &baseline,
+            &downloader,
+            &network,
+        )
+        .await
+    })
     .await?;
 
     let content_changed = releases != baseline.releases
@@ -291,6 +298,46 @@ async fn refresh(
     Ok(())
 }
 
+async fn refresh_component<T: Clone>(
+    name: &str,
+    previous: Option<&T>,
+    refresh: impl std::future::Future<Output = Result<T, Box<dyn std::error::Error>>>,
+) -> Result<T, Box<dyn std::error::Error>> {
+    match refresh.await {
+        Ok(component) => {
+            println!("{name} refresh succeeded");
+            Ok(component)
+        }
+        Err(error) => {
+            let reason = safe_refresh_error(error.as_ref());
+            match previous {
+                Some(previous) => {
+                    eprintln!("{name} refresh failed; keeping verified baseline: {reason}");
+                    Ok(previous.clone())
+                }
+                None => Err(
+                    format!("{name} refresh failed without a verified baseline: {reason}").into(),
+                ),
+            }
+        }
+    }
+}
+
+fn safe_refresh_error(error: &dyn std::error::Error) -> String {
+    error
+        .to_string()
+        .split_whitespace()
+        .map(|part| {
+            if part.contains("://") {
+                "[URL redacted]"
+            } else {
+                part
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
 async fn resolve_target(
     provider: &ProviderResolver,
     target: TargetId,
@@ -303,10 +350,11 @@ async fn resolve_target(
             Ok(descriptor) => return Ok(descriptor),
             Err(error) => {
                 eprintln!(
-                    "{} {} {} attempt {attempt} failed: {error}",
+                    "{} {} {} attempt {attempt} failed: {}",
                     target.display_name(),
                     channel.display_name(),
-                    cpu_build.display_name()
+                    cpu_build.display_name(),
+                    safe_refresh_error(&error)
                 );
                 last_error = Some(error);
                 if attempt < 2 {
@@ -321,7 +369,7 @@ async fn resolve_target(
         channel.display_name(),
         cpu_build.display_name(),
         last_error
-            .map(|error| error.to_string())
+            .map(|error| safe_refresh_error(&error))
             .unwrap_or_else(|| "unknown error".to_owned())
     )
     .into())
@@ -335,7 +383,10 @@ async fn resolve_chrome_plus(
         match runtime::chromeplus::resolve_latest(http).await {
             Ok(release) => return Ok(release),
             Err(error) => {
-                eprintln!("Chrome++ attempt {attempt} failed: {error}");
+                eprintln!(
+                    "Chrome++ attempt {attempt} failed: {}",
+                    safe_refresh_error(&error)
+                );
                 last_error = Some(error);
                 if attempt < 2 {
                     tokio::time::sleep(std::time::Duration::from_secs(2)).await;
@@ -346,7 +397,7 @@ async fn resolve_chrome_plus(
     Err(format!(
         "Chrome++ refresh failed: {}",
         last_error
-            .map(|error| error.to_string())
+            .map(|error| safe_refresh_error(&error))
             .unwrap_or_else(|| "unknown error".to_owned())
     )
     .into())
@@ -360,7 +411,10 @@ async fn resolve_libportable(
         match runtime::libportable::resolve_latest(http).await {
             Ok(release) => return Ok(release),
             Err(error) => {
-                eprintln!("Libportable attempt {attempt} failed: {error}");
+                eprintln!(
+                    "Libportable attempt {attempt} failed: {}",
+                    safe_refresh_error(&error)
+                );
                 last_error = Some(error);
                 if attempt < 2 {
                     tokio::time::sleep(std::time::Duration::from_secs(2)).await;
@@ -371,7 +425,7 @@ async fn resolve_libportable(
     Err(format!(
         "Libportable refresh failed: {}",
         last_error
-            .map(|error| error.to_string())
+            .map(|error| safe_refresh_error(&error))
             .unwrap_or_else(|| "unknown error".to_owned())
     )
     .into())
@@ -397,6 +451,10 @@ async fn ensure_release_integrity(
         return Ok(None);
     }
     if descriptor.artifact.integrity.is_some() {
+        baseline.complete_release_size(&mut descriptor);
+        if let Ok(embedded) = TrustedMetadata::load_embedded() {
+            embedded.complete_release_size(&mut descriptor);
+        }
         return Ok(Some(descriptor));
     }
     if let Some(previous) =
@@ -406,6 +464,10 @@ async fn ensure_release_integrity(
         && previous.artifact.integrity.is_some()
     {
         descriptor.artifact.integrity = previous.artifact.integrity.clone();
+        baseline.complete_release_size(&mut descriptor);
+        if let Ok(embedded) = TrustedMetadata::load_embedded() {
+            embedded.complete_release_size(&mut descriptor);
+        }
         return Ok(Some(descriptor));
     }
     println!(
@@ -551,11 +613,98 @@ impl Drop for TempDirectory {
 
 #[cfg(test)]
 mod tests {
+    #[tokio::test]
+    async fn refreshing_an_unchanged_release_keeps_its_trusted_size() {
+        let mut baseline =
+            browser_harbor::services::trusted_metadata::TrustedMetadata::load_embedded().unwrap();
+        baseline.releases[0].artifact.size = Some(123);
+        let network = browser_harbor::domain::settings::NetworkSettings::default();
+        let work = tempfile::tempdir().unwrap();
+        let downloader = browser_harbor::services::download::Downloader::new(
+            reqwest::Client::new(),
+            work.path().to_path_buf(),
+            std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
+        );
+        for without_digest in [false, true] {
+            let mut release = baseline.releases[0].clone();
+            release.artifact.size = None;
+            if without_digest {
+                release.artifact.integrity = None;
+            }
+            let refreshed =
+                super::ensure_release_integrity(release, &baseline, &downloader, &network)
+                    .await
+                    .unwrap()
+                    .unwrap();
+            assert_eq!(refreshed.artifact.size, Some(123));
+        }
+    }
     use std::{fs, thread};
 
     use sha2::{Digest, Sha256};
 
-    use super::sha256_file;
+    use super::{refresh_component, sha256_file};
+
+    #[tokio::test]
+    async fn failed_runtime_refresh_keeps_verified_baseline_and_allows_other_successes() {
+        let baseline = super::verify_with_public_key(
+            include_bytes!("../../assets/trusted-metadata.json"),
+            include_str!("../../assets/trusted-metadata.sig"),
+            include_str!("../../assets/metadata-public-key.hex"),
+        )
+        .unwrap();
+        let previous_chrome = baseline.chrome_plus.as_ref().unwrap();
+        let previous_libportable = baseline.libportable.as_ref().unwrap();
+        let mut new_libportable = previous_libportable.clone();
+        new_libportable.version = "new-libportable".to_owned();
+
+        let chrome = refresh_component("Chrome++", Some(previous_chrome), async {
+            tokio::task::yield_now().await;
+            Err("Chrome++ API unavailable".into())
+        })
+        .await
+        .unwrap();
+        let libportable = refresh_component("Libportable", Some(previous_libportable), async {
+            Ok(new_libportable)
+        })
+        .await
+        .unwrap();
+        assert_eq!(&chrome, previous_chrome);
+        assert_eq!(libportable.version, "new-libportable");
+
+        let mut new_chrome = chrome.clone();
+        new_chrome.version = "new-chrome-plus".to_owned();
+        let chrome = refresh_component("Chrome++", Some(previous_chrome), async { Ok(new_chrome) })
+            .await
+            .unwrap();
+        let libportable = refresh_component("Libportable", Some(previous_libportable), async {
+            tokio::task::yield_now().await;
+            Err("Libportable artifact unavailable".into())
+        })
+        .await
+        .unwrap();
+        assert_eq!(chrome.version, "new-chrome-plus");
+        assert_eq!(&libportable, previous_libportable);
+    }
+
+    #[tokio::test]
+    async fn failed_runtime_without_baseline_reports_the_component() {
+        let error = refresh_component::<String>("Chrome++", None, async {
+            Err(
+                "API unavailable https://user:password@example.com/archive?token=secret#private"
+                    .into(),
+            )
+        })
+        .await
+        .unwrap_err()
+        .to_string();
+        assert!(error.contains("Chrome++"));
+        assert!(error.contains("baseline"));
+        assert!(error.contains("API unavailable"));
+        assert!(!error.contains("password"));
+        assert!(!error.contains("secret"));
+        assert!(!error.contains("private"));
+    }
 
     #[test]
     fn hashing_large_artifacts_does_not_require_a_large_stack() {

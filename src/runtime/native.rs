@@ -215,11 +215,12 @@ fn configure_catsxp(
     } else {
         "--disable-catsxp-update\r\n--disable-encryption\r\n".to_owned()
     };
+    // Catsxp reads one argument per line; outer quotes become literal path characters.
     let updated = update_flat_arguments(
         &template,
         &[
-            ("--user-data-dir", &quote_argument(data_dir)),
-            ("--disk-cache-dir", &quote_argument(cache_dir)),
+            ("--user-data-dir", &data_dir.to_string_lossy()),
+            ("--disk-cache-dir", &cache_dir.to_string_lossy()),
         ],
     );
     fs::write(&target, updated).map_err(|source| io_error(&target, source))
@@ -315,10 +316,6 @@ fn update_flat_arguments(input: &str, updates: &[(&str, &str)]) -> String {
     let mut result = lines.join(newline);
     result.push_str(newline);
     result
-}
-
-fn quote_argument(path: &Path) -> String {
-    format!("\"{}\"", path.display())
 }
 
 fn configure_vivaldi(program_dir: &Path) -> Result<(), RuntimeError> {
@@ -545,6 +542,74 @@ mod tests {
                 Path::new(r"D:\Shared\SkyKakapo Data"),
             ),
             r"..\..\..\Shared\SkyKakapo Data"
+        );
+    }
+
+    #[test]
+    fn catsxp_startup_path_values_are_literal_even_with_spaces_and_unicode() {
+        for (data, cache) in [
+            (
+                r"D:\Tools\Browser\Catsxp\Profiles",
+                r"D:\Tools\Browser\Catsxp\Profiles\Cache",
+            ),
+            (
+                r"D:\Browser Tools\Catsxp\User Data",
+                r"D:\Browser Tools\Catsxp\Cache Files",
+            ),
+            (r"D:\浏览器\猫眼\用户数据", r"D:\浏览器\猫眼\缓存目录"),
+        ] {
+            let directory = tempdir().unwrap();
+            let staging = directory.path().join("App");
+            fs::create_dir(&staging).unwrap();
+            fs::write(staging.join("StartupParm.txt"), "--user-data-dir=./User Data\n--disk-cache-dir=./Cache\n#--dark-mode=dark\n--disable-catsxp-update\n").unwrap();
+            configure_native_package(
+                &staging,
+                &directory.path().join("missing"),
+                TargetId::Catsxp,
+                Path::new(data),
+                Some(Path::new(cache)),
+            )
+            .unwrap();
+            let startup = fs::read_to_string(staging.join("StartupParm.txt")).unwrap();
+            let data_value = startup
+                .lines()
+                .find_map(|line| line.strip_prefix("--user-data-dir="))
+                .unwrap();
+            let cache_value = startup
+                .lines()
+                .find_map(|line| line.strip_prefix("--disk-cache-dir="))
+                .unwrap();
+            assert_eq!(data_value, data);
+            assert_eq!(cache_value, cache);
+            assert!(startup.contains("#--dark-mode=dark\n--disable-catsxp-update\n"));
+        }
+    }
+
+    #[test]
+    fn catsxp_update_corrects_old_quoted_paths_and_preserves_user_arguments() {
+        let directory = tempdir().unwrap();
+        let staging = directory.path().join("App");
+        let existing = directory.path().join("old-app");
+        fs::create_dir(&staging).unwrap();
+        fs::create_dir(&existing).unwrap();
+        let original = "--user-data-dir=\"D:\\Old Browser\\Profiles\"\r\n--disk-cache-dir=\"D:\\Old Browser\\Cache\"\r\n# user comment\r\n--custom-user-flag\r\n";
+        fs::write(existing.join("StartupParm.txt"), original).unwrap();
+        configure_native_package(
+            &staging,
+            &existing,
+            TargetId::Catsxp,
+            Path::new(r"D:\Browser Tools\Profiles"),
+            Some(Path::new(r"D:\Browser Tools\Cache")),
+        )
+        .unwrap();
+        let startup = fs::read_to_string(staging.join("StartupParm.txt")).unwrap();
+        assert_eq!(
+            startup,
+            "--user-data-dir=D:\\Browser Tools\\Profiles\r\n--disk-cache-dir=D:\\Browser Tools\\Cache\r\n# user comment\r\n--custom-user-flag\r\n"
+        );
+        assert_eq!(
+            fs::read_to_string(existing.join("StartupParm.txt")).unwrap(),
+            original
         );
     }
 

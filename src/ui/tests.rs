@@ -523,6 +523,7 @@ fn beta_channels_are_exposed_for_selected_targets() {
 
     for target in [
         TargetId::Brave,
+        TargetId::Catsxp,
         TargetId::Chrome,
         TargetId::Edge,
         TargetId::Firefox,
@@ -570,6 +571,11 @@ fn beta_channels_are_exposed_for_selected_targets() {
 #[test]
 fn overview_uses_inline_metadata_and_action_rows() {
     let mut harness = harness();
+    harness
+        .state_mut()
+        .state
+        .update_draft(|settings| settings.show_local_package = true);
+    harness.state_mut().state.save().unwrap();
     harness.run();
 
     let y = |label: &str| harness.get_by_label(label).rect().center().y;
@@ -589,7 +595,7 @@ fn overview_uses_inline_metadata_and_action_rows() {
 
     let check = harness.get_by_label("检查更新").rect();
     let install = harness.get_by_label("下载并安装").rect();
-    let local = harness.get_by_label("选择本地安装包").rect();
+    let local = harness.get_by_label("选择当前版本包").rect();
     assert!((check.center().y - install.center().y).abs() < 1.0);
     assert!((install.center().y - local.center().y).abs() < 1.0);
     assert!(check.max.x < install.min.x && install.max.x < local.min.x);
@@ -724,17 +730,327 @@ fn footer_truncates_long_status_before_right_controls() {
 }
 
 #[test]
-fn local_package_has_an_explicit_action() {
+fn local_package_is_hidden_until_advanced_setting_is_enabled() {
     let mut harness = harness();
     harness.run();
 
-    harness.get_by_label("选择本地安装包");
+    assert!(harness.query_by_label("选择当前版本包").is_none());
+}
+
+#[test]
+fn advanced_local_package_toggle_persists_and_clears_every_selection_without_deleting_files() {
+    for language in [Language::Chinese, Language::English] {
+        let directory = tempdir().unwrap();
+        let package = directory.path().join("official-package.exe");
+        fs::write(&package, b"official fixture").unwrap();
+        let settings = Settings {
+            language,
+            show_local_package: true,
+            ..Settings::default()
+        };
+        let json = directory.path().join("BrowserHarbor.json");
+        let mut state = AppState::new(settings, ConfigStore::new(json.clone()));
+        state.update_draft(|settings| {
+            for config in settings.targets.values_mut() {
+                config.local_package = Some(package.clone());
+            }
+        });
+        state.save().unwrap();
+        let mut app = BrowserHarborApp::new(state);
+        app.active_tab = DetailTab::Network;
+        let mut harness = harness_for(app);
+        harness.run();
+        let (advanced, toggle) = if language.is_english() {
+            ("Advanced", "Use a local package instead of downloading")
+        } else {
+            ("高级", "使用本地包替代下载")
+        };
+        harness.get_by_label(advanced).click();
+        harness.run();
+        harness.get_by_label(toggle).scroll_to_me();
+        harness.run();
+        assert!(
+            harness.get_by_label(toggle).rect().max.y < 390.0,
+            "advanced toggle must be visible after scrolling: {:?}",
+            harness.get_by_label(toggle).rect()
+        );
+        harness.get_by_label(toggle).click();
+        harness.run();
+        let loaded = ConfigStore::new(json).load().unwrap();
+        assert!(!loaded.show_local_package);
+        assert!(
+            loaded
+                .targets
+                .values()
+                .all(|config| config.local_package.is_none())
+        );
+        assert_eq!(fs::read(&package).unwrap(), b"official fixture");
+        assert!(
+            harness
+                .state()
+                .state
+                .draft()
+                .targets
+                .values()
+                .all(|config| config.local_package.is_none())
+        );
+    }
+}
+
+#[test]
+fn disabled_local_package_ignores_legacy_selection() {
+    let directory = tempdir().unwrap();
+    let mut settings = Settings::default();
+    let package = directory.path().join("must-not-be-used.exe");
+    let config = settings.targets.get_mut(&TargetId::Firefox).unwrap();
+    config.local_package = Some(package);
+    let input = config.clone();
+    let state = AppState::new(
+        settings,
+        ConfigStore::new(directory.path().join("BrowserHarbor.json")),
+    );
+    assert!(
+        state
+            .resolve_operation_paths(input)
+            .unwrap()
+            .local_package
+            .is_none()
+    );
+    let mut harness = harness_for(BrowserHarborApp::new(state));
+    harness.run();
+    harness.get_by_label("下载并安装");
+    assert!(harness.query_by_label("使用本地包安装").is_none());
+    assert!(harness.query_by_label("更换当前版本包").is_none());
+}
+
+fn app_with_operation_receiver(
+    directory: &tempfile::TempDir,
+    receiver: std::sync::mpsc::Receiver<crate::app::operation::OperationEvent>,
+) -> BrowserHarborApp {
+    use crate::app::operation::{
+        OperationMode, OperationPhase, StartOperationRequest, start_operation,
+    };
+    let settings = Settings::default();
+    let mut network = settings.network.clone();
+    network.proxy = Some("http://[".to_owned());
+    // Invalid proxy fails before any network I/O; replace only the event receiver.
+    let mut operation = start_operation(StartOperationRequest {
+        channel_change_confirmed: false,
+        target: TargetId::Firefox,
+        mode: OperationMode::Check,
+        target_config: settings.targets[&TargetId::Firefox].clone(),
+        network,
+        cache_dir: directory.path().join("cache"),
+        current_version: None,
+        chrome_plus_expected_version: None,
+        replace_same_version: false,
+        allow_local_package: false,
+        cached_release: None,
+    });
+    operation.receiver = receiver;
+    let state = AppState::new(
+        settings,
+        ConfigStore::new(directory.path().join("BrowserHarbor.json")),
+    );
+    let mut app = BrowserHarborApp::new(state);
+    app.operation = Some(operation);
+    app.operation_phase = Some(OperationPhase::Preparing);
+    app
+}
+
+#[test]
+fn disconnected_worker_releases_busy_state_and_reports_failure() {
+    let directory = tempdir().unwrap();
+    let (sender, receiver) = std::sync::mpsc::channel();
+    drop(sender);
+    let mut harness = harness_for(app_with_operation_receiver(&directory, receiver));
+    harness.run();
+    assert!(harness.state().operation.is_none());
+    assert!(matches!(
+        harness.state().operation_phase,
+        Some(crate::app::operation::OperationPhase::Failed { .. })
+    ));
+    assert!(
+        !harness
+            .get_by_label("下载并安装")
+            .accesskit_node()
+            .is_disabled()
+    );
+}
+
+#[test]
+fn terminal_event_then_disconnect_preserves_terminal_result() {
+    use crate::app::operation::{OperationEvent, OperationPhase};
+    let directory = tempdir().unwrap();
+    let (sender, receiver) = std::sync::mpsc::channel();
+    sender
+        .send(OperationEvent {
+            target: TargetId::Firefox,
+            phase: OperationPhase::Cancelled,
+        })
+        .unwrap();
+    drop(sender);
+    let mut harness = harness_for(app_with_operation_receiver(&directory, receiver));
+    harness.run();
+    assert!(harness.state().operation.is_none());
+    assert_eq!(
+        harness.state().operation_phase,
+        Some(OperationPhase::Cancelled)
+    );
+}
+
+#[test]
+fn close_during_operation_waits_for_terminal_event() {
+    use crate::app::operation::{OperationEvent, OperationPhase};
+    use eframe::egui::{ViewportCommand, ViewportEvent, ViewportId};
+    let directory = tempdir().unwrap();
+    let (sender, receiver) = std::sync::mpsc::channel();
+    let mut harness = harness_for(app_with_operation_receiver(&directory, receiver));
+    harness
+        .input_mut()
+        .viewports
+        .get_mut(&ViewportId::ROOT)
+        .unwrap()
+        .events
+        .push(ViewportEvent::Close);
+    harness.step();
+    assert!(harness.state().operation.is_some());
+    assert!(
+        harness.output().viewport_output[&ViewportId::ROOT]
+            .commands
+            .contains(&ViewportCommand::CancelClose)
+    );
+    sender
+        .send(OperationEvent {
+            target: TargetId::Firefox,
+            phase: OperationPhase::Cancelled,
+        })
+        .unwrap();
+    harness.step();
+    assert!(
+        harness.output().viewport_output[&ViewportId::ROOT]
+            .commands
+            .contains(&ViewportCommand::Close)
+    );
+}
+
+#[test]
+fn downgrade_requires_explicit_confirmation_before_starting_worker() {
+    let (_directory, mut harness) = firefox_harness_with_versions("160.0", "156.0");
+    harness.run();
+    harness.get_by_label("下载上游版本").click();
+    harness.run();
+    assert!(harness.state().operation.is_none());
+    harness.get_by_label("确认降级浏览器");
+    harness.get_by_label("保留当前版本").click();
+    harness.run();
+    assert!(harness.state().operation.is_none());
+}
+
+#[test]
+fn channel_confirmation_cannot_skip_downgrade_confirmation() {
+    let (_directory, mut harness) = firefox_harness_with_versions("160.0", "156.0");
+    harness
+        .state_mut()
+        .start_operation(crate::app::operation::OperationMode::Install, false);
+    assert!(harness.state().operation.is_none());
+    assert!(harness.state().same_version_prompt.is_some());
+}
+
+#[test]
+fn chromeplus_ini_failure_keeps_manager_saved_state_and_pending_draft() {
+    use std::os::windows::fs::OpenOptionsExt;
+
+    let directory = tempdir().unwrap();
+    let browser = directory.path().join("Chrome");
+    let program = browser.join("App");
+    fs::create_dir_all(&program).unwrap();
+    fs::copy(std::env::current_exe().unwrap(), program.join("chrome.exe")).unwrap();
+    let ini = program.join("chrome++.ini");
+    write_ini(&ini, "[general]\r\ncommand_line=\r\n", IniEncoding::Utf16Le).unwrap();
+    let mut settings = Settings {
+        selected_browser: TargetId::Chrome,
+        ..Settings::default()
+    };
+    let config = settings.targets.get_mut(&TargetId::Chrome).unwrap();
+    config.browser_root = Some(browser);
+    config.browser_directory = Some(program);
+    let json = directory.path().join("BrowserHarbor.json");
+    let state = AppState::new(settings, ConfigStore::new(json.clone()));
+    let mut harness = harness_for(BrowserHarborApp::new(state));
+    harness.run();
+    harness.get_by_label("Chrome++").click();
+    harness.run();
+    let saved = harness.state().state.saved().clone();
+    let old_ini = fs::read(&ini).unwrap();
+    let lock = fs::OpenOptions::new()
+        .read(true)
+        .share_mode(1)
+        .open(&ini)
+        .unwrap();
+    harness
+        .get_by_role_and_label(Role::TextInput, "附加参数")
+        .set_text_value_accesskit("--pending-retry");
+    harness.run();
+    assert_eq!(harness.state().state.saved(), &saved);
+    assert_ne!(harness.state().state.draft(), harness.state().state.saved());
+    assert_eq!(fs::read(&ini).unwrap(), old_ini);
+    assert_eq!(ConfigStore::new(json).load().unwrap(), saved);
+    drop(lock);
+    harness.get_by_label("重试应用 Chrome++ 配置").click();
+    harness.run();
+    assert_eq!(harness.state().state.draft(), harness.state().state.saved());
+    assert!(read_ini(&ini).unwrap().0.contains("--pending-retry"));
+}
+
+#[test]
+fn chromeplus_json_failure_restores_original_ini_and_can_retry() {
+    let directory = tempdir().unwrap();
+    let browser = directory.path().join("Chrome");
+    let program = browser.join("App");
+    fs::create_dir_all(&program).unwrap();
+    fs::copy(std::env::current_exe().unwrap(), program.join("chrome.exe")).unwrap();
+    let ini = program.join("chrome++.ini");
+    write_ini(&ini, "[general]\r\ncommand_line=\r\n", IniEncoding::Utf16Le).unwrap();
+    let mut settings = Settings {
+        selected_browser: TargetId::Chrome,
+        ..Settings::default()
+    };
+    let config = settings.targets.get_mut(&TargetId::Chrome).unwrap();
+    config.browser_root = Some(browser);
+    config.browser_directory = Some(program);
+    let json = directory.path().join("BrowserHarbor.json");
+    let state = AppState::new(settings, ConfigStore::new(json.clone()));
+    let mut harness = harness_for(BrowserHarborApp::new(state));
+    harness.run();
+    harness.get_by_label("Chrome++").click();
+    harness.run();
+    let saved = harness.state().state.saved().clone();
+    let old_ini = fs::read(&ini).unwrap();
+    let blocked = directory.path().join("BrowserHarbor.json.tmp");
+    fs::create_dir(&blocked).unwrap();
+    harness
+        .get_by_role_and_label(Role::TextInput, "附加参数")
+        .set_text_value_accesskit("--json-retry");
+    harness.run();
+    assert_eq!(harness.state().state.saved(), &saved);
+    assert_ne!(harness.state().state.draft(), harness.state().state.saved());
+    assert_eq!(fs::read(&ini).unwrap(), old_ini);
+    assert_eq!(ConfigStore::new(json).load().unwrap(), saved);
+    fs::remove_dir(blocked).unwrap();
+    harness.get_by_label("重试应用 Chrome++ 配置").click();
+    harness.run();
+    assert!(read_ini(&ini).unwrap().0.contains("--json-retry"));
+    assert_eq!(harness.state().state.draft(), harness.state().state.saved());
 }
 
 #[test]
 fn selected_local_package_changes_action_names() {
     let directory = tempdir().unwrap();
-    let mut settings = Settings::default();
+    let mut settings = Settings {
+        show_local_package: true,
+        ..Settings::default()
+    };
     settings
         .targets
         .get_mut(&TargetId::Firefox)
@@ -747,9 +1063,9 @@ fn selected_local_package_changes_action_names() {
     let mut harness = harness_for(BrowserHarborApp::new(state));
     harness.run();
 
-    harness.get_by_label("更换本地安装包");
+    harness.get_by_label("更换当前版本包");
     harness.get_by_label("使用本地包安装");
-    assert!(harness.query_by_label("选择本地安装包").is_none());
+    assert!(harness.query_by_label("选择当前版本包").is_none());
     assert!(harness.query_by_label("下载并安装").is_none());
 }
 
@@ -2107,6 +2423,62 @@ fn malformed_config_is_visible_and_autosave_is_blocked() {
 }
 
 #[test]
+fn malformed_config_rebuild_requires_confirmation_and_preserves_original_and_profile() {
+    let directory = tempdir().unwrap();
+    let path = directory.path().join("BrowserHarbor.json");
+    fs::write(&path, b"{broken").unwrap();
+    let profile = directory.path().join("Profile");
+    fs::create_dir(&profile).unwrap();
+    fs::write(profile.join("marker"), b"user-data").unwrap();
+    let store = ConfigStore::new(path.clone());
+    let error = store.load().unwrap_err().to_string();
+    let state = AppState::new(Settings::default(), store);
+    let mut harness = harness_for(BrowserHarborApp::with_startup_error(state, error));
+    harness.run();
+    harness.get_by_label("备份后重建管理器配置").click();
+    harness.run();
+    assert_eq!(fs::read(&path).unwrap(), b"{broken");
+    harness.get_by_label("确认备份并重建").click();
+    harness.run();
+    assert!(harness.state().startup_error.is_none());
+    assert_eq!(ConfigStore::new(path).load().unwrap(), Settings::default());
+    assert!(
+        fs::read_dir(directory.path())
+            .unwrap()
+            .flatten()
+            .any(|entry| {
+                entry
+                    .file_name()
+                    .to_string_lossy()
+                    .starts_with("BrowserHarbor.json.backup-")
+                    && fs::read(entry.path()).unwrap() == b"{broken"
+            })
+    );
+    assert_eq!(fs::read(profile.join("marker")).unwrap(), b"user-data");
+}
+
+#[test]
+fn failed_config_rebuild_keeps_error_original_and_backup() {
+    let directory = tempdir().unwrap();
+    let path = directory.path().join("BrowserHarbor.json");
+    fs::write(&path, b"{broken").unwrap();
+    fs::create_dir(directory.path().join("BrowserHarbor.json.tmp")).unwrap();
+    let state = AppState::new(Settings::default(), ConfigStore::new(path.clone()));
+    let mut harness = harness_for(BrowserHarborApp::with_startup_error(state, "broken config"));
+    harness.run();
+    harness.get_by_label("备份后重建管理器配置").click();
+    harness.run();
+    harness.get_by_label("确认备份并重建").click();
+    harness.run();
+    assert!(harness.state().startup_error.is_some());
+    assert_eq!(fs::read(&path).unwrap(), b"{broken");
+    assert_eq!(
+        fs::read(directory.path().join("BrowserHarbor.json.backup-1.json")).unwrap(),
+        b"{broken"
+    );
+}
+
+#[test]
 fn theme_choice_is_saved_immediately() {
     let mut harness = harness();
     harness.run();
@@ -2290,4 +2662,32 @@ fn global_settings_switch_shows_permission_guidance_when_access_denied() {
     harness.run();
 
     harness.get_by_label_contains("当前目录受系统权限保护");
+}
+#[test]
+fn catsxp_identity_observation_keeps_metadata_checks_cancelable() {
+    use crate::app::operation::OperationPhase;
+    assert!(super::operation_cancelable(
+        &OperationPhase::CatsxpIdentified { observation: None }
+    ));
+    assert!(!OperationPhase::CatsxpIdentified { observation: None }.is_terminal());
+    assert!(
+        OperationPhase::ChannelMismatch {
+            current_version: "156.6.11.1.3".into(),
+            current_channel: ReleaseChannel::Beta
+        }
+        .is_terminal()
+    );
+}
+
+#[test]
+fn catsxp_downgrade_does_not_claim_an_equal_base_version() {
+    let mut harness = harness();
+    harness.state_mut().state.select(TargetId::Catsxp);
+    harness.state_mut().same_version_prompt = Some(super::SameVersionPrompt {
+        current_version: "156.6.12.1".into(),
+        upstream: UpstreamCheck::fresh("156.6.11.1.3".into(), ReleaseChannel::Beta, CpuBuild::X64),
+    });
+    harness.run();
+    harness.get_by_label("确认降级浏览器");
+    assert!(harness.query_by_label("当前 EXE 的基础版本相同，但无法确认渠道或 Beta 修订。继续将安装当前选择的渠道和修订。").is_none());
 }

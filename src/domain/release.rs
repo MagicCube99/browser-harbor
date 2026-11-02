@@ -27,6 +27,15 @@ pub enum ReleaseChannel {
     Beta,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CatsxpBuildIdentity {
+    pub version: String,
+    pub channel: ReleaseChannel,
+    pub executable_sha256: String,
+    pub core_sha256: String,
+}
+
 impl ReleaseChannel {
     pub const fn display_name(self) -> &'static str {
         match self {

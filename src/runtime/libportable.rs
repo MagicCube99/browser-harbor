@@ -1,15 +1,8 @@
-use std::{
-    fs,
-    os::windows::process::CommandExt,
-    path::Path,
-    process::{Command, Stdio},
-    thread,
-    time::{Duration, Instant},
-};
+use std::{fs, path::Path, process::Command};
 
 use serde::Deserialize;
 
-use super::{RuntimeError, download_artifact, io_error};
+use super::{RuntimeError, download_artifact, helper::run_helper, io_error};
 use crate::{
     domain::{runtime::LibportableRelease, target::TargetId},
     infra::ini::{IniUpdate, update_ini},
@@ -17,7 +10,6 @@ use crate::{
 };
 
 const LIBPORTABLE_LATEST: &str = "https://api.github.com/repos/adonais/libportable/releases/latest";
-const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 
 #[derive(Debug, Deserialize)]
 struct GitHubRelease {
@@ -90,7 +82,11 @@ pub fn prepare(request: LibportablePrepareRequest<'_>) -> Result<(), RuntimeErro
     fs::copy(&portable_dll, &target_dll).map_err(|source| io_error(&target_dll, source))?;
     fs::copy(&upcheck, &target_helper).map_err(|source| io_error(&target_helper, source))?;
 
-    let helper_result = run_helper(&target_helper, request.staging_program);
+    let helper_result = run_helper(
+        Command::new(&target_helper)
+            .arg("-dll")
+            .current_dir(request.staging_program),
+    );
     if let Err(error) = helper_result {
         let _ = fs::write(&mozglue, original);
         return Err(error);
@@ -138,37 +134,6 @@ pub fn is_compatible(product: TargetId, version: &str) -> bool {
         TargetId::Floorp => (11..=14).contains(&major),
         TargetId::Zen => major == 1 && (0..=40).contains(&minor),
         _ => false,
-    }
-}
-
-fn run_helper(helper: &Path, working_directory: &Path) -> Result<(), RuntimeError> {
-    let mut child = Command::new(helper)
-        .arg("-dll")
-        .current_dir(working_directory)
-        .stdin(Stdio::null())
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .creation_flags(CREATE_NO_WINDOW)
-        .spawn()
-        .map_err(|source| io_error(helper, source))?;
-    let deadline = Instant::now() + Duration::from_secs(45);
-    loop {
-        if let Some(status) = child
-            .try_wait()
-            .map_err(|source| io_error(helper, source))?
-        {
-            return if status.success() {
-                Ok(())
-            } else {
-                Err(RuntimeError::HelperFailed(status.code().unwrap_or(-1)))
-            };
-        }
-        if Instant::now() >= deadline {
-            let _ = child.kill();
-            let _ = child.wait();
-            return Err(RuntimeError::HelperTimeout);
-        }
-        thread::sleep(Duration::from_millis(100));
     }
 }
 

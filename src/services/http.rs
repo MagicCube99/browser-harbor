@@ -1,6 +1,13 @@
 //! Safe HTTP metadata and artifact transport.
 
-use std::{collections::HashSet, sync::Arc, time::Duration};
+use std::{
+    collections::HashSet,
+    sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering},
+    },
+    time::Duration,
+};
 
 use reqwest::{Client, Response, Url};
 use serde::de::DeserializeOwned;
@@ -12,6 +19,7 @@ use crate::domain::{
 };
 
 const MAX_METADATA_BYTES: usize = 16 * 1024 * 1024;
+const METADATA_RESOLUTION_BUDGET: Duration = Duration::from_secs(30);
 const USER_AGENT: &str = concat!("BrowserHarbor/", env!("CARGO_PKG_VERSION"), " Windows");
 const BUILTIN_ACCELERATORS: &[&str] = &[
     "https://ghfast.top/",
@@ -20,12 +28,20 @@ const BUILTIN_ACCELERATORS: &[&str] = &[
     "https://github.akams.cn/",
 ];
 
+pub(crate) async fn wait_for_cancellation(cancellation: &AtomicBool) {
+    while !cancellation.load(Ordering::Relaxed) {
+        tokio::time::sleep(Duration::from_millis(25)).await;
+    }
+}
+
 #[derive(Clone)]
 pub struct HttpClient {
     direct: Client,
     fallback: Client,
     direct_hosts: Arc<HashSet<String>>,
     github_token: Option<String>,
+    cancellation: Option<Arc<AtomicBool>>,
+    resolution_deadline: Option<tokio::time::Instant>,
 }
 
 impl HttpClient {
@@ -39,6 +55,8 @@ impl HttpClient {
             github_token: std::env::var("GITHUB_TOKEN")
                 .ok()
                 .filter(|token| !token.trim().is_empty()),
+            cancellation: None,
+            resolution_deadline: None,
         })
     }
 
@@ -62,6 +80,41 @@ impl HttpClient {
         &self.fallback
     }
 
+    pub fn with_operation(mut self, cancellation: Arc<AtomicBool>) -> Self {
+        self.cancellation = Some(cancellation);
+        self.renew_resolution_budget()
+    }
+
+    pub fn renew_resolution_budget(&self) -> Self {
+        let mut client = self.clone();
+        client.resolution_deadline = Some(tokio::time::Instant::now() + METADATA_RESOLUTION_BUDGET);
+        client
+    }
+
+    async fn wait<T>(
+        &self,
+        request: impl std::future::Future<Output = Result<T, ServiceError>>,
+    ) -> Result<T, ServiceError> {
+        tokio::select! {
+            biased;
+            _ = async {
+                if let Some(cancellation) = &self.cancellation {
+                    wait_for_cancellation(cancellation).await;
+                } else {
+                    std::future::pending::<()>().await;
+                }
+            } => Err(ServiceError::Cancelled),
+            _ = async {
+                if let Some(deadline) = self.resolution_deadline {
+                    tokio::time::sleep_until(deadline).await;
+                } else {
+                    std::future::pending::<()>().await;
+                }
+            } => Err(ServiceError::ResolutionTimedOut),
+            result = request => result,
+        }
+    }
+
     pub async fn get_text(&self, url: &str) -> Result<String, ServiceError> {
         let bytes = self.get_bytes(url).await?;
         String::from_utf8(bytes).map_err(|_| ServiceError::InvalidUrl)
@@ -80,6 +133,9 @@ impl HttpClient {
         for url in urls {
             match self.get_json(url).await {
                 Ok(value) => return Ok(value),
+                Err(error @ (ServiceError::Cancelled | ServiceError::ResolutionTimedOut)) => {
+                    return Err(error);
+                }
                 Err(error) => last = Some(error),
             }
         }
@@ -87,54 +143,60 @@ impl HttpClient {
     }
 
     pub async fn get_bytes(&self, url: &str) -> Result<Vec<u8>, ServiceError> {
-        let parsed = Url::parse(url).map_err(|_| ServiceError::InvalidUrl)?;
-        let mut request = self
-            .client_for(&parsed)
-            .get(parsed.clone())
-            .header(reqwest::header::ACCEPT, "application/json, text/plain, */*");
-        if parsed.host_str() == Some("api.github.com")
-            && let Some(token) = &self.github_token
-        {
-            request = request.bearer_auth(token);
-        }
-        let response = request
-            .send()
-            .await
-            .map_err(|error| ServiceError::Network(error.without_url()))?;
-        let response = ensure_success(response, &parsed)?;
-        if response
-            .content_length()
-            .is_some_and(|length| length > MAX_METADATA_BYTES as u64)
-        {
-            return Err(ServiceError::ResponseTooLarge);
-        }
-        let bytes = response
-            .bytes()
-            .await
-            .map_err(|error| ServiceError::Network(error.without_url()))?;
-        if bytes.len() > MAX_METADATA_BYTES {
-            return Err(ServiceError::ResponseTooLarge);
-        }
-        Ok(bytes.to_vec())
+        self.wait(async {
+            let parsed = Url::parse(url).map_err(|_| ServiceError::InvalidUrl)?;
+            let mut request = self
+                .client_for(&parsed)
+                .get(parsed.clone())
+                .header(reqwest::header::ACCEPT, "application/json, text/plain, */*");
+            if parsed.host_str() == Some("api.github.com")
+                && let Some(token) = &self.github_token
+            {
+                request = request.bearer_auth(token);
+            }
+            let response = request
+                .send()
+                .await
+                .map_err(|error| transport_error(&parsed, error))?;
+            let response = ensure_success(response, &parsed)?;
+            if response
+                .content_length()
+                .is_some_and(|length| length > MAX_METADATA_BYTES as u64)
+            {
+                return Err(ServiceError::ResponseTooLarge);
+            }
+            let bytes = response
+                .bytes()
+                .await
+                .map_err(|error| transport_error(&parsed, error))?;
+            if bytes.len() > MAX_METADATA_BYTES {
+                return Err(ServiceError::ResponseTooLarge);
+            }
+            Ok(bytes.to_vec())
+        })
+        .await
     }
 
     pub async fn post_xml(&self, url: &str, body: String) -> Result<String, ServiceError> {
-        let parsed = Url::parse(url).map_err(|_| ServiceError::InvalidUrl)?;
-        let response = self
-            .client_for(&parsed)
-            .post(parsed.clone())
-            .header(
-                reqwest::header::CONTENT_TYPE,
-                "application/xml; charset=utf-8",
-            )
-            .body(body)
-            .send()
-            .await
-            .map_err(|error| ServiceError::Network(error.without_url()))?;
-        ensure_success(response, &parsed)?
-            .text()
-            .await
-            .map_err(|error| ServiceError::Network(error.without_url()))
+        self.wait(async {
+            let parsed = Url::parse(url).map_err(|_| ServiceError::InvalidUrl)?;
+            let response = self
+                .client_for(&parsed)
+                .post(parsed.clone())
+                .header(
+                    reqwest::header::CONTENT_TYPE,
+                    "application/xml; charset=utf-8",
+                )
+                .body(body)
+                .send()
+                .await
+                .map_err(|error| transport_error(&parsed, error))?;
+            ensure_success(response, &parsed)?
+                .text()
+                .await
+                .map_err(|error| transport_error(&parsed, error))
+        })
+        .await
     }
 
     pub async fn post_json<T: DeserializeOwned>(
@@ -142,23 +204,26 @@ impl HttpClient {
         url: &str,
         body: &serde_json::Value,
     ) -> Result<T, ServiceError> {
-        let parsed = Url::parse(url).map_err(|_| ServiceError::InvalidUrl)?;
-        let response = self
-            .client_for(&parsed)
-            .post(parsed.clone())
-            .header(
-                reqwest::header::USER_AGENT,
-                "Microsoft Edge Update/1.3.183.29;winhttp",
-            )
-            .json(body)
-            .send()
-            .await
-            .map_err(|error| ServiceError::Network(error.without_url()))?;
-        let bytes = ensure_success(response, &parsed)?
-            .bytes()
-            .await
-            .map_err(|error| ServiceError::Network(error.without_url()))?;
-        serde_json::from_slice(&bytes).map_err(ServiceError::InvalidResponse)
+        self.wait(async {
+            let parsed = Url::parse(url).map_err(|_| ServiceError::InvalidUrl)?;
+            let response = self
+                .client_for(&parsed)
+                .post(parsed.clone())
+                .header(
+                    reqwest::header::USER_AGENT,
+                    "Microsoft Edge Update/1.3.183.29;winhttp",
+                )
+                .json(body)
+                .send()
+                .await
+                .map_err(|error| transport_error(&parsed, error))?;
+            let bytes = ensure_success(response, &parsed)?
+                .bytes()
+                .await
+                .map_err(|error| transport_error(&parsed, error))?;
+            serde_json::from_slice(&bytes).map_err(ServiceError::InvalidResponse)
+        })
+        .await
     }
 
     fn client_for(&self, url: &Url) -> &Client {
@@ -167,6 +232,37 @@ impl HttpClient {
         } else {
             &self.fallback
         }
+    }
+}
+
+pub(crate) fn transport_error(url: &Url, error: reqwest::Error) -> ServiceError {
+    // Classify the source chain without exposing URLs, proxy credentials or signed query strings.
+    let mut detail = String::new();
+    let mut source = std::error::Error::source(&error);
+    while let Some(cause) = source {
+        detail.push_str(&cause.to_string().to_ascii_lowercase());
+        source = cause.source();
+    }
+    let reason = if error.is_timeout() {
+        "timeout"
+    } else if detail.contains("proxy") {
+        "proxy connection failed"
+    } else if detail.contains("dns") || detail.contains("resolve") {
+        "DNS resolution failed"
+    } else if detail.contains("certificate") || detail.contains("tls") {
+        "TLS certificate or handshake failed"
+    } else if error.is_connect() {
+        "connection failed"
+    } else if error.is_redirect() {
+        "redirect failed"
+    } else if error.is_body() || error.is_decode() {
+        "response body read failed"
+    } else {
+        "connection or response failed"
+    };
+    ServiceError::Transport {
+        host: url.host_str().unwrap_or("unknown").to_owned(),
+        reason: reason.to_owned(),
     }
 }
 
@@ -360,6 +456,70 @@ mod tests {
     };
 
     #[tokio::test]
+    async fn resolution_budget_covers_all_requests_and_cancellation_interrupts_stalled_io() {
+        for cancel in [false, true] {
+            let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+            let address = listener.local_addr().unwrap();
+            let (accepted, waiting) = std::sync::mpsc::channel();
+            thread::spawn(move || {
+                let (mut socket, _) = listener.accept().unwrap();
+                let mut request = [0; 2048];
+                let _ = socket.read(&mut request);
+                accepted.send(()).unwrap();
+                thread::sleep(Duration::from_secs(2));
+            });
+            let signal = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+            let cancellation = std::sync::Arc::clone(&signal);
+            thread::spawn(move || {
+                waiting.recv().unwrap();
+                if cancel {
+                    thread::sleep(Duration::from_millis(25));
+                    cancellation.store(true, std::sync::atomic::Ordering::Relaxed);
+                }
+            });
+            let mut http = super::HttpClient::new(&NetworkSettings::default()).unwrap();
+            http.cancellation = Some(signal);
+            http.resolution_deadline =
+                Some(tokio::time::Instant::now() + Duration::from_millis(100));
+            let result = tokio::time::timeout(
+                Duration::from_millis(500),
+                http.get_bytes(&format!("http://{address}/metadata")),
+            )
+            .await;
+            if cancel {
+                assert!(matches!(result, Ok(Err(super::ServiceError::Cancelled))));
+            } else {
+                assert!(matches!(
+                    result,
+                    Ok(Err(super::ServiceError::ResolutionTimedOut))
+                ));
+                let next = http.get_bytes(&format!("http://{address}/next")).await;
+                assert!(matches!(next, Err(super::ServiceError::ResolutionTimedOut)));
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn transport_errors_preserve_host_and_reason_without_url_secrets() {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let address = listener.local_addr().unwrap();
+        drop(listener);
+        let http = super::HttpClient::new(&NetworkSettings::default()).unwrap();
+        let error = http
+            .get_bytes(&format!(
+                "http://user:password@{address}/secret-path?token=secret-token"
+            ))
+            .await
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains("127.0.0.1"), "{error}");
+        assert!(error.contains("connection"), "{error}");
+        assert!(!error.contains("password"));
+        assert!(!error.contains("secret-path"));
+        assert!(!error.contains("secret-token"));
+    }
+
+    #[tokio::test]
     async fn metadata_total_deadline_stops_a_slow_continuous_response() {
         let listener = TcpListener::bind("127.0.0.1:0").unwrap();
         let address = listener.local_addr().unwrap();
@@ -384,7 +544,7 @@ mod tests {
         let result = http.get_bytes(&format!("http://{address}/metadata")).await;
         server.join().unwrap();
         assert!(
-            matches!(result, Err(super::ServiceError::Network(error)) if error.is_timeout()),
+            matches!(result, Err(super::ServiceError::Transport { reason, .. }) if reason == "timeout"),
             "metadata must have a total deadline even when each read arrives on time"
         );
     }

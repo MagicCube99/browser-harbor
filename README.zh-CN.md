@@ -54,6 +54,7 @@
 - **编辑立即保存。** 管理器配置默认保存在用户目录，也可把 `BrowserHarbor.json`
   放到 EXE 旁，随程序一起带走；旧 `manager.json` 会自动迁移。
 - **只清理可重建内容。** 清理下载缓存不会动已安装程序、Profile、书签或登录状态。
+- **复用当前版本安装包。** 可在“全局设置 → 高级”开启“使用本地包替代下载”。仅支持本次检查到的官方发布版本，不支持导入其他版本。
 - **外观和语言可调。** 支持跟随系统、浅色、深色，以及中英文界面。
 - **能发现自身更新。** 有新稳定版时，底栏版本号会突出显示；点击后可选择 GitHub 或 Gitee 发布页。
 
@@ -64,7 +65,7 @@
 | **Chromium** | Brave、Catsxp、Chrome、Edge、Helium、Thorium、Turbo、Ungoogled Chromium、Vivaldi |
 | **Firefox** | Firefox、Floorp、Iceweasel、LibreWolf、SkyKakapo、Zen |
 
-Chrome 和 Edge 提供 Stable 与 Beta；Brave 提供 Stable 与 Beta；
+Chrome、Edge、Brave 和 Catsxp 提供 Stable 与 Beta；
 Firefox 提供 Stable、ESR 与 Beta；Iceweasel 提供 ESR 与 Release。
 Thorium 提供面向 SSE3、SSE4、AVX、AVX2 和 AVX512 的 CPU 构建。
 

@@ -4,12 +4,57 @@ use super::*;
 use eframe::egui::{Align, CornerRadius, Frame, Layout, Stroke};
 
 pub fn show_dialogs(app: &mut BrowserHarborApp, ctx: &egui::Context) {
+    show_config_rebuild_prompt(app, ctx);
     show_channel_mismatch_prompt(app, ctx);
     show_same_version_prompt(app, ctx);
     show_chrome_plus_update_prompt(app, ctx);
     show_browser_upgrade_prompt(app, ctx);
     show_identity_prompt(app, ctx);
     show_health_dialog(app, ctx);
+}
+
+fn show_config_rebuild_prompt(app: &mut BrowserHarborApp, ctx: &egui::Context) {
+    if !app.rebuilding_config {
+        return;
+    }
+    let mut confirm = false;
+    let mut cancel = false;
+    let response = egui::Modal::new(egui::Id::unique("config_rebuild_confirmation")).show(ctx, |ui| {
+        ui.set_width(390.0);
+        ui.heading(localized("重建管理器配置"));
+        ui.localized_label("将先备份原 BrowserHarbor.json，再重建默认管理器设置。浏览器程序、Profile 和用户数据不会修改。");
+        ui.add(egui::Label::new(app.state.config_path().display().to_string()).wrap());
+        ui.horizontal(|ui| {
+            cancel = ui.localized_button("返回").clicked();
+            confirm = ui.localized_button("确认备份并重建").clicked();
+        });
+    });
+    if response.should_close() {
+        cancel = true;
+    }
+    if confirm {
+        match app.state.rebuild_manager_config() {
+            Ok(backup) => {
+                app.startup_error = None;
+                app.rebuilding_config = false;
+                app.status_message = Some(format!(
+                    "{}：{}",
+                    localized("管理器配置已重建，原文件备份到"),
+                    backup.display()
+                ));
+                app.local_versions.clear();
+                app.chrome_plus_versions.clear();
+                app.chrome_plus_ini_loaded.clear();
+                app.refresh_local_version(app.state.selected_target());
+                app.refresh_program_identity(app.state.selected_target());
+            }
+            Err(error) => {
+                app.startup_error = Some(format!("{}：{error}", localized("备份或重建配置失败")));
+            }
+        }
+    } else if cancel {
+        app.rebuilding_config = false;
+    }
 }
 
 fn show_health_dialog(app: &mut BrowserHarborApp, ctx: &egui::Context) {
@@ -229,6 +274,13 @@ fn show_same_version_prompt(app: &mut BrowserHarborApp, ctx: &egui::Context) {
     };
     let mut confirm = false;
     let mut cancel = false;
+    let downgrade = compare_versions(&prompt.current_version, &prompt.upstream.version)
+        == VersionRelation::UpstreamOlder;
+    let catsxp_unknown = app.state.selected_target() == TargetId::Catsxp
+        && app.catsxp_observation.is_none()
+        && crate::services::catsxp::base_version(&prompt.upstream.version, prompt.upstream.channel)
+            .as_deref()
+            == Some(prompt.current_version.as_str());
     let response = egui::Modal::new(egui::Id::unique("same_version_confirmation"))
             .frame(
                 Frame::new()
@@ -239,7 +291,7 @@ fn show_same_version_prompt(app: &mut BrowserHarborApp, ctx: &egui::Context) {
             )
             .show(ctx, |ui| {
                 ui.set_width(390.0);
-                ui.heading("版本与上游相同");
+                ui.heading(localized(if downgrade { "确认降级浏览器" } else if catsxp_unknown { "确认替换 Catsxp" } else { "版本与上游相同" }));
                 ui.add_space(7.0);
                 egui::Grid::new("same_version_meta")
                     .num_columns(2)
@@ -251,15 +303,24 @@ fn show_same_version_prompt(app: &mut BrowserHarborApp, ctx: &egui::Context) {
                         ui.localized_label(match prompt.upstream.source {
                             MetadataSource::Official => "上游版本",
                             MetadataSource::SignedManifest => "签名发布清单",
+                            MetadataSource::SignedCache => "已缓存签名快照",
+                            MetadataSource::Embedded => "内置签名快照",
                         });
                         ui.localized_label(format!(
                             "{}（{}）",
                             prompt.upstream.version,
-                            checked_age(prompt.upstream.checked_at)
+                            localized(checked_age(prompt.upstream.checked_at))
                         ));
                         ui.end_row();
                     });
                 ui.add_space(8.0);
+                if catsxp_unknown {
+                    ui.localized_label("当前 EXE 的基础版本相同，但无法确认渠道或 Beta 修订。继续将安装当前选择的渠道和修订。");
+                }
+                if downgrade {
+                    ui.localized_label(RichText::new(format!("{} → {}", prompt.current_version, prompt.upstream.version)).strong().color(palette.warning));
+                    ui.localized_label(RichText::new("旧版浏览器可能无法读取已由新版迁移的用户数据。请先备份数据，再确认降级。").color(palette.warning));
+                }
                 ui.localized_label(
                     RichText::new(
                         "继续将重新下载并替换浏览器程序目录。用户数据、缓存和可按规则恢复的 Chrome++ 配置会保留。",
@@ -268,7 +329,7 @@ fn show_same_version_prompt(app: &mut BrowserHarborApp, ctx: &egui::Context) {
                 );
                 ui.add_space(12.0);
                 ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                    confirm = ui.localized_button("继续替换").clicked();
+                    confirm = ui.localized_button(if downgrade { "确认降级" } else { "继续替换" }).clicked();
                     cancel = ui.localized_button("保留当前版本").clicked();
                 });
             });
@@ -420,6 +481,7 @@ fn show_browser_upgrade_prompt(app: &mut BrowserHarborApp, ctx: &egui::Context) 
             prompt.replace_same_version,
             false,
             Some(prompt.chrome_plus_latest),
+            false,
         );
     } else if cancel {
         app.browser_upgrade_prompt = None;
@@ -542,7 +604,7 @@ fn show_channel_mismatch_prompt(app: &mut BrowserHarborApp, ctx: &egui::Context)
     }
     if confirm {
         app.channel_mismatch_prompt = None;
-        app.start_operation(OperationMode::Install, false);
+        app.start_operation_checked_with_expected(OperationMode::Install, false, false, None, true);
     } else if cancel {
         app.channel_mismatch_prompt = None;
         app.operation_phase = None;

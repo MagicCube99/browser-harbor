@@ -51,12 +51,11 @@ Open the browser page and choose one of these actions:
 - **Check for updates**: refresh upstream release information.
 - **Download and install/upgrade**: download, verify, and install the selected target.
 - **Download again and replace**: replace the current program when the upstream version is the same.
-- **Choose local installer package**: use an official package you already
-  downloaded. It must match the selected browser, channel, build, and upstream
-  version. Browser Harbor still verifies size, digest, and any required
-  signature, and may still need network access for portable runtimes.
+- **Choose current release package**: use a local copy of the official release found by this check. Enable **Global settings → Advanced → Use a local package instead of downloading** first; it is off by default. The package must match the selected browser, channel, build, and checked version. Importing other versions is not supported. Size, digest, and required signatures are still verified, and a network connection may still be needed.
 
 Browser Harbor checks the browser version and download integrity before changing the installation. Same-version replacement remains available but requires confirmation.
+
+Downgrading also requires confirmation: an older browser may be unable to read user data migrated by a newer version. Back up your data before proceeding.
 
 If the selected channel differs from the channel detected in the existing local executable, Browser Harbor asks before replacing the program directory.
 
@@ -64,8 +63,13 @@ The browser page checks the selected target, channel, and build once per session
 
 Selecting a local installer does not install it immediately. Use **Install from
 local package** (or the corresponding reinstall/upgrade label) afterward.
+Disabling local installer packages clears all saved selections, without deleting the package files.
+
+If an installation was interrupted, start the app again and retry the selected browser. Browser Harbor restores unfinished file replacements before beginning a new attempt and reuses complete, verified downloads. It does not resume a partial download or automatically continue the previous installation. If files prevent recovery, the originals are retained and their location is shown; close the affected browser and retry.
 
 ## Directories
+
+Catsxp offers Stable and Beta, with Stable selected by default. Beta revisions may share an EXE version; Browser Harbor checks installed program files before identifying the revision. Existing installations without a verified build record remain unconfirmed until reinstalled through Browser Harbor. Changing channels replaces the selected installation; it does not create a second installation. Back up your user data before switching from Beta to Stable.
 
 Each Browser Target has its own:
 
@@ -159,7 +163,17 @@ Version checks use shorter timeouts to avoid waiting too long for an unavailable
 
 Accelerators only change transport. **Clear download cache** removes only reproducible installation files and never removes browser profiles or installed programs.
 
+**Advanced** contains the local installer-package switch. The default is off. A manual version check refreshes signed information; fallback results identify cached or embedded snapshots.
+
 ## Troubleshooting
+
+### Manager settings are damaged
+
+Use **Back up and reset config**, confirm the reset, and keep the backup for reference. This resets Browser Harbor settings only; installed browsers and their user data are not removed. **Copy diagnostics** is also available; remove personal paths before sharing them.
+
+### Chrome++ configuration could not be applied
+
+The pending edit is retained. Close software holding the INI file open, check write permissions, and use **Retry applying Chrome++ settings**. The manager only treats the edit as saved after both configuration files have been updated.
 
 ### The app does not open through Remote Desktop
 

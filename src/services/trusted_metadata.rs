@@ -90,6 +90,20 @@ impl TrustedMetadata {
     pub fn is_expired(&self) -> bool {
         self.expires_at < unix_now()
     }
+
+    pub fn complete_release_size(&self, release: &mut ReleaseDescriptor) {
+        if release.artifact.size.is_some() || release.artifact.integrity.is_none() {
+            return;
+        }
+        if let Some(known) = self.release(release.target, release.channel, release.cpu_build)
+            && known.version == release.version
+            && known.artifact.file_name == release.artifact.file_name
+            && known.artifact.format == release.artifact.format
+            && known.artifact.integrity == release.artifact.integrity
+        {
+            release.artifact.size = known.artifact.size;
+        }
+    }
 }
 
 pub fn verify_with_public_key(
@@ -235,6 +249,33 @@ pub enum TrustedMetadataError {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn release_size_completion_never_crosses_an_artifact_identity() {
+        let known = metadata();
+        for mismatch in 0..5 {
+            let mut release = known.releases[0].clone();
+            release.artifact.size = None;
+            match mismatch {
+                0 => release.version = "2.0.0".into(),
+                1 => release.artifact.file_name = "other.zip".into(),
+                2 => {
+                    release.artifact.integrity =
+                        Some(crate::domain::release::Integrity::Sha256("b".repeat(64)))
+                }
+                3 => release.artifact.format = crate::domain::release::ArchiveFormat::SevenZip,
+                _ => release.channel = crate::domain::release::ReleaseChannel::Beta,
+            }
+            known.complete_release_size(&mut release);
+            assert_eq!(
+                release.artifact.size, None,
+                "different identity: {mismatch}"
+            );
+        }
+        let mut release = known.releases[0].clone();
+        release.artifact.size = None;
+        known.complete_release_size(&mut release);
+        assert_eq!(release.artifact.size, Some(1));
+    }
     use ed25519_dalek::{Signer, SigningKey};
     use rand_core::OsRng;
 

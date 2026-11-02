@@ -5,12 +5,12 @@ use std::{collections::BTreeMap, path::PathBuf};
 use serde::{Deserialize, Serialize};
 
 use super::{
-    release::{CpuBuild, ReleaseChannel},
+    release::{CatsxpBuildIdentity, CpuBuild, ReleaseChannel},
     runtime::ChromePlusConfig,
     target::TargetId,
 };
 
-pub const CURRENT_SCHEMA_VERSION: u32 = 11;
+pub const CURRENT_SCHEMA_VERSION: u32 = 12;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -27,6 +27,8 @@ pub struct Settings {
     pub theme: ThemeMode,
     #[serde(default, skip_serializing_if = "Language::is_chinese")]
     pub language: Language,
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub show_local_package: bool,
 }
 
 impl Default for Settings {
@@ -42,6 +44,7 @@ impl Default for Settings {
             network: NetworkSettings::default(),
             theme: ThemeMode::System,
             language: Language::Chinese,
+            show_local_package: false,
         }
     }
 }
@@ -98,6 +101,8 @@ pub struct TargetConfig {
     pub channel: ReleaseChannel,
     pub cpu_build: CpuBuild,
     pub installed_version: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub catsxp_build: Option<CatsxpBuildIdentity>,
     pub local_package: Option<PathBuf>,
     pub chrome_plus: ChromePlusConfig,
     pub chrome_plus_version: Option<String>,
@@ -208,6 +213,7 @@ impl Default for TargetConfig {
             channel: ReleaseChannel::Stable,
             cpu_build: CpuBuild::X64,
             installed_version: None,
+            catsxp_build: None,
             local_package: None,
             chrome_plus: ChromePlusConfig::default(),
             chrome_plus_version: None,

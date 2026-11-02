@@ -3,7 +3,10 @@ use std::{fs, path::PathBuf};
 use browser_harbor::{
     app::AppState,
     config::ConfigStore,
-    domain::{settings::Settings, target::TargetId},
+    domain::{
+        settings::{CURRENT_SCHEMA_VERSION, Settings},
+        target::TargetId,
+    },
 };
 use tempfile::tempdir;
 
@@ -36,7 +39,7 @@ fn legacy_config_compacts_then_persists_a_target_switch() {
     state.save().unwrap();
 
     let saved: serde_json::Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
-    assert_eq!(saved["schemaVersion"], 11);
+    assert_eq!(saved["schemaVersion"], CURRENT_SCHEMA_VERSION);
     assert_eq!(saved["selectedBrowser"], "sky_kakapo");
 
     let reloaded = ConfigStore::new(path).load().unwrap();
