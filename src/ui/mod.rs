@@ -3214,7 +3214,7 @@ impl eframe::App for BrowserHarborApp {
         dialogs::show_dialogs(self, ui.ctx());
     }
 
-    fn on_exit(&mut self, _gl: Option<&eframe::glow::Context>) {
+    fn on_exit(&mut self) {
         self.flush_window_position();
     }
 }

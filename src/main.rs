@@ -2,6 +2,8 @@
 
 use std::path::PathBuf;
 
+mod graphics;
+
 use browser_harbor::{
     app::AppState,
     config::ConfigStore,
@@ -17,6 +19,17 @@ use browser_harbor::{
 };
 
 fn main() -> eframe::Result {
+    run().inspect_err(|error| {
+        show_error(
+            ui::APP_TITLE,
+            &format!(
+                "Browser Harbor 无法启动。\n无法初始化窗口或图形设备；请保留以下错误信息。\n\nBrowser Harbor could not start.\nWindow or graphics initialization failed. Please keep the error below.\n\n{error}"
+            ),
+        );
+    })
+}
+
+fn run() -> eframe::Result {
     let _single_instance = match SingleInstance::acquire(r"Local\BrowserHarbor.SingleInstance") {
         Ok(Some(guard)) => guard,
         Ok(None) => {
@@ -31,6 +44,8 @@ fn main() -> eframe::Result {
             return Ok(());
         }
     };
+    let graphics = graphics::prepare(std::env::args_os().any(|arg| arg == "--warp"))
+        .map_err(|error| eframe::Error::AppCreation(Box::new(error)))?;
     let executable =
         std::env::current_exe().unwrap_or_else(|_| PathBuf::from("browser-harbor.exe"));
     let app_storage = storage::resolve(&executable, std::env::var_os("LOCALAPPDATA").as_deref());
@@ -69,9 +84,11 @@ fn main() -> eframe::Result {
         None => BrowserHarborApp::new(state),
     };
 
+    let mut options = app_native_options(initial_position);
+    options.wgpu_options.wgpu_setup = graphics.into();
     eframe::run_native(
         ui::APP_TITLE,
-        app_native_options(initial_position),
+        options,
         Box::new(move |cc| {
             ui::configure_context(&cc.egui_ctx, initial_theme);
             Ok(Box::new(app))
@@ -90,6 +107,7 @@ fn app_native_options(position: WindowPosition) -> eframe::NativeOptions {
     let viewport = viewport.with_position([position.x as f32, position.y as f32]);
     eframe::NativeOptions {
         viewport,
+        renderer: eframe::Renderer::Wgpu,
         ..Default::default()
     }
 }
@@ -125,5 +143,12 @@ mod tests {
         let options = app_native_options(WindowPosition { x: 120, y: 80 });
 
         assert_eq!(options.viewport.position, Some(pos2(120.0, 80.0)));
+    }
+
+    #[test]
+    fn compatibility_window_does_not_request_opengl() {
+        let options = app_native_options(WindowPosition { x: 120, y: 80 });
+
+        assert_eq!(format!("{:?}", options.renderer), "Wgpu");
     }
 }

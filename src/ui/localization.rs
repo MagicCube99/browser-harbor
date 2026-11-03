@@ -558,6 +558,18 @@ fn exact_translation(text: &str) -> Option<&'static str> {
 }
 
 fn dynamic_translation(text: &str) -> String {
+    if let Some(rest) = text.strip_prefix("浏览器仍在运行，请手工关闭所有实例：")
+    {
+        return format!(
+            "The browser is still running. Close all instances before continuing: {rest}"
+        );
+    }
+    if let Some(rest) = text.strip_prefix("解压失败：") {
+        return format!("Archive extraction failed: {rest}");
+    }
+    if let Some(rest) = text.strip_prefix("无法检查浏览器运行状态：") {
+        return format!("Could not check whether the browser is running: {rest}");
+    }
     if let Some(rest) = text.strip_prefix("仅支持本次检查到的发布版本，本地安装包不匹配：应为 ")
     {
         let detail = rest
@@ -853,6 +865,14 @@ mod tests {
             "Leave empty to follow Profile"
         );
         assert_eq!(localized("检查配置"), "Check configuration");
+        assert_eq!(
+            localized("浏览器仍在运行，请手工关闭所有实例：D:\\Tools\\Browser\\Turbo"),
+            "The browser is still running. Close all instances before continuing: D:\\Tools\\Browser\\Turbo"
+        );
+        assert_eq!(
+            localized("解压失败：archive is already in use"),
+            "Archive extraction failed: archive is already in use"
+        );
         assert_eq!(
             localized(
                 "自动保存失败：当前目录受系统权限保护。请将程序移至普通用户目录，或以管理员身份运行。"

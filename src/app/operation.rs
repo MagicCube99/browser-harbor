@@ -285,7 +285,8 @@ async fn run_operation(
         request.mode,
         OperationMode::Install | OperationMode::ChromePlusInstall
     ) {
-        InstallService::prepare_retry(target, &request.target_config)?;
+        InstallService::prepare_retry(target, &request.target_config)
+            .map_err(install_error_for_operation)?;
     }
     emit(OperationPhase::Resolving);
     let http = HttpClient::new(&request.network)?.with_operation(Arc::clone(&cancellation));
@@ -319,26 +320,7 @@ async fn run_operation(
             config: request.target_config,
             runtime,
         })
-        .map_err(|error| -> Box<dyn std::error::Error + Send + Sync> {
-            match error {
-                crate::services::install::InstallError::BrowserRunning(path) => format!(
-                    "浏览器仍在运行，请手工关闭所有实例后再更新 Chrome++：{}",
-                    path.display()
-                )
-                .into(),
-                crate::services::install::InstallError::Io { path, source }
-                    if source.kind() == std::io::ErrorKind::PermissionDenied
-                        || source.raw_os_error() == Some(5) =>
-                {
-                    format!(
-                        "文件操作受系统权限保护（{}）。请将浏览器根目录移至普通用户目录（如 D 盘或 C:\\Tools），或右键以管理员身份运行。",
-                        path.display()
-                    )
-                    .into()
-                }
-                error => error.into(),
-            }
-        })?;
+        .map_err(install_error_for_operation)?;
         return Ok(OperationResult::ChromePlusInstalled {
             version: receipt.version,
         });
@@ -605,30 +587,7 @@ async fn run_operation(
         chrome_plus_runtime,
         libportable_runtime,
     })
-    .map_err(|error| -> Box<dyn std::error::Error + Send + Sync> {
-        match error {
-            crate::services::install::InstallError::Io { path, source }
-                if source.kind() == std::io::ErrorKind::PermissionDenied
-                    || source.raw_os_error() == Some(5) =>
-            {
-                format!(
-                    "文件操作受系统权限保护（{}）。请将浏览器根目录移至普通用户目录（如 D 盘或 C:\\Tools），或右键以管理员身份运行。",
-                    path.display()
-                )
-                .into()
-            }
-            crate::services::install::InstallError::Runtime(
-                crate::runtime::RuntimeError::UnsupportedLibportableVersion { product, version },
-            ) => format!(
-                "Libportable 暂不支持 {product} 版本 {version}，请等待适配或选择兼容版本。"
-            )
-            .into(),
-            crate::services::install::InstallError::Runtime(error) => {
-                format!("便携运行时准备失败：{error}").into()
-            }
-            error => Box::new(error),
-        }
-    })?;
+    .map_err(install_error_for_operation)?;
     Ok(OperationResult::Installed(receipt))
 }
 
@@ -663,6 +622,40 @@ fn verify_local_package(
         )
         .into()),
         Err(error) => Err(format!("本地安装包校验失败：{error}").into()),
+    }
+}
+
+fn install_error_for_operation(
+    error: crate::services::install::InstallError,
+) -> Box<dyn std::error::Error + Send + Sync> {
+    match error {
+        crate::services::install::InstallError::BrowserRunning(path) => {
+            format!("浏览器仍在运行，请手工关闭所有实例：{}", path.display()).into()
+        }
+        crate::services::install::InstallError::Archive(error) => {
+            format!("解压失败：{error}").into()
+        }
+        crate::services::install::InstallError::Process(error) => {
+            format!("无法检查浏览器运行状态：{error}").into()
+        }
+        crate::services::install::InstallError::Io { path, source }
+            if source.kind() == std::io::ErrorKind::PermissionDenied
+                || source.raw_os_error() == Some(5) =>
+        {
+            format!(
+                "文件操作受系统权限保护（{}）。请将浏览器根目录移至普通用户目录（如 D 盘或 C:\\Tools），或右键以管理员身份运行。",
+                path.display()
+            )
+            .into()
+        }
+        crate::services::install::InstallError::Runtime(
+            crate::runtime::RuntimeError::UnsupportedLibportableVersion { product, version },
+        ) => format!("Libportable 暂不支持 {product} 版本 {version}，请等待适配或选择兼容版本。")
+            .into(),
+        crate::services::install::InstallError::Runtime(error) => {
+            format!("便携运行时准备失败：{error}").into()
+        }
+        error => Box::new(error),
     }
 }
 
