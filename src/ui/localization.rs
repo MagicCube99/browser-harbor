@@ -549,6 +549,26 @@ fn exact_translation(text: &str) -> Option<&'static str> {
         "正在准备任务…" => "Preparing…",
         "正在检查官方发布…" => "Checking official release…",
         "正在校验下载文件…" => "Verifying download…",
+        "下载服务器返回了不一致的文件范围；已保留可用断点，请重试或更换加速站" => {
+            "The download server returned an inconsistent file range. The resumable data was kept; retry or choose another accelerator."
+        }
+        "下载信息缺少可信摘要，已阻止安装" => {
+            "The download has no trusted digest, so installation was blocked"
+        }
+        "下载文件完整性校验失败，已丢弃不完整文件" => {
+            "Download integrity verification failed; the incomplete file was discarded"
+        }
+        "下载内容超出允许大小" => "The download exceeds the allowed size",
+        "所有下载来源均不可用；请检查网络或稍后重试" => {
+            "No download source is available. Check the network or try again later."
+        }
+        "下载网络请求失败" => "The download network request failed",
+        "下载响应格式无效" => "The download response format is invalid",
+        "下载地址无效" => "The download URL is invalid",
+        "下载元数据等待超时；请检查网络后重试" => {
+            "Timed out while waiting for download metadata. Check the network and try again."
+        }
+        "下载缓存记录无效" => "The download cache record is invalid",
         "正在解压…" => "Extracting…",
         "正在替换程序目录…" => "Replacing program files…",
         "任务已取消" => "Task cancelled",
@@ -563,6 +583,20 @@ fn dynamic_translation(text: &str) -> String {
         return format!(
             "The browser is still running. Close all instances before continuing: {rest}"
         );
+    }
+    if let Some(rest) = text.strip_prefix("下载文件大小不符：应为 ")
+        && let Some((expected, actual)) = rest.split_once(" 字节，实际为 ")
+        && let Some(actual) = actual.strip_suffix(" 字节")
+    {
+        return format!(
+            "Download size mismatch: expected {expected} bytes, received {actual} bytes"
+        );
+    }
+    if let Some(rest) = text.strip_prefix("下载连接中断：")
+        && let Some((host, reason)) = rest.split_once('（')
+        && let Some(reason) = reason.strip_suffix('）')
+    {
+        return format!("Download connection interrupted for {host}: {reason}");
     }
     if let Some(rest) = text.strip_prefix("解压失败：") {
         return format!("Archive extraction failed: {rest}");
@@ -638,6 +672,13 @@ fn dynamic_translation(text: &str) -> String {
         return format!("Program in directory: {program} ({product})");
     }
     for (prefix, replacement) in [
+        ("下载文件大小不符：", "Download size mismatch: "),
+        ("下载连接中断：", "Download connection interrupted: "),
+        ("下载服务器返回 HTTP ", "Download server returned HTTP "),
+        (
+            "无法写入下载缓存：",
+            "Could not write to the download cache: ",
+        ),
         ("当前浏览器：", "Current browser: "),
         (
             "Chrome++ 配置未应用，可重试：",
@@ -868,6 +909,18 @@ mod tests {
         assert_eq!(
             localized("浏览器仍在运行，请手工关闭所有实例：D:\\Tools\\Browser\\Turbo"),
             "The browser is still running. Close all instances before continuing: D:\\Tools\\Browser\\Turbo"
+        );
+        assert_eq!(
+            localized("下载服务器返回了不一致的文件范围；已保留可用断点，请重试或更换加速站"),
+            "The download server returned an inconsistent file range. The resumable data was kept; retry or choose another accelerator."
+        );
+        assert_eq!(
+            localized("下载文件大小不符：应为 10 字节，实际为 9 字节"),
+            "Download size mismatch: expected 10 bytes, received 9 bytes"
+        );
+        assert_eq!(
+            localized("下载连接中断：ghfast.top（timeout）"),
+            "Download connection interrupted for ghfast.top: timeout"
         );
         assert_eq!(
             localized("解压失败：archive is already in use"),

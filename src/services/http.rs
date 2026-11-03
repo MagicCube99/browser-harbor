@@ -62,15 +62,19 @@ impl HttpClient {
 
     pub fn download_client(settings: &NetworkSettings) -> Result<Client, ServiceError> {
         base_builder(settings, false)?
+            // reqwest only enables gzip for this build; the other codecs are absent features.
+            .no_gzip()
             .build()
             .map_err(ServiceError::Network)
     }
 
     pub fn download_clients(settings: &NetworkSettings) -> Result<(Client, Client), ServiceError> {
         let direct = base_builder(settings, true)?
+            .no_gzip()
             .build()
             .map_err(ServiceError::Network)?;
         let fallback = base_builder(settings, false)?
+            .no_gzip()
             .build()
             .map_err(ServiceError::Network)?;
         Ok((direct, fallback))
@@ -558,6 +562,95 @@ mod tests {
             urls: vec![url.to_owned()],
             signature_url: None,
         }
+    }
+
+    fn serve_response(content_encoding: Option<&'static str>, body: &'static [u8]) -> String {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        listener.set_nonblocking(true).unwrap();
+        let address = listener.local_addr().unwrap();
+        thread::spawn(move || {
+            let deadline = std::time::Instant::now() + Duration::from_secs(2);
+            let (mut socket, _) = loop {
+                match listener.accept() {
+                    Ok(connection) => break connection,
+                    Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
+                        if std::time::Instant::now() >= deadline {
+                            return;
+                        }
+                        thread::sleep(Duration::from_millis(10));
+                    }
+                    Err(_) => return,
+                }
+            };
+            socket.set_nonblocking(false).unwrap();
+            socket
+                .set_read_timeout(Some(Duration::from_secs(1)))
+                .unwrap();
+            socket
+                .set_write_timeout(Some(Duration::from_secs(1)))
+                .unwrap();
+            let mut request = Vec::new();
+            let mut chunk = [0; 2048];
+            while request.len() < 64 * 1024 {
+                match socket.read(&mut chunk) {
+                    Ok(0) => break,
+                    Ok(read) => {
+                        request.extend_from_slice(&chunk[..read]);
+                        if request.windows(4).any(|window| window == b"\r\n\r\n") {
+                            break;
+                        }
+                    }
+                    Err(_) => return,
+                }
+            }
+            let encoding = content_encoding
+                .map(|value| format!("Content-Encoding: {value}\r\n"))
+                .unwrap_or_default();
+            let response = format!(
+                "HTTP/1.1 200 OK\r\nContent-Length: {}\r\n{encoding}Connection: close\r\n\r\n",
+                body.len()
+            );
+            let _ = socket.write_all(response.as_bytes());
+            let _ = socket.write_all(body);
+        });
+        format!("http://{address}/artifact")
+    }
+
+    #[tokio::test]
+    async fn artifact_clients_preserve_encoded_responses_for_the_downloader_to_reject() {
+        let settings = NetworkSettings::default();
+        let (direct, fallback) = super::HttpClient::download_clients(&settings).unwrap();
+        let clients = [
+            (
+                "download",
+                super::HttpClient::download_client(&settings).unwrap(),
+            ),
+            ("direct", direct),
+            ("fallback", fallback),
+        ];
+        for (name, client) in clients {
+            for encoding in ["gzip", "br", "zstd", "deflate", "gzip, br"] {
+                let url = serve_response(Some(encoding), b"artifact");
+                let response = client.get(url).send().await.unwrap();
+                assert_eq!(
+                    response
+                        .headers()
+                        .get(reqwest::header::CONTENT_ENCODING)
+                        .and_then(|value| value.to_str().ok()),
+                    Some(encoding),
+                    "{name} client transparently consumed {encoding}"
+                );
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn metadata_client_still_decodes_gzip() {
+        const GZIP_HELLO: &[u8] =
+            b"\x1f\x8b\x08\x00\x00\x00\x00\x00\x02\x03\xcb\x48\xcd\xc9\xc9\x07\x00\x86\xa6\x10\x36\x05\x00\x00\x00";
+        let url = serve_response(Some("gzip"), GZIP_HELLO);
+        let http = super::HttpClient::new(&NetworkSettings::default()).unwrap();
+        assert_eq!(http.get_bytes(&url).await.unwrap(), b"hello");
     }
 
     #[test]

@@ -65,7 +65,7 @@ Selecting a local installer does not install it immediately. Use **Install from
 local package** (or the corresponding reinstall/upgrade label) afterward.
 Disabling local installer packages clears all saved selections, without deleting the package files.
 
-If an installation was interrupted, start the app again and retry the selected browser. Browser Harbor restores unfinished file replacements before beginning a new attempt and reuses complete, verified downloads. It does not resume a partial download or automatically continue the previous installation. If files prevent recovery, the originals are retained and their location is shown; close the affected browser and retry.
+If an installation was interrupted, start the app again and retry the selected browser. Browser Harbor restores unfinished file replacements before beginning a new attempt and reuses complete, verified downloads. Partial downloads can resume when the cache remains, the artifact has not changed, and the server supports it. The completed file must still pass full verification. The previous installation does not continue automatically. If files prevent recovery, the originals are retained and their location is shown; close the affected browser and retry.
 
 ## Directories
 
@@ -159,7 +159,7 @@ When Vivaldi is selected, a short migration notice appears below **Paths and use
 
 The footer settings page controls built-in and custom download accelerators, proxy and timeout behavior, appearance, and download-cache cleanup.
 
-Version checks use shorter timeouts to avoid waiting too long for an unavailable source. Installer downloads retain the timeout selected in settings. Verification is always required, and trying several sources can still take a little time.
+Version checks use shorter timeouts. Downloads probe accelerators and prefer a route that promptly returns data; unresponsive or stalled accelerators fail over sooner. Original download URLs retain the timeout selected in settings. Every source must pass the same integrity checks; speed still depends on your network.
 
 Accelerators only change transport. **Clear download cache** removes only reproducible installation files and never removes browser profiles or installed programs.
 
