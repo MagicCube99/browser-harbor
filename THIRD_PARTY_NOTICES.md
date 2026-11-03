@@ -64,14 +64,12 @@ The public key is not redistributable software and grants no signing capability.
 
 ## Direct Rust Dependencies
 
-### Isolated DX12 compatibility candidate
+### DX12 renderer
 
-This experimental branch replaces the Glow renderer with egui-wgpu 0.37.0 and
-wgpu 30.0.1 (`MIT OR Apache-2.0`), enabling only the Windows DX12 backend.
-It uses Windows' DXGI/Direct3D 12, WARP when available, and the system FXC shader
-compiler (`d3dcompiler_47.dll`). No Microsoft WARP, DXC, ANGLE or Mesa DLL is bundled.
-The candidate is not an accepted or published renderer migration; binary size
-and target-machine acceptance are recorded separately.
+Browser Harbor uses egui-wgpu 0.37.0 and wgpu 30.0.1 (`MIT OR Apache-2.0`),
+enabling only the Windows DX12 backend. It uses Windows' DXGI/Direct3D 12,
+WARP when available, and the system FXC shader compiler (`d3dcompiler_47.dll`).
+No Microsoft WARP, DXC, ANGLE or Mesa DLL is bundled.
 
 Licenses below were read from the exact packages resolved in `Cargo.lock`; transitive dependencies retain their own licenses.
 
