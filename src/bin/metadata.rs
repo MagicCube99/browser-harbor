@@ -1,10 +1,10 @@
 use std::{
     env, fs,
-    io::Read,
+    fs::OpenOptions,
+    io::Write,
     path::{Path, PathBuf},
     process::ExitCode,
-    sync::{Arc, atomic::AtomicBool},
-    time::{SystemTime, UNIX_EPOCH},
+    time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
 use browser_harbor::{
@@ -17,14 +17,18 @@ use browser_harbor::{
     providers::ProviderResolver,
     runtime,
     services::{
-        download::Downloader,
         http::HttpClient,
         trusted_metadata::{NO_EXPIRY, TrustedMetadata, verify_with_public_key},
     },
 };
 use ed25519_dalek::{Signer, SigningKey};
+use futures_util::StreamExt;
 use rand_core::OsRng;
+use reqwest::header::{ACCEPT_ENCODING, CONTENT_ENCODING};
 use sha2::{Digest, Sha256};
+
+const MAX_SAMPLE_BYTES: u64 = 4 * 1024 * 1024 * 1024;
+const SAMPLE_TIMEOUT: Duration = Duration::from_secs(30 * 60);
 
 #[tokio::main]
 async fn main() -> ExitCode {
@@ -189,13 +193,7 @@ async fn refresh(
     };
     let http = HttpClient::new(&network)?;
     let provider = ProviderResolver::new(http.clone());
-    let (direct, fallback) = HttpClient::download_clients(&network)?;
-    let downloader = Downloader::with_fallback_clients(
-        direct,
-        fallback,
-        work.path.clone(),
-        Arc::new(AtomicBool::new(false)),
-    );
+    let artifact_client = HttpClient::download_client(&network)?;
 
     let mut releases = Vec::new();
     for target in TargetId::ALL {
@@ -211,7 +209,8 @@ async fn refresh(
                 let refreshed = async {
                     let descriptor =
                         resolve_target(&provider, target, *channel, *cpu_build).await?;
-                    ensure_release_integrity(descriptor, &baseline, &downloader, &network).await
+                    ensure_release_integrity(descriptor, &baseline, &artifact_client, &work.path)
+                        .await
                 }
                 .await;
                 match refreshed {
@@ -252,8 +251,8 @@ async fn refresh(
         ensure_chrome_plus_integrity(
             resolve_chrome_plus(&http).await?,
             &baseline,
-            &downloader,
-            &network,
+            &artifact_client,
+            &work.path,
         )
         .await
     })
@@ -263,8 +262,8 @@ async fn refresh(
         ensure_libportable_integrity(
             resolve_libportable(&http).await?,
             &baseline,
-            &downloader,
-            &network,
+            &artifact_client,
+            &work.path,
         )
         .await
     })
@@ -434,8 +433,8 @@ async fn resolve_libportable(
 async fn ensure_release_integrity(
     mut descriptor: ReleaseDescriptor,
     baseline: &TrustedMetadata,
-    downloader: &Downloader,
-    network: &NetworkSettings,
+    client: &reqwest::Client,
+    work: &Path,
 ) -> Result<Option<ReleaseDescriptor>, Box<dyn std::error::Error>> {
     if descriptor
         .artifact
@@ -477,15 +476,11 @@ async fn ensure_release_integrity(
         descriptor.cpu_build.display_name(),
         descriptor.artifact.file_name
     );
-    let path = downloader
-        .download(&descriptor.artifact, network, |_| {})
-        .await?;
-    let file_len = fs::metadata(&path)?.len();
-    println!("Downloaded {file_len} bytes; calculating SHA-256");
-    if descriptor.artifact.size.is_none() {
-        descriptor.artifact.size = Some(file_len);
-    }
-    descriptor.artifact.integrity = Some(Integrity::Sha256(sha256_file(&path)?));
+    let (_path, file_len, digest) =
+        sample_official_artifact(client, &descriptor.artifact, work).await?;
+    println!("Sampled {file_len} bytes; calculated SHA-256");
+    descriptor.artifact.size = Some(file_len);
+    descriptor.artifact.integrity = Some(Integrity::Sha256(digest));
     println!("Calculated SHA-256 for {}", descriptor.artifact.file_name);
     Ok(Some(descriptor))
 }
@@ -502,8 +497,8 @@ fn contains_transient_query(url: &str) -> bool {
 async fn ensure_chrome_plus_integrity(
     mut release: ChromePlusRelease,
     baseline: &TrustedMetadata,
-    downloader: &Downloader,
-    network: &NetworkSettings,
+    client: &reqwest::Client,
+    work: &Path,
 ) -> Result<ChromePlusRelease, Box<dyn std::error::Error>> {
     let previous = baseline
         .chrome_plus
@@ -512,15 +507,15 @@ async fn ensure_chrome_plus_integrity(
     ensure_runtime_artifact(
         &mut release.artifact,
         previous.map(|previous| &previous.artifact),
-        downloader,
-        network,
+        client,
+        work,
     )
     .await?;
     ensure_runtime_artifact(
         &mut release.setdll_artifact,
         previous.map(|previous| &previous.setdll_artifact),
-        downloader,
-        network,
+        client,
+        work,
     )
     .await?;
     Ok(release)
@@ -529,8 +524,8 @@ async fn ensure_chrome_plus_integrity(
 async fn ensure_libportable_integrity(
     mut release: LibportableRelease,
     baseline: &TrustedMetadata,
-    downloader: &Downloader,
-    network: &NetworkSettings,
+    client: &reqwest::Client,
+    work: &Path,
 ) -> Result<LibportableRelease, Box<dyn std::error::Error>> {
     ensure_runtime_artifact(
         &mut release.artifact,
@@ -539,8 +534,8 @@ async fn ensure_libportable_integrity(
             .as_ref()
             .filter(|previous| previous.version == release.version)
             .map(|previous| &previous.artifact),
-        downloader,
-        network,
+        client,
+        work,
     )
     .await?;
     Ok(release)
@@ -549,8 +544,8 @@ async fn ensure_libportable_integrity(
 async fn ensure_runtime_artifact(
     artifact: &mut Artifact,
     previous: Option<&Artifact>,
-    downloader: &Downloader,
-    network: &NetworkSettings,
+    client: &reqwest::Client,
+    work: &Path,
 ) -> Result<(), Box<dyn std::error::Error>> {
     if artifact.integrity.is_some() {
         return Ok(());
@@ -558,21 +553,118 @@ async fn ensure_runtime_artifact(
     if let Some(previous) = previous
         && previous.file_name == artifact.file_name
         && previous.integrity.is_some()
+        && (artifact.size.is_none() || previous.size.is_none() || artifact.size == previous.size)
     {
         artifact.integrity = previous.integrity.clone();
+        artifact.size = artifact.size.or(previous.size);
         return Ok(());
     }
-    let path = downloader.download(artifact, network, |_| {}).await?;
-    artifact.integrity = Some(Integrity::Sha256(sha256_file(&path)?));
+    let (_path, size, digest) = sample_official_artifact(client, artifact, work).await?;
+    artifact.size = Some(size);
+    artifact.integrity = Some(Integrity::Sha256(digest));
     Ok(())
 }
 
+async fn sample_official_artifact(
+    client: &reqwest::Client,
+    artifact: &Artifact,
+    work: &Path,
+) -> Result<(PathBuf, u64, String), Box<dyn std::error::Error>> {
+    let url = artifact
+        .urls
+        .first()
+        .ok_or("official artifact has no source URL")?;
+    let response = tokio::time::timeout(
+        SAMPLE_TIMEOUT,
+        client.get(url).header(ACCEPT_ENCODING, "identity").send(),
+    )
+    .await??;
+    if !response.status().is_success() {
+        return Err(format!("official artifact returned HTTP {}", response.status()).into());
+    }
+    if response
+        .headers()
+        .get(CONTENT_ENCODING)
+        .is_some_and(|value| value != "identity")
+    {
+        return Err("official artifact used unsupported content encoding".into());
+    }
+    if let (Some(expected), Some(actual)) = (artifact.size, response.content_length())
+        && expected != actual
+    {
+        return Err(format!(
+            "official artifact length mismatch: expected {expected}, received {actual}"
+        )
+        .into());
+    }
+    if response
+        .content_length()
+        .is_some_and(|length| length > MAX_SAMPLE_BYTES)
+        || artifact
+            .size
+            .is_some_and(|length| length > MAX_SAMPLE_BYTES)
+    {
+        return Err("official artifact exceeds the metadata sampling limit".into());
+    }
+
+    fs::create_dir_all(work)?;
+    let nonce = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_or(0, |duration| duration.as_nanos());
+    let path = work.join(format!(
+        "metadata-sample-{}-{nonce}.part",
+        std::process::id()
+    ));
+    let mut file = OpenOptions::new()
+        .create_new(true)
+        .write(true)
+        .open(&path)?;
+    let mut hasher = Sha256::new();
+    let mut stream = response.bytes_stream();
+    let mut received = 0u64;
+    let deadline = tokio::time::sleep(SAMPLE_TIMEOUT);
+    tokio::pin!(deadline);
+    loop {
+        let chunk = tokio::select! {
+            _ = &mut deadline => return Err("official artifact sampling timed out".into()),
+            chunk = stream.next() => chunk,
+        };
+        let Some(chunk) = chunk else {
+            break;
+        };
+        let chunk = chunk?;
+        received = received
+            .checked_add(chunk.len() as u64)
+            .ok_or("official artifact length overflow")?;
+        if received > MAX_SAMPLE_BYTES {
+            return Err("official artifact exceeds the metadata sampling limit".into());
+        }
+        if artifact.size.is_some_and(|expected| received > expected) {
+            return Err("official artifact exceeded its trusted length".into());
+        }
+        file.write_all(&chunk)?;
+        hasher.update(&chunk);
+    }
+    file.flush()?;
+    file.sync_all()?;
+    if let Some(expected) = artifact.size
+        && received != expected
+    {
+        return Err(format!(
+            "official artifact was truncated: expected {expected}, received {received}"
+        )
+        .into());
+    }
+    Ok((path, received, hex::encode(hasher.finalize())))
+}
+
+#[cfg(test)]
 fn sha256_file(path: &Path) -> Result<String, Box<dyn std::error::Error>> {
     let mut file = fs::File::open(path)?;
     let mut hasher = Sha256::new();
     let mut buffer = vec![0u8; 1024 * 1024];
     loop {
-        let read = file.read(&mut buffer)?;
+        let read = std::io::Read::read(&mut file, &mut buffer)?;
         if read == 0 {
             break;
         }
@@ -613,6 +705,90 @@ impl Drop for TempDirectory {
 
 #[cfg(test)]
 mod tests {
+    use std::{
+        io::{Read, Write},
+        net::TcpListener,
+        sync::{Arc, atomic::AtomicBool},
+        thread,
+        time::{Duration, Instant},
+    };
+
+    use browser_harbor::{
+        domain::{
+            release::{
+                ArchiveFormat, Artifact, CpuBuild, ProgramPlacement, ProviderKind, ReleaseChannel,
+                ReleaseDescriptor,
+            },
+            settings::NetworkSettings,
+            target::TargetId,
+        },
+        services::{
+            ServiceError, download::Downloader, http::HttpClient, trusted_metadata::TrustedMetadata,
+        },
+    };
+    use sha2::{Digest, Sha256};
+
+    fn serve_artifact(bytes: Vec<u8>) -> (String, thread::JoinHandle<()>) {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        listener.set_nonblocking(true).unwrap();
+        let address = listener.local_addr().unwrap();
+        let server = thread::spawn(move || {
+            let deadline = Instant::now() + Duration::from_secs(2);
+            let (mut socket, _) = loop {
+                match listener.accept() {
+                    Ok(connection) => break connection,
+                    Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
+                        if Instant::now() >= deadline {
+                            return;
+                        }
+                        thread::sleep(Duration::from_millis(10));
+                    }
+                    Err(_) => return,
+                }
+            };
+            socket.set_nonblocking(false).unwrap();
+            socket
+                .set_read_timeout(Some(Duration::from_secs(1)))
+                .unwrap();
+            socket
+                .set_write_timeout(Some(Duration::from_secs(1)))
+                .unwrap();
+            let mut request = Vec::new();
+            let mut chunk = [0; 2048];
+            while request.len() < 64 * 1024 {
+                match socket.read(&mut chunk) {
+                    Ok(0) => break,
+                    Ok(read) => {
+                        request.extend_from_slice(&chunk[..read]);
+                        if request.windows(4).any(|window| window == b"\r\n\r\n") {
+                            break;
+                        }
+                    }
+                    Err(_) => return,
+                }
+            }
+            let mut response = format!(
+                "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+                bytes.len()
+            )
+            .into_bytes();
+            response.extend_from_slice(&bytes);
+            let _ = socket.write_all(&response);
+        });
+        (format!("http://{address}/artifact"), server)
+    }
+
+    fn artifact(url: String) -> Artifact {
+        Artifact {
+            file_name: "new-release.zip".to_owned(),
+            format: ArchiveFormat::Zip,
+            size: None,
+            integrity: None,
+            urls: vec![url],
+            signature_url: None,
+        }
+    }
+
     #[tokio::test]
     async fn refreshing_an_unchanged_release_keeps_its_trusted_size() {
         let mut baseline =
@@ -620,11 +796,7 @@ mod tests {
         baseline.releases[0].artifact.size = Some(123);
         let network = browser_harbor::domain::settings::NetworkSettings::default();
         let work = tempfile::tempdir().unwrap();
-        let downloader = browser_harbor::services::download::Downloader::new(
-            reqwest::Client::new(),
-            work.path().to_path_buf(),
-            std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
-        );
+        let client = HttpClient::download_client(&network).unwrap();
         for without_digest in [false, true] {
             let mut release = baseline.releases[0].clone();
             release.artifact.size = None;
@@ -632,16 +804,113 @@ mod tests {
                 release.artifact.integrity = None;
             }
             let refreshed =
-                super::ensure_release_integrity(release, &baseline, &downloader, &network)
+                super::ensure_release_integrity(release, &baseline, &client, work.path())
                     .await
                     .unwrap()
                     .unwrap();
             assert_eq!(refreshed.artifact.size, Some(123));
         }
     }
-    use std::{fs, thread};
+    use std::fs;
 
-    use sha2::{Digest, Sha256};
+    #[tokio::test]
+    async fn metadata_samples_new_release_without_baseline() {
+        let bytes = b"new browser release without a signed digest".to_vec();
+        let (url, server) = serve_artifact(bytes.clone());
+        let network = NetworkSettings {
+            accelerators_enabled: false,
+            ..NetworkSettings::default()
+        };
+        let client = HttpClient::download_client(&network).unwrap();
+        let work = tempfile::tempdir().unwrap();
+        let baseline = TrustedMetadata::load_embedded().unwrap();
+        let descriptor = ReleaseDescriptor {
+            target: TargetId::Catsxp,
+            version: "999.0.0.1".to_owned(),
+            channel: ReleaseChannel::Stable,
+            cpu_build: CpuBuild::X64,
+            provider: ProviderKind::Catsxp,
+            artifact: artifact(url),
+            placement: ProgramPlacement::App,
+            inner_archive: None,
+            source: "bounded fixture".to_owned(),
+            published_at: None,
+        };
+        let cache = tempfile::tempdir().unwrap();
+        let downloader = Downloader::new(
+            client.clone(),
+            cache.path().to_path_buf(),
+            Arc::new(AtomicBool::new(false)),
+        );
+        assert!(matches!(
+            downloader
+                .download(&descriptor.artifact, &NetworkSettings::default(), |_| {})
+                .await,
+            Err(ServiceError::InvalidIntegrity)
+        ));
+
+        let refreshed =
+            super::ensure_release_integrity(descriptor, &baseline, &client, work.path())
+                .await
+                .unwrap()
+                .unwrap();
+        let expected = hex::encode(Sha256::digest(&bytes));
+        assert_eq!(refreshed.artifact.size, Some(bytes.len() as u64));
+        assert_eq!(
+            refreshed
+                .artifact
+                .integrity
+                .as_ref()
+                .map(|value| value.value()),
+            Some(expected.as_str())
+        );
+        server.join().unwrap();
+    }
+
+    #[tokio::test]
+    async fn metadata_samples_new_runtime_without_baseline() {
+        let bytes = b"new runtime without a signed digest".to_vec();
+        let (url, server) = serve_artifact(bytes.clone());
+        let network = NetworkSettings {
+            accelerators_enabled: false,
+            ..NetworkSettings::default()
+        };
+        let client = HttpClient::download_client(&network).unwrap();
+        let work = tempfile::tempdir().unwrap();
+        let mut runtime = artifact(url);
+        runtime.file_name = "new-runtime.7z".to_owned();
+        super::ensure_runtime_artifact(&mut runtime, None, &client, work.path())
+            .await
+            .unwrap();
+        let expected = hex::encode(Sha256::digest(&bytes));
+        assert_eq!(runtime.size, Some(bytes.len() as u64));
+        assert_eq!(
+            runtime.integrity.as_ref().map(|value| value.value()),
+            Some(expected.as_str())
+        );
+        server.join().unwrap();
+    }
+
+    #[tokio::test]
+    async fn reused_runtime_integrity_also_keeps_its_verified_size() {
+        let mut runtime = artifact("https://invalid.invalid/not-requested".to_owned());
+        let mut previous = runtime.clone();
+        previous.size = Some(123);
+        previous.integrity = Some(browser_harbor::domain::release::Integrity::Sha256(
+            "a".repeat(64),
+        ));
+        let client = HttpClient::download_client(&NetworkSettings::default()).unwrap();
+        super::ensure_runtime_artifact(
+            &mut runtime,
+            Some(&previous),
+            &client,
+            tempfile::tempdir().unwrap().path(),
+        )
+        .await
+        .unwrap();
+        assert_eq!(runtime.size, Some(123));
+        assert_eq!(runtime.integrity, previous.integrity);
+    }
 
     use super::{refresh_component, sha256_file};
 

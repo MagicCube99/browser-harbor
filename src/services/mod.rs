@@ -2,6 +2,8 @@
 
 pub mod archive;
 pub mod download;
+#[cfg(test)]
+mod download_tests;
 pub mod health;
 pub mod http;
 pub mod install;
@@ -32,6 +34,10 @@ pub enum ServiceError {
     InvalidUrl,
     #[error("no download candidate succeeded")]
     AllCandidatesFailed,
+    #[error("download response has an invalid byte range")]
+    InvalidRange,
+    #[error("download requires a valid trusted artifact digest")]
+    InvalidIntegrity,
     #[error("downloaded size does not match the release descriptor")]
     SizeMismatch { expected: u64, actual: u64 },
     #[error("downloaded artifact hash does not match")]

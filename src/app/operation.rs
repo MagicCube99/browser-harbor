@@ -659,6 +659,39 @@ fn install_error_for_operation(
     }
 }
 
+fn download_error_for_operation(
+    error: crate::services::ServiceError,
+) -> Box<dyn std::error::Error + Send + Sync> {
+    use crate::services::ServiceError;
+    match error {
+        ServiceError::InvalidRange => {
+            "下载服务器返回了不一致的文件范围；已保留可用断点，请重试或更换加速站".into()
+        }
+        ServiceError::InvalidIntegrity => "下载信息缺少可信摘要，已阻止安装".into(),
+        ServiceError::HashMismatch { .. } => "下载文件完整性校验失败，已丢弃不完整文件".into(),
+        ServiceError::SizeMismatch { expected, actual } => {
+            format!("下载文件大小不符：应为 {expected} 字节，实际为 {actual} 字节").into()
+        }
+        ServiceError::Transport { host, reason } => {
+            format!("下载连接中断：{host}（{reason}）").into()
+        }
+        ServiceError::Status { status, host } => {
+            format!("下载服务器返回 HTTP {status}：{host}").into()
+        }
+        ServiceError::Io { path, source } => {
+            format!("无法写入下载缓存：{}（{source}）", path.display()).into()
+        }
+        ServiceError::ResponseTooLarge => "下载内容超出允许大小".into(),
+        ServiceError::AllCandidatesFailed => "所有下载来源均不可用；请检查网络或稍后重试".into(),
+        ServiceError::Network(_) => "下载网络请求失败".into(),
+        ServiceError::InvalidResponse(_) => "下载响应格式无效".into(),
+        ServiceError::InvalidUrl => "下载地址无效".into(),
+        ServiceError::Cancelled => "任务已取消".into(),
+        ServiceError::ResolutionTimedOut => "下载元数据等待超时；请检查网络后重试".into(),
+        ServiceError::Cache(_) => "下载缓存记录无效".into(),
+    }
+}
+
 fn requires_replacement_confirmation(
     replace_same_version: bool,
     current: &str,
@@ -888,7 +921,8 @@ async fn download_artifact(
                 });
             }
         })
-        .await?;
+        .await
+        .map_err(download_error_for_operation)?;
     emit(OperationPhase::Verifying);
     Ok(path)
 }
@@ -1075,6 +1109,27 @@ impl OperationPhase {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn download_errors_use_actionable_source_language_messages() {
+        let invalid_range =
+            super::download_error_for_operation(crate::services::ServiceError::InvalidRange);
+        assert!(
+            invalid_range
+                .to_string()
+                .contains("下载服务器返回了不一致的文件范围")
+        );
+        assert!(!invalid_range.to_string().contains("invalid byte range"));
+
+        let invalid_integrity =
+            super::download_error_for_operation(crate::services::ServiceError::InvalidIntegrity);
+        assert!(invalid_integrity.to_string().contains("缺少可信摘要"));
+        assert!(
+            !invalid_integrity
+                .to_string()
+                .contains("trusted artifact digest")
+        );
+    }
+
     #[test]
     fn discovery_gate_accepts_newer_verified_metadata_but_never_older() {
         assert!(super::signed_version_matches_discovery(
