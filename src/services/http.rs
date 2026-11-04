@@ -27,6 +27,7 @@ const BUILTIN_ACCELERATORS: &[&str] = &[
     "https://ghproxy.net/",
     "https://github.akams.cn/",
 ];
+const METADATA_DIRECT_HOSTS: &[&str] = &["gitee.com", "raw.giteeusercontent.com"];
 
 pub(crate) async fn wait_for_cancellation(cancellation: &AtomicBool) {
     while !cancellation.load(Ordering::Relaxed) {
@@ -51,7 +52,7 @@ impl HttpClient {
         Ok(Self {
             direct,
             fallback,
-            direct_hosts: Arc::new(accelerator_hosts(settings)),
+            direct_hosts: Arc::new(metadata_direct_hosts(settings)),
             github_token: std::env::var("GITHUB_TOKEN")
                 .ok()
                 .filter(|token| !token.trim().is_empty()),
@@ -319,6 +320,12 @@ pub(crate) fn accelerator_hosts(settings: &NetworkSettings) -> HashSet<String> {
         .collect()
 }
 
+pub(crate) fn metadata_direct_hosts(settings: &NetworkSettings) -> HashSet<String> {
+    let mut hosts = accelerator_hosts(settings);
+    hosts.extend(METADATA_DIRECT_HOSTS.iter().map(|host| (*host).to_owned()));
+    hosts
+}
+
 pub(crate) fn url_uses_accelerator(url: &Url, direct_hosts: &HashSet<String>) -> bool {
     url.host_str()
         .is_some_and(|host| direct_hosts.contains(&host.to_ascii_lowercase()))
@@ -451,8 +458,8 @@ mod tests {
     };
 
     use super::{
-        UrlRouter, accelerator_hosts, github_api_candidates, signed_manifest_candidates,
-        url_uses_accelerator,
+        UrlRouter, accelerator_hosts, github_api_candidates, metadata_direct_hosts,
+        signed_manifest_candidates, url_uses_accelerator,
     };
     use crate::domain::{
         release::{ArchiveFormat, Artifact, Integrity},
@@ -761,6 +768,39 @@ mod tests {
         ));
         assert!(!url_uses_accelerator(
             &"https://dl.google.com/chrome.msi".parse().unwrap(),
+            &hosts
+        ));
+    }
+
+    #[test]
+    fn gitee_signed_metadata_hosts_bypass_the_user_proxy() {
+        let mut settings = NetworkSettings::default();
+        settings.accelerators.push(Accelerator {
+            prefix: "https://mirror.example/".to_owned(),
+            enabled: true,
+        });
+
+        let hosts = metadata_direct_hosts(&settings);
+        assert!(hosts.contains("ghfast.top"));
+        assert!(hosts.contains("mirror.example"));
+        assert!(hosts.contains("gitee.com"));
+        assert!(hosts.contains("raw.giteeusercontent.com"));
+        assert!(url_uses_accelerator(
+            &"https://gitee.com/MagicCube99/browser-harbor/raw/metadata-live/assets/trusted-metadata.json"
+                .parse()
+                .unwrap(),
+            &hosts
+        ));
+        assert!(url_uses_accelerator(
+            &"https://raw.giteeusercontent.com/MagicCube99/browser-harbor/raw/metadata-live/assets/trusted-metadata.json"
+                .parse()
+                .unwrap(),
+            &hosts
+        ));
+        assert!(!url_uses_accelerator(
+            &"https://api.github.com/repos/owner/repo/releases/latest"
+                .parse()
+                .unwrap(),
             &hosts
         ));
     }
