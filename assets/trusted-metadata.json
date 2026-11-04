@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": 1793763448,
+  "generatedAt": 1793784149,
   "expiresAt": 253402300799,
   "releases": [
     {
@@ -29,27 +29,27 @@
     },
     {
       "target": "brave",
-      "version": "1.100.47",
+      "version": "1.100.48",
       "channel": "beta",
       "cpuBuild": "x64",
       "provider": "git_hub_release",
       "artifact": {
-        "fileName": "brave-v1.100.47-win32-x64.zip",
+        "fileName": "brave-v1.100.48-win32-x64.zip",
         "format": "zip",
-        "size": 255098328,
+        "size": 255098629,
         "integrity": {
           "algorithm": "sha256",
-          "value": "1238a8972c0cbb3076fcc30bdad5b1b9ffa9e0a3d43d3483e4284423a430f60b"
+          "value": "efae61d2d3a015c6e18bc0572aba984c7aa676e23d437ff81f2b3a58fa2be84c"
         },
         "urls": [
-          "https://github.com/brave/brave-browser/releases/download/v1.100.47/brave-v1.100.47-win32-x64.zip"
+          "https://github.com/brave/brave-browser/releases/download/v1.100.48/brave-v1.100.48-win32-x64.zip"
         ],
         "signatureUrl": null
       },
       "placement": "native_package",
       "innerArchive": null,
-      "source": "https://github.com/brave/brave-browser/releases/tag/v1.100.47",
-      "publishedAt": "2026-11-03T05:33:37Z"
+      "source": "https://github.com/brave/brave-browser/releases/tag/v1.100.48",
+      "publishedAt": "2026-11-04T05:23:26Z"
     },
     {
       "target": "catsxp",
@@ -232,27 +232,27 @@
     },
     {
       "target": "floorp",
-      "version": "12.21.0",
+      "version": "12.21.1",
       "channel": "stable",
       "cpuBuild": "x64",
       "provider": "git_hub_release",
       "artifact": {
         "fileName": "floorp-windows-x86_64.portable.7z",
         "format": "sevenzip",
-        "size": 123061591,
+        "size": 123153688,
         "integrity": {
           "algorithm": "sha256",
-          "value": "e944b86da99b5088cde1169e36b5e6c461d9739ad32cab738d118c12aa6c8486"
+          "value": "886f81aebb631be15e16ae355c55b5f3730dcd900d490aa1602a373c6cbfa013"
         },
         "urls": [
-          "https://github.com/Floorp-Projects/Floorp-Portable-v2/releases/download/v12.21.0/floorp-windows-x86_64.portable.7z"
+          "https://github.com/Floorp-Projects/Floorp-Portable-v2/releases/download/v12.21.1/floorp-windows-x86_64.portable.7z"
         ],
         "signatureUrl": null
       },
       "placement": "native_package",
       "innerArchive": null,
-      "source": "https://github.com/Floorp-Projects/Floorp-Portable-v2/releases/tag/v12.21.0",
-      "publishedAt": "2026-10-27T15:43:45Z"
+      "source": "https://github.com/Floorp-Projects/Floorp-Portable-v2/releases/tag/v12.21.1",
+      "publishedAt": "2026-11-04T07:04:14Z"
     },
     {
       "target": "helium",
@@ -304,27 +304,27 @@
     },
     {
       "target": "iceweasel",
-      "version": "159.0",
+      "version": "159.0.1",
       "channel": "release",
       "cpuBuild": "x64",
       "provider": "git_hub_release",
       "artifact": {
-        "fileName": "Iceweasel-v159.0.l10n_win64_pgo.7z",
+        "fileName": "Iceweasel-v159.0.1.l10n_win64_pgo.7z",
         "format": "sevenzip",
-        "size": 91649891,
+        "size": 91694744,
         "integrity": {
           "algorithm": "sha256",
-          "value": "2eae807dfea9290aaf4bfa2d7882082b761a4869200231b446513ec14a4634e8"
+          "value": "4187a5a66bba67571a0039f1c8c522b14a102c96b73f8b40e1656b4ed23d0eb5"
         },
         "urls": [
-          "https://github.com/adonais/iceweasel/releases/download/v159.0/Iceweasel-v159.0.l10n_win64_pgo.7z"
+          "https://github.com/adonais/iceweasel/releases/download/v159.0.1/Iceweasel-v159.0.1.l10n_win64_pgo.7z"
         ],
         "signatureUrl": null
       },
       "placement": "native_package",
       "innerArchive": null,
-      "source": "https://github.com/adonais/iceweasel/releases/tag/v159.0",
-      "publishedAt": "2026-10-24T17:47:55Z"
+      "source": "https://github.com/adonais/iceweasel/releases/tag/v159.0.1",
+      "publishedAt": "2026-11-04T04:33:30Z"
     },
     {
       "target": "libre_wolf",
