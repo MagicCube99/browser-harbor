@@ -61,6 +61,8 @@ jobs:
       - name: Probe official versions
         id: probe
         shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           $output = cargo run --quiet --bin metadata -- probe `
             --baseline .\assets\trusted-metadata.json `

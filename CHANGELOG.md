@@ -2,6 +2,12 @@
 
 [简体中文](CHANGELOG.zh-CN.md) · English
 
+## v0.8.0 — 2026-11-04
+
+- Improved download performance by preferring responsive accelerators and switching away from stalled routes.
+- Interrupted downloads can resume when the cached data still matches the release and the source supports it. Final size and hash verification remain mandatory.
+- Newly published browser versions can become available for installation sooner.
+
 ## v0.7.0 — 2026-11-02
 
 - Added Catsxp Beta portable packages, with verified installed-build recognition and channel-switch confirmation. Stable remains the default.

@@ -53,6 +53,9 @@ the current desktop.
 - **Downloads from declared sources.** Official vendor endpoints, release APIs,
   signed metadata, and approved mirrors. No mystery `.exe` from page four of a
   forum thread.
+- **Spends less time waiting on slow routes.** Prefer responsive accelerators,
+  switch away from stalled ones, and resume interrupted downloads before running
+  the same mandatory integrity check.
 - **Trusts bytes only after checking them.** Browsers, Chrome++, Libportable,
   and local packages require trusted integrity data; LibreWolf additionally
   gets an OpenPGP signature check.
