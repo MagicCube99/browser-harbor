@@ -1,31 +1,31 @@
 {
   "schemaVersion": 1,
-  "generatedAt": 1793698777,
+  "generatedAt": 1793763448,
   "expiresAt": 253402300799,
   "releases": [
     {
       "target": "brave",
-      "version": "1.98.63",
+      "version": "1.99.54",
       "channel": "stable",
       "cpuBuild": "x64",
       "provider": "git_hub_release",
       "artifact": {
-        "fileName": "brave-v1.98.63-win32-x64.zip",
+        "fileName": "brave-v1.99.54-win32-x64.zip",
         "format": "zip",
-        "size": 252907553,
+        "size": 255034907,
         "integrity": {
           "algorithm": "sha256",
-          "value": "403f330d018f86fddbcedb95ea1f8b9b5e9a6198d93d306a4d4cee776f49396a"
+          "value": "8f104d8eefbb652da318085c17878cd6c7622e03e6ecfb136cf648165cd9ebfb"
         },
         "urls": [
-          "https://github.com/brave/brave-browser/releases/download/v1.98.63/brave-v1.98.63-win32-x64.zip"
+          "https://github.com/brave/brave-browser/releases/download/v1.99.54/brave-v1.99.54-win32-x64.zip"
         ],
         "signatureUrl": null
       },
       "placement": "native_package",
       "innerArchive": null,
-      "source": "https://github.com/brave/brave-browser/releases/tag/v1.98.63",
-      "publishedAt": "2026-10-30T05:50:37Z"
+      "source": "https://github.com/brave/brave-browser/releases/tag/v1.99.54",
+      "publishedAt": "2026-11-03T22:13:59Z"
     },
     {
       "target": "brave",
@@ -78,20 +78,20 @@
     },
     {
       "target": "catsxp",
-      "version": "157.6.11.1.4",
+      "version": "157.6.11.1.6",
       "channel": "beta",
       "cpuBuild": "x64",
       "provider": "catsxp",
       "artifact": {
-        "fileName": "portable_x64_beta_157_6_11_1_4.zip",
+        "fileName": "portable_x64_beta_157_6_11_1_6.zip",
         "format": "zip",
-        "size": 234147733,
+        "size": 234143530,
         "integrity": {
           "algorithm": "sha256",
-          "value": "8f7a7f179ca20e3ffbd9379ee4fa9ccfe2b12455e407ae3d60999cf71ddfce51"
+          "value": "379164957330df69cee8fd9d0dcd9f557407e48bb931dffd74cf6008087f88a6"
         },
         "urls": [
-          "https://b2.catsxp.com/catsxp_portable/win_x64/portable_x64_beta_157_6_11_1_4.zip"
+          "https://b2.catsxp.com/catsxp_portable/win_x64/portable_x64_beta_157_6_11_1_6.zip"
         ],
         "signatureUrl": null
       },
@@ -102,25 +102,25 @@
     },
     {
       "target": "chrome",
-      "version": "156.0.8078.80",
+      "version": "157.0.8103.39",
       "channel": "stable",
       "cpuBuild": "x64",
       "provider": "chrome_omaha",
       "artifact": {
-        "fileName": "156.0.8078.80_chrome_installer_uncompressed.exe",
+        "fileName": "157.0.8103.39_chrome_installer_uncompressed.exe",
         "format": "sevenzip",
-        "size": 525302696,
+        "size": 530228648,
         "integrity": {
           "algorithm": "sha256",
-          "value": "43cca215206b634b89d226ed71522c7f58c5430b8559b92e782dd7bd77add7cc"
+          "value": "389b9e21de9a520a6e24ba807ee8760409ccc837457bbcc460d2fdce0d5e8df5"
         },
         "urls": [
-          "https://edgedl.me.gvt1.com/edgedl/release2/chrome/aczq54y7kwp55hzkkdtm7qgz2x6a_156.0.8078.80/156.0.8078.80_chrome_installer_uncompressed.exe",
-          "https://edgedl.me.gvt1.com/edgedl/release2/chrome/aczq54y7kwp55hzkkdtm7qgz2x6a_156.0.8078.80/156.0.8078.80_chrome_installer_uncompressed.exe",
-          "https://dl.google.com/release2/chrome/aczq54y7kwp55hzkkdtm7qgz2x6a_156.0.8078.80/156.0.8078.80_chrome_installer_uncompressed.exe",
-          "https://dl.google.com/release2/chrome/aczq54y7kwp55hzkkdtm7qgz2x6a_156.0.8078.80/156.0.8078.80_chrome_installer_uncompressed.exe",
-          "https://www.google.com/dl/release2/chrome/aczq54y7kwp55hzkkdtm7qgz2x6a_156.0.8078.80/156.0.8078.80_chrome_installer_uncompressed.exe",
-          "https://www.google.com/dl/release2/chrome/aczq54y7kwp55hzkkdtm7qgz2x6a_156.0.8078.80/156.0.8078.80_chrome_installer_uncompressed.exe"
+          "https://edgedl.me.gvt1.com/edgedl/release2/chrome/lzz46e6auim6sx75xrn7xp5hza_157.0.8103.39/157.0.8103.39_chrome_installer_uncompressed.exe",
+          "https://edgedl.me.gvt1.com/edgedl/release2/chrome/lzz46e6auim6sx75xrn7xp5hza_157.0.8103.39/157.0.8103.39_chrome_installer_uncompressed.exe",
+          "https://dl.google.com/release2/chrome/lzz46e6auim6sx75xrn7xp5hza_157.0.8103.39/157.0.8103.39_chrome_installer_uncompressed.exe",
+          "https://dl.google.com/release2/chrome/lzz46e6auim6sx75xrn7xp5hza_157.0.8103.39/157.0.8103.39_chrome_installer_uncompressed.exe",
+          "https://www.google.com/dl/release2/chrome/lzz46e6auim6sx75xrn7xp5hza_157.0.8103.39/157.0.8103.39_chrome_installer_uncompressed.exe",
+          "https://www.google.com/dl/release2/chrome/lzz46e6auim6sx75xrn7xp5hza_157.0.8103.39/157.0.8103.39_chrome_installer_uncompressed.exe"
         ],
         "signatureUrl": null
       },
@@ -160,26 +160,26 @@
     },
     {
       "target": "firefox",
-      "version": "159.0",
+      "version": "159.0.1",
       "channel": "stable",
       "cpuBuild": "x64",
       "provider": "mozilla",
       "artifact": {
-        "fileName": "Firefox Setup 159.0.exe",
+        "fileName": "Firefox Setup 159.0.1.exe",
         "format": "sevenzip",
         "size": null,
         "integrity": {
           "algorithm": "sha256",
-          "value": "70560289d68acaac013da52e5a485d4052783457213b53f4dcb88cfa87da5d07"
+          "value": "26beb1bef5c59f24b64c8b47669566ccf16d5d7984ae1c20e81b6f4d3c580fa5"
         },
         "urls": [
-          "https://download-installer.cdn.mozilla.net/pub/firefox/releases/159.0/win64/zh-CN/Firefox%20Setup%20159.0.exe"
+          "https://download-installer.cdn.mozilla.net/pub/firefox/releases/159.0.1/win64/zh-CN/Firefox%20Setup%20159.0.1.exe"
         ],
         "signatureUrl": null
       },
       "placement": "app",
       "innerArchive": null,
-      "source": "https://download-installer.cdn.mozilla.net/pub/firefox/releases/159.0/SHA256SUMS",
+      "source": "https://download-installer.cdn.mozilla.net/pub/firefox/releases/159.0.1/SHA256SUMS",
       "publishedAt": null
     },
     {
@@ -328,44 +328,44 @@
     },
     {
       "target": "libre_wolf",
-      "version": "159.0",
+      "version": "159.0.1",
       "channel": "stable",
       "cpuBuild": "x64",
       "provider": "libre_wolf",
       "artifact": {
-        "fileName": "librewolf-159.0-1-windows-x86_64-portable.zip",
+        "fileName": "librewolf-159.0.1-1-windows-x86_64-portable.zip",
         "format": "zip",
         "size": null,
         "integrity": {
           "algorithm": "sha256",
-          "value": "24c382200f961898469455d58b844f911d79cd34c473d48713666b7f71adbf13"
+          "value": "6b1f029a758ec03e124c879823f55f852486454cd3bc7cbc2461938f8ab60319"
         },
         "urls": [
-          "https://dl.librewolf.net/librewolf/159.0-1/librewolf-159.0-1-windows-x86_64-portable.zip"
+          "https://dl.librewolf.net/librewolf/159.0.1-1/librewolf-159.0.1-1-windows-x86_64-portable.zip"
         ],
-        "signatureUrl": "https://dl.librewolf.net/librewolf/159.0-1/librewolf-159.0-1-windows-x86_64-portable.zip.sig"
+        "signatureUrl": "https://dl.librewolf.net/librewolf/159.0.1-1/librewolf-159.0.1-1-windows-x86_64-portable.zip.sig"
       },
       "placement": "native_package",
       "innerArchive": null,
       "source": "https://librewolf.dev/api/v1/repos/librewolf/bsys6/releases?limit=1",
-      "publishedAt": "2026-10-27T22:44:28Z"
+      "publishedAt": "2026-11-04T00:48:54Z"
     },
     {
       "target": "sky_kakapo",
-      "version": "159.0",
+      "version": "159.0.1",
       "channel": "stable",
       "cpuBuild": "sse3",
       "provider": "sky_kakapo",
       "artifact": {
-        "fileName": "skykakapo-159.0-2026102520.en-US.win64-sse3-cspgo.7z",
+        "fileName": "skykakapo-159.0.1-2026110319.en-US.win64-sse3-cspgo.7z",
         "format": "sevenzip",
         "size": null,
         "integrity": {
           "algorithm": "sha256",
-          "value": "60aa1463737ebc608f9246ee47e7e578a6cbc9afd8bd62c3eac48bc7094e3880"
+          "value": "d0cf7a42ef47afb2ef7dda87480439e074656f1fe5bd55f4b23f8d3e9ca5f480"
         },
         "urls": [
-          "https://sourceforge.net/projects/skykakapo/files/159.0/skykakapo-159.0-2026102520.en-US.win64-sse3-cspgo.7z/download"
+          "https://sourceforge.net/projects/skykakapo/files/159.0.1/skykakapo-159.0.1-2026110319.en-US.win64-sse3-cspgo.7z/download"
         ],
         "signatureUrl": null
       },
@@ -496,20 +496,20 @@
     },
     {
       "target": "turbo",
-      "version": "156.0.8078.80",
+      "version": "156.0.8078.81",
       "channel": "stable",
       "cpuBuild": "x64",
       "provider": "turbo",
       "artifact": {
-        "fileName": "Turbo_156.0.8078.80_portable.7z",
+        "fileName": "Turbo_156.0.8078.81_portable.7z",
         "format": "sevenzip",
-        "size": 127003032,
+        "size": 127067785,
         "integrity": {
           "algorithm": "sha256",
-          "value": "13999f6769a98afcdfc3009cf3fa54eb446958327144db5d2edf1ba3e50ef851"
+          "value": "068c1483b42487606089605a88663407b6800e6ec79a6261b0de86a9f6fbc242"
         },
         "urls": [
-          "https://dl.tbrowser.cn/download/Turbo_156.0.8078.80_portable.7z"
+          "https://dl.tbrowser.cn/download/Turbo_156.0.8078.81_portable.7z"
         ],
         "signatureUrl": null
       },
@@ -544,20 +544,20 @@
     },
     {
       "target": "vivaldi",
-      "version": "8.2.4133.96",
+      "version": "8.1.4087.61",
       "channel": "stable",
       "cpuBuild": "x64",
       "provider": "vivaldi",
       "artifact": {
-        "fileName": "Vivaldi.8.2.4133.96.x64.exe",
+        "fileName": "Vivaldi.8.1.4087.61.x64.exe",
         "format": "sevenzip",
-        "size": 156264872,
+        "size": 146559912,
         "integrity": {
           "algorithm": "sha256",
-          "value": "cd3374dbbffe20ccc8dd1f621c171831ae4e79548af1d41db4dadadf3decb034"
+          "value": "5f897427cb9caee96751b8b4a08eefb83898008fb5d9ad7e5d1323a1b4b55179"
         },
         "urls": [
-          "https://downloads.vivaldi.com/stable/Vivaldi.8.2.4133.96.x64.exe"
+          "https://downloads.vivaldi.com/stable/Vivaldi.8.1.4087.61.x64.exe"
         ],
         "signatureUrl": null
       },
