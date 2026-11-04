@@ -2,7 +2,7 @@ name: Metadata
 
 on:
   schedule:
-    - cron: "17 2 * * *"
+    - cron: "17 2,10,18 * * *"
   workflow_dispatch:
 
 permissions:
