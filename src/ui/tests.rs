@@ -798,6 +798,75 @@ fn advanced_local_package_toggle_persists_and_clears_every_selection_without_del
 }
 
 #[test]
+fn metadata_settings_are_visible_and_persist() {
+    for language in [Language::Chinese, Language::English] {
+        let directory = tempdir().unwrap();
+        let json = directory.path().join("BrowserHarbor.json");
+        let settings = Settings {
+            language,
+            ..Settings::default()
+        };
+        let state = AppState::new(settings, ConfigStore::new(json.clone()));
+        let mut app = BrowserHarborApp::new(state);
+        app.active_tab = DetailTab::Network;
+        let mut harness = harness_for(app);
+        harness.run();
+        let (advanced, auto_check, offline_cache, refresh) = if language.is_english() {
+            (
+                "Advanced",
+                "Automatically check verification info",
+                "Use the latest signed offline verification info",
+                "Refresh verification info now",
+            )
+        } else {
+            (
+                "高级",
+                "自动检查校验信息",
+                "离线时使用最近一次已签名的校验信息",
+                "立即重新获取校验信息",
+            )
+        };
+        harness.get_by_label(advanced).click();
+        harness.run();
+        harness.get_by_label(auto_check).scroll_to_me();
+        harness.run();
+        harness.get_by_label(auto_check).click();
+        harness.run();
+        harness.get_by_label(offline_cache).scroll_to_me();
+        harness.run();
+        harness.get_by_label(offline_cache).click();
+        harness.run();
+        harness.get_by_label(refresh).scroll_to_me();
+        harness.run();
+        assert!(!harness.get_by_label(refresh).accesskit_node().is_disabled());
+
+        let loaded = ConfigStore::new(json).load().unwrap();
+        assert!(!loaded.auto_check_metadata);
+        assert!(!loaded.use_signed_metadata_cache);
+    }
+}
+
+#[test]
+fn disabled_automatic_metadata_check_does_not_start_a_background_check() {
+    let directory = tempdir().unwrap();
+    let settings = Settings {
+        auto_check_metadata: false,
+        ..Settings::default()
+    };
+    let state = AppState::new(
+        settings,
+        ConfigStore::new(directory.path().join("BrowserHarbor.json")),
+    );
+    let mut app = BrowserHarborApp::new(state);
+    app.auto_check_enabled = true;
+    let mut harness = harness_for(app);
+    harness.run();
+
+    assert!(harness.state().operation.is_none());
+    assert!(harness.state().auto_checked_keys.is_empty());
+}
+
+#[test]
 fn disabled_local_package_ignores_legacy_selection() {
     let directory = tempdir().unwrap();
     let mut settings = Settings::default();
@@ -845,6 +914,7 @@ fn app_with_operation_receiver(
         chrome_plus_expected_version: None,
         replace_same_version: false,
         allow_local_package: false,
+        allow_signed_metadata_cache: true,
         cached_release: None,
     });
     operation.receiver = receiver;

@@ -155,6 +155,7 @@ async fn verify_catsxp_portable_install(selected_channel: ReleaseChannel) {
             replace_same_version: false,
             channel_change_confirmed: false,
             allow_local_package: false,
+            allow_signed_metadata_cache: true,
             cached_release: Some(CachedReleaseMetadata {
                 check: UpstreamCheck::fresh(descriptor.version.clone(), channel, CpuBuild::X64),
                 release: descriptor,

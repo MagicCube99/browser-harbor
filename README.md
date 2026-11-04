@@ -59,6 +59,9 @@ the current desktop.
 - **Trusts bytes only after checking them.** Browsers, Chrome++, Libportable,
   and local packages require trusted integrity data; LibreWolf additionally
   gets an OpenPGP signature check.
+- **Works offline without weakening verification.** Automatic verification
+  checks and signed offline fallback are configurable; cached fallback never
+  bypasses signature, size, or digest checks.
 - **Keeps the layout sane.** Program, data, profile, optional cache, and
   auto-created shortcuts have predictable places.
 - **Handles Chromium’s awkward corners.** Check and update Chrome++ independently,

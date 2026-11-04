@@ -769,7 +769,11 @@ impl BrowserHarborApp {
         target: TargetId,
         config: &crate::domain::settings::TargetConfig,
     ) {
-        if !self.auto_check_enabled || self.startup_error.is_some() || self.operation.is_some() {
+        if !self.auto_check_enabled
+            || !self.state.draft().auto_check_metadata
+            || self.startup_error.is_some()
+            || self.operation.is_some()
+        {
             return;
         }
         let key = (target, config.channel, config.cpu_build);
@@ -1045,6 +1049,7 @@ impl BrowserHarborApp {
             replace_same_version,
             cached_release,
             allow_local_package: self.state.draft().show_local_package,
+            allow_signed_metadata_cache: self.state.draft().use_signed_metadata_cache,
         }));
     }
 
@@ -1210,6 +1215,16 @@ impl BrowserHarborApp {
                             "Chrome++ 已更新到 {version}，浏览器数据和配置已保留"
                         ));
                     }
+                }
+                OperationPhase::MetadataRefreshed { generated_at } => {
+                    self.latest_versions.clear();
+                    self.checked_releases.clear();
+                    self.auto_checked_keys.clear();
+                    self.status_message = Some(format!(
+                        "{}（{}）",
+                        localized("校验信息已更新"),
+                        localized(checked_age(*generated_at))
+                    ));
                 }
                 OperationPhase::Cancelled => {
                     self.status_message = Some("任务已取消".to_owned());
@@ -1883,6 +1898,9 @@ impl BrowserHarborApp {
         let mut clear_cache = false;
         let mut requested_config_location = None;
         let mut show_local_package = self.state.draft().show_local_package;
+        let mut auto_check_metadata = self.state.draft().auto_check_metadata;
+        let mut use_signed_metadata_cache = self.state.draft().use_signed_metadata_cache;
+        let mut refresh_metadata = false;
 
         changed |= section(ui, "下载加速", |ui| {
             let mut section_changed = ui
@@ -2151,7 +2169,36 @@ impl BrowserHarborApp {
         egui::CollapsingHeader::new(localized("高级"))
             .id_salt("advanced_settings")
             .show(ui, |ui| {
-                advanced_changed = ui.localized_checkbox(&mut show_local_package, "使用本地包替代下载").changed();
+                advanced_changed =
+                    ui.localized_checkbox(&mut auto_check_metadata, "自动检查校验信息")
+                        .changed();
+                ui.localized_label(
+                    RichText::new("进入浏览器页面时自动检查所选浏览器的官方版本和签名校验信息。")
+                        .size(10.5)
+                        .color(palette.muted),
+                );
+                ui.add_space(3.0);
+                advanced_changed |=
+                    ui.localized_checkbox(
+                        &mut use_signed_metadata_cache,
+                        "离线时使用最近一次已签名的校验信息",
+                    )
+                    .changed();
+                ui.localized_label(
+                    RichText::new("实时校验信息不可用时使用最近一次已验签缓存；签名、大小和摘要仍会校验。")
+                        .size(10.5)
+                        .color(palette.muted),
+                );
+                ui.add_space(3.0);
+                refresh_metadata = ui
+                    .add_enabled(
+                        self.operation.is_none(),
+                        localized_button("立即重新获取校验信息"),
+                    )
+                    .clicked();
+                ui.add_space(3.0);
+                advanced_changed = ui.localized_checkbox(&mut show_local_package, "使用本地包替代下载").changed()
+                    || advanced_changed;
                 ui.localized_label(RichText::new("仅替代当前发布包的下载，不支持导入其他版本。仍会校验大小、摘要和必要的签名，并可能需要联网。关闭会清除选择记录，不删除文件。").size(10.5).color(palette.muted));
             });
         self.accelerator_input = accelerator_input;
@@ -2169,6 +2216,8 @@ impl BrowserHarborApp {
             self.state.update_draft(|settings| {
                 settings.network = network;
                 settings.show_local_package = show_local_package;
+                settings.auto_check_metadata = auto_check_metadata;
+                settings.use_signed_metadata_cache = use_signed_metadata_cache;
                 if !show_local_package {
                     for config in settings.targets.values_mut() {
                         config.local_package = None;
@@ -2176,6 +2225,9 @@ impl BrowserHarborApp {
                 }
             });
             self.auto_save();
+        }
+        if refresh_metadata && self.operation.is_none() {
+            self.start_operation(OperationMode::MetadataRefresh, false);
         }
         if let Some(portable) = requested_config_location
             && self.startup_error.is_none()
@@ -3820,6 +3872,9 @@ fn operation_status(phase: &OperationPhase) -> String {
         }
         OperationPhase::ChromePlusInstalled { version } => {
             format!("Chrome++ 已更新到 {version}")
+        }
+        OperationPhase::MetadataRefreshed { generated_at } => {
+            format!("校验信息已更新（{}）", checked_age(*generated_at))
         }
         OperationPhase::Cancelled => "任务已取消".to_owned(),
         OperationPhase::Failed { message } => message.clone(),

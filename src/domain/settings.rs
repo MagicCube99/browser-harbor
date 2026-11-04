@@ -10,7 +10,15 @@ use super::{
     target::TargetId,
 };
 
-pub const CURRENT_SCHEMA_VERSION: u32 = 12;
+pub const CURRENT_SCHEMA_VERSION: u32 = 13;
+
+const fn default_true() -> bool {
+    true
+}
+
+const fn is_true(value: &bool) -> bool {
+    *value
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -29,6 +37,10 @@ pub struct Settings {
     pub language: Language,
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub show_local_package: bool,
+    #[serde(default = "default_true", skip_serializing_if = "is_true")]
+    pub auto_check_metadata: bool,
+    #[serde(default = "default_true", skip_serializing_if = "is_true")]
+    pub use_signed_metadata_cache: bool,
 }
 
 impl Default for Settings {
@@ -45,6 +57,8 @@ impl Default for Settings {
             theme: ThemeMode::System,
             language: Language::Chinese,
             show_local_package: false,
+            auto_check_metadata: true,
+            use_signed_metadata_cache: true,
         }
     }
 }
@@ -276,7 +290,7 @@ impl Default for NetworkSettings {
 mod tests {
     use std::path::PathBuf;
 
-    use super::{Accelerator, NetworkSettings, TargetConfig};
+    use super::{Accelerator, NetworkSettings, Settings, TargetConfig};
     use crate::domain::{
         release::{CpuBuild, ReleaseChannel},
         target::TargetId,
@@ -291,6 +305,14 @@ mod tests {
         let thorium = TargetConfig::for_target(TargetId::Thorium);
         assert_eq!(thorium.channel, ReleaseChannel::Stable);
         assert_eq!(thorium.cpu_build, CpuBuild::Sse3);
+    }
+
+    #[test]
+    fn metadata_checks_are_enabled_by_default() {
+        let settings = Settings::default();
+
+        assert!(settings.auto_check_metadata);
+        assert!(settings.use_signed_metadata_cache);
     }
 
     #[test]

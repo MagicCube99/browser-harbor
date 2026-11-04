@@ -2,6 +2,12 @@
 
 [简体中文](CHANGELOG.zh-CN.md) · English
 
+## v0.8.1 — 2026-11-04
+
+- Chrome++ and Libportable updates are now checked by the frequent lightweight metadata probe.
+- Release builds use the latest signed metadata snapshot instead of an older copy embedded in the source branch.
+- Added advanced controls for automatic verification checks, signed offline fallback, and manual refresh.
+
 ## v0.8.0 — 2026-11-04
 
 - Improved download performance by preferring responsive accelerators and switching away from stalled routes.

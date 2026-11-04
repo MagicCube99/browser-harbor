@@ -163,7 +163,9 @@ Version checks use shorter timeouts. Downloads probe accelerators and prefer a r
 
 Accelerators only change transport. **Clear download cache** removes only reproducible installation files and never removes browser profiles or installed programs.
 
-**Advanced** contains the local installer-package switch. The default is off. A manual version check refreshes signed information; fallback results identify cached or embedded snapshots.
+**Advanced** enables **Automatically check verification info** and **Use the latest signed offline verification info** by default. The first controls automatic checks when opening a browser page. The second permits the last verified cache only when live verification info is unavailable. The cache must still pass signature, size, and digest checks and cannot make a newer release installable without a trusted digest.
+
+**Refresh verification info now** forcibly fetches and verifies the signed manifest without reinstalling a browser. Success clears previous upstream-check results; failure leaves the existing cache intact. When automatic checks are enabled, returning to the browser page checks again with the new manifest. This area also contains the local installer-package switch, which is off by default.
 
 ## Troubleshooting
 
