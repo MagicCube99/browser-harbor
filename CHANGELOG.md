@@ -2,6 +2,11 @@
 
 [简体中文](CHANGELOG.zh-CN.md) · English
 
+## Unreleased
+
+- Signed verification info now prefers the project-maintained Gitee mirror before existing GitHub accelerator and direct routes.
+- Older signed metadata can no longer replace a newer verified cache, including during manual refresh.
+
 ## v0.8.1 — 2026-11-04
 
 - Chrome++ and Libportable updates are now checked by the frequent lightweight metadata probe.

@@ -281,11 +281,7 @@ async fn refresh(
         || baseline.libportable.as_ref() != Some(&libportable);
     let now = unix_now();
     let refresh_time = content_changed || baseline.expires_at != NO_EXPIRY;
-    let generated_at = if content_changed {
-        now
-    } else {
-        baseline.generated_at
-    };
+    let generated_at = next_generated_at(content_changed, baseline.generated_at, now);
     let expires_at = if refresh_time {
         NO_EXPIRY
     } else {
@@ -816,6 +812,14 @@ fn unix_now() -> u64 {
         .map_or(0, |duration| duration.as_secs())
 }
 
+fn next_generated_at(content_changed: bool, baseline_generated_at: u64, now: u64) -> u64 {
+    if content_changed {
+        now.max(baseline_generated_at.saturating_add(1))
+    } else {
+        baseline_generated_at
+    }
+}
+
 struct TempDirectory {
     path: PathBuf,
 }
@@ -864,6 +868,13 @@ mod tests {
         },
     };
     use sha2::{Digest, Sha256};
+
+    #[test]
+    fn content_change_advances_generation_even_if_the_clock_moves_backward() {
+        assert_eq!(super::next_generated_at(true, 100, 90), 101);
+        assert_eq!(super::next_generated_at(true, 100, 120), 120);
+        assert_eq!(super::next_generated_at(false, 100, 120), 100);
+    }
 
     fn serve_artifact(bytes: Vec<u8>) -> (String, thread::JoinHandle<()>) {
         let listener = TcpListener::bind("127.0.0.1:0").unwrap();

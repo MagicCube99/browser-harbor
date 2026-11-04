@@ -46,7 +46,7 @@ jobs:
             echo "configured=true" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Push main and tags to Gitee
+      - name: Push refs to Gitee
         if: steps.credentials.outputs.configured == 'true'
         shell: bash
         env:
@@ -55,14 +55,44 @@ jobs:
         run: |
           set -euo pipefail
           credential_file="${RUNNER_TEMP}/gitee-credentials"
+          trap 'rm -f "${credential_file}"' EXIT
           git config --global credential.helper "store --file=${credential_file}"
           printf 'protocol=https\nhost=gitee.com\nusername=%s\npassword=%s\n\n' \
             "$GITEE_USERNAME" "$GITEE_TOKEN" | git credential approve
 
+          git fetch origin "+refs/heads/*:refs/remotes/origin/*" --tags
           git remote add gitee "https://gitee.com/MagicCube99/browser-harbor.git"
           git ls-remote gitee > /dev/null
           git push --force gitee HEAD:refs/heads/main
           git push --force --tags gitee
+
+          if metadata_sha=$(git rev-parse --verify refs/remotes/origin/metadata-live 2>/dev/null); then
+            remote_sha=$(git ls-remote gitee refs/heads/metadata-live | awk '{print $1}')
+            if [[ -n "${remote_sha}" ]]; then
+              git push \
+                --force-with-lease="refs/heads/metadata-live:${remote_sha}" \
+                gitee \
+                "${metadata_sha}:refs/heads/metadata-live"
+            else
+              git push gitee "${metadata_sha}:refs/heads/metadata-live"
+            fi
+
+            for file in trusted-metadata.json trusted-metadata.sig; do
+              expected=$(git show "${metadata_sha}:assets/${file}" | sha256sum | awk '{print $1}')
+              downloaded="${RUNNER_TEMP}/gitee-${file}"
+              curl --silent --show-error --fail --location \
+                --retry 3 --retry-delay 2 --retry-all-errors --max-time 30 \
+                "https://gitee.com/MagicCube99/browser-harbor/raw/${metadata_sha}/assets/${file}?verify=${GITHUB_RUN_ID}" \
+                --output "${downloaded}"
+              actual=$(sha256sum "${downloaded}" | awk '{print $1}')
+              if [[ "${actual}" != "${expected}" ]]; then
+                echo "Gitee Raw checksum mismatch for ${file}" >&2
+                exit 1
+              fi
+            done
+          else
+            echo "::notice title=Metadata mirror skipped::GitHub metadata-live does not exist yet."
+          fi
 
           curl --silent --show-error --fail \
             --request PATCH \

@@ -33,6 +33,10 @@ use crate::{
 
 const SIGNED_METADATA_URL: &str = "https://raw.githubusercontent.com/MagicCube99/browser-harbor/metadata-live/assets/trusted-metadata.json";
 const SIGNED_METADATA_SIGNATURE_URL: &str = "https://raw.githubusercontent.com/MagicCube99/browser-harbor/metadata-live/assets/trusted-metadata.sig";
+const GITEE_METADATA_URL: &str =
+    "https://gitee.com/MagicCube99/browser-harbor/raw/metadata-live/assets/trusted-metadata.json";
+const GITEE_METADATA_SIGNATURE_URL: &str =
+    "https://gitee.com/MagicCube99/browser-harbor/raw/metadata-live/assets/trusted-metadata.sig";
 const TRUSTED_METADATA_CACHE_MAX_AGE_SECONDS: u64 = 24 * 60 * 60;
 pub const UPSTREAM_REUSE_SECONDS: u64 = 10 * 60;
 
@@ -314,8 +318,18 @@ async fn run_operation(
         allow_signed_cache: request.allow_signed_metadata_cache,
     };
     if request.mode == OperationMode::MetadataRefresh {
-        let metadata =
-            fetch_trusted_metadata(&http, &request.network, &request.cache_dir, |_| true).await?;
+        let cached = TrustedMetadata::load_cached(&request.cache_dir)
+            .ok()
+            .flatten();
+        let minimum_generated_at = cached.as_ref().map(|metadata| metadata.generated_at);
+        let metadata = fetch_trusted_metadata(
+            &http,
+            &request.network,
+            &request.cache_dir,
+            minimum_generated_at,
+            |_| true,
+        )
+        .await?;
         return Ok(OperationResult::MetadataRefreshed {
             generated_at: metadata.generated_at,
         });
@@ -765,14 +779,16 @@ async fn load_trusted_metadata(
     force_refresh: bool,
     policy: MetadataSelectionPolicy,
 ) -> Result<TrustedMetadata, Box<dyn std::error::Error + Send + Sync>> {
+    let cached = TrustedMetadata::load_cached(cache_dir).ok().flatten();
+    let minimum_generated_at = cached.as_ref().map(|metadata| metadata.generated_at);
     select_verified_metadata_with_policy(
-        TrustedMetadata::load_cached(cache_dir).ok().flatten(),
+        cached,
         cached_metadata_is_recent(cache_dir),
         force_refresh,
         policy,
         |_| true,
         |_| true,
-        fetch_trusted_metadata(http, network, cache_dir, |_| true),
+        fetch_trusted_metadata(http, network, cache_dir, minimum_generated_at, |_| true),
     )
     .await
     .map(|(metadata, _)| metadata)
@@ -804,14 +820,16 @@ async fn load_trusted_metadata_for_release(
     };
     let accepts_cache =
         |metadata: &TrustedMetadata| metadata.release(target, channel, cpu_build).is_some();
+    let cached = TrustedMetadata::load_cached(cache_dir).ok().flatten();
+    let minimum_generated_at = cached.as_ref().map(|metadata| metadata.generated_at);
     select_verified_metadata_with_policy(
-        TrustedMetadata::load_cached(cache_dir).ok().flatten(),
+        cached,
         cached_metadata_is_recent(cache_dir),
         force_refresh,
         policy,
         accepts_live,
         accepts_cache,
-        fetch_trusted_metadata(http, network, cache_dir, |metadata| {
+        fetch_trusted_metadata(http, network, cache_dir, minimum_generated_at, |metadata| {
             metadata
                 .release(target, channel, cpu_build)
                 .is_some_and(|release| {
@@ -913,22 +931,48 @@ fn cached_metadata_is_recent(cache_dir: &std::path::Path) -> bool {
         .is_ok_and(|age| age.as_secs() < TRUSTED_METADATA_CACHE_MAX_AGE_SECONDS)
 }
 
+fn trusted_metadata_sources(
+    network: &NetworkSettings,
+) -> Result<Vec<(String, String)>, crate::services::ServiceError> {
+    let metadata_urls = signed_manifest_candidates(SIGNED_METADATA_URL, network)?;
+    let signature_urls = signed_manifest_candidates(SIGNED_METADATA_SIGNATURE_URL, network)?;
+    let mut sources = Vec::with_capacity(metadata_urls.len() + 1);
+    sources.push((
+        GITEE_METADATA_URL.to_owned(),
+        GITEE_METADATA_SIGNATURE_URL.to_owned(),
+    ));
+    sources.extend(metadata_urls.into_iter().zip(signature_urls));
+    Ok(sources)
+}
+
 async fn fetch_trusted_metadata(
     http: &HttpClient,
     network: &NetworkSettings,
     cache_dir: &std::path::Path,
+    minimum_generated_at: Option<u64>,
     accepts: impl Fn(&TrustedMetadata) -> bool,
 ) -> Result<TrustedMetadata, Box<dyn std::error::Error + Send + Sync>> {
-    let metadata_urls = signed_manifest_candidates(SIGNED_METADATA_URL, network)?;
-    let signature_urls = signed_manifest_candidates(SIGNED_METADATA_SIGNATURE_URL, network)?;
+    let sources = trusted_metadata_sources(network)?;
+    fetch_trusted_metadata_from_pairs(http, &sources, cache_dir, minimum_generated_at, &accepts)
+        .await
+}
+
+async fn fetch_trusted_metadata_from_pairs(
+    http: &HttpClient,
+    sources: &[(String, String)],
+    cache_dir: &std::path::Path,
+    minimum_generated_at: Option<u64>,
+    accepts: &impl Fn(&TrustedMetadata) -> bool,
+) -> Result<TrustedMetadata, Box<dyn std::error::Error + Send + Sync>> {
     let mut last_error = None;
-    for (metadata_url, signature_url) in metadata_urls.iter().zip(&signature_urls) {
+    for (metadata_url, signature_url) in sources {
         let result = fetch_trusted_metadata_candidate(
             http,
             metadata_url,
             signature_url,
             cache_dir,
-            &accepts,
+            minimum_generated_at,
+            accepts,
         )
         .await;
         match result {
@@ -953,6 +997,7 @@ async fn fetch_trusted_metadata_candidate(
     metadata_url: &str,
     signature_url: &str,
     cache_dir: &std::path::Path,
+    minimum_generated_at: Option<u64>,
     accepts: &impl Fn(&TrustedMetadata) -> bool,
 ) -> Result<TrustedMetadata, Box<dyn std::error::Error + Send + Sync>> {
     let (metadata, signature) =
@@ -963,6 +1008,9 @@ async fn fetch_trusted_metadata_candidate(
         signature,
         include_str!("../../assets/metadata-public-key.hex"),
     )?;
+    if minimum_generated_at.is_some_and(|minimum| parsed.generated_at < minimum) {
+        return Err("signed metadata is older than the verified cache".into());
+    }
     if !accepts(&parsed) {
         return Err("signed metadata mirror has no compatible release entry".into());
     }
@@ -1298,8 +1346,8 @@ mod tests {
 
     use super::{
         CachedReleaseMetadata, MetadataSource, OperationPhase, UPSTREAM_REUSE_SECONDS,
-        require_expected_chrome_plus_version, requires_replacement_confirmation, unix_now,
-        verify_local_package,
+        require_expected_chrome_plus_version, requires_replacement_confirmation,
+        trusted_metadata_sources, unix_now, verify_local_package,
     };
     use crate::domain::release::{
         ArchiveFormat, Artifact, CpuBuild, Integrity, ProgramPlacement, ProviderKind,
@@ -1354,6 +1402,184 @@ mod tests {
         (format!("http://{address}"), server)
     }
 
+    #[test]
+    fn gitee_metadata_is_the_first_source_and_github_remains_the_last() {
+        let mut settings = crate::domain::settings::NetworkSettings::default();
+        settings
+            .accelerators
+            .push(crate::domain::settings::Accelerator {
+                prefix: "https://mirror.example/".to_owned(),
+                enabled: true,
+            });
+
+        let sources = trusted_metadata_sources(&settings).unwrap();
+        assert_eq!(
+            sources.first(),
+            Some(&(
+                "https://gitee.com/MagicCube99/browser-harbor/raw/metadata-live/assets/trusted-metadata.json".to_owned(),
+                "https://gitee.com/MagicCube99/browser-harbor/raw/metadata-live/assets/trusted-metadata.sig".to_owned(),
+            ))
+        );
+        assert_eq!(
+            sources.last(),
+            Some(&(
+                super::SIGNED_METADATA_URL.to_owned(),
+                super::SIGNED_METADATA_SIGNATURE_URL.to_owned(),
+            ))
+        );
+        let user_mirror = sources
+            .iter()
+            .position(|(metadata, _)| {
+                metadata.starts_with("https://mirror.example/https://raw.githubusercontent.com/")
+            })
+            .unwrap();
+        let builtin_mirror = sources
+            .iter()
+            .position(|(metadata, _)| metadata.starts_with("https://ghfast.top/"))
+            .unwrap();
+        assert!(user_mirror < builtin_mirror);
+
+        settings.accelerators_enabled = false;
+        let sources = trusted_metadata_sources(&settings).unwrap();
+        assert_eq!(
+            sources,
+            vec![
+                (
+                    "https://gitee.com/MagicCube99/browser-harbor/raw/metadata-live/assets/trusted-metadata.json".to_owned(),
+                    "https://gitee.com/MagicCube99/browser-harbor/raw/metadata-live/assets/trusted-metadata.sig".to_owned(),
+                ),
+                (
+                    super::SIGNED_METADATA_URL.to_owned(),
+                    super::SIGNED_METADATA_SIGNATURE_URL.to_owned(),
+                ),
+            ]
+        );
+    }
+
+    #[tokio::test]
+    async fn invalid_first_metadata_pair_falls_through_to_the_next_pair() {
+        let (invalid_url, invalid_server) = serve_signed_pair(b"0".repeat(128));
+        let (valid_url, valid_server) =
+            serve_signed_pair(include_bytes!("../../assets/trusted-metadata.sig").to_vec());
+        let directory = tempfile::tempdir().unwrap();
+        let http = crate::services::http::HttpClient::new(
+            &crate::domain::settings::NetworkSettings::default(),
+        )
+        .unwrap();
+        let sources = vec![
+            (
+                format!("{invalid_url}/metadata"),
+                format!("{invalid_url}/signature"),
+            ),
+            (
+                format!("{valid_url}/metadata"),
+                format!("{valid_url}/signature"),
+            ),
+        ];
+
+        let metadata = super::fetch_trusted_metadata_from_pairs(
+            &http,
+            &sources,
+            directory.path(),
+            None,
+            &|_| true,
+        )
+        .await
+        .unwrap();
+        invalid_server.join().unwrap();
+        valid_server.join().unwrap();
+
+        assert_eq!(
+            crate::services::trusted_metadata::TrustedMetadata::load_cached(directory.path())
+                .unwrap(),
+            Some(metadata)
+        );
+    }
+
+    #[tokio::test]
+    async fn live_metadata_older_than_the_signed_cache_is_not_stored_or_selected() {
+        let (url, server) =
+            serve_signed_pair(include_bytes!("../../assets/trusted-metadata.sig").to_vec());
+        let directory = tempfile::tempdir().unwrap();
+        let http = crate::services::http::HttpClient::new(
+            &crate::domain::settings::NetworkSettings::default(),
+        )
+        .unwrap();
+        let embedded = crate::services::trusted_metadata::TrustedMetadata::load_embedded().unwrap();
+        let sources = vec![(format!("{url}/metadata"), format!("{url}/signature"))];
+
+        let result = super::fetch_trusted_metadata_from_pairs(
+            &http,
+            &sources,
+            directory.path(),
+            Some(embedded.generated_at + 1),
+            &|_| true,
+        )
+        .await;
+        server.join().unwrap();
+
+        assert!(result.is_err());
+        assert!(!directory.path().join(super::METADATA_FILE).exists());
+        assert!(
+            !directory
+                .path()
+                .join(crate::services::trusted_metadata::SIGNATURE_FILE)
+                .exists()
+        );
+    }
+
+    #[tokio::test]
+    async fn metadata_refresh_preserves_the_existing_cache_when_all_sources_are_older() {
+        let directory = tempfile::tempdir().unwrap();
+        let embedded = crate::services::trusted_metadata::TrustedMetadata::load_embedded().unwrap();
+        embedded
+            .store(
+                include_bytes!("../../assets/trusted-metadata.json"),
+                include_str!("../../assets/trusted-metadata.sig"),
+                directory.path(),
+            )
+            .unwrap();
+        let before_metadata = fs::read(directory.path().join(super::METADATA_FILE)).unwrap();
+        let before_signature = fs::read(
+            directory
+                .path()
+                .join(crate::services::trusted_metadata::SIGNATURE_FILE),
+        )
+        .unwrap();
+        let (url, server) =
+            serve_signed_pair(include_bytes!("../../assets/trusted-metadata.sig").to_vec());
+        let http = crate::services::http::HttpClient::new(
+            &crate::domain::settings::NetworkSettings::default(),
+        )
+        .unwrap();
+        let sources = vec![(format!("{url}/metadata"), format!("{url}/signature"))];
+
+        let result = super::fetch_trusted_metadata_from_pairs(
+            &http,
+            &sources,
+            directory.path(),
+            Some(embedded.generated_at + 1),
+            &|_| true,
+        )
+        .await;
+        server.join().unwrap();
+
+        assert!(result.is_err());
+        assert_eq!(
+            fs::read(directory.path().join(super::METADATA_FILE)).unwrap(),
+            before_metadata
+        );
+        assert_eq!(
+            fs::read(
+                directory
+                    .path()
+                    .join(crate::services::trusted_metadata::SIGNATURE_FILE)
+            )
+            .unwrap(),
+            before_signature
+        );
+    }
+
     #[tokio::test]
     async fn signed_metadata_requests_are_concurrent_and_verified_before_caching() {
         let (url, server) =
@@ -1370,6 +1596,7 @@ mod tests {
                 &format!("{url}/metadata"),
                 &format!("{url}/signature"),
                 directory.path(),
+                None,
                 &|_| true,
             ),
         )
@@ -1398,6 +1625,7 @@ mod tests {
             &format!("{url}/metadata"),
             &format!("{url}/signature"),
             directory.path(),
+            None,
             &|_| true,
         )
         .await;

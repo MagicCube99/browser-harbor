@@ -88,6 +88,8 @@ jobs:
       github.event.schedule == '7 18 * * *'
     runs-on: windows-2025
     timeout-minutes: 30
+    outputs:
+      published: ${{ steps.publish.outputs.published }}
     permissions:
       contents: write
     steps:
@@ -161,11 +163,13 @@ jobs:
             --public-key .\assets\metadata-public-key.hex
 
       - name: Publish signed metadata
+        id: publish
         shell: pwsh
         run: |
           git add assets/trusted-metadata.json assets/trusted-metadata.sig
           git diff --cached --quiet
           if ($LASTEXITCODE -eq 0) {
+            "published=false" | Add-Content -Path $env:GITHUB_OUTPUT -Encoding utf8
             Write-Host "Signed metadata is unchanged."
             exit 0
           }
@@ -194,3 +198,29 @@ jobs:
           git config user.email "metadata-bot@users.noreply.github.com"
           git commit -m "chore(metadata): refresh signed browser releases"
           git push origin HEAD:refs/heads/metadata-live
+          "published=true" | Add-Content -Path $env:GITHUB_OUTPUT -Encoding utf8
+
+  notify-gitee:
+    name: Trigger Gitee metadata mirror
+    needs: refresh
+    if: needs.refresh.outputs.published == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: write
+    steps:
+      - name: Dispatch Gitee mirror
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3; do
+            if gh workflow run gitee-mirror.yml \
+              --repo "$GITHUB_REPOSITORY" \
+              --ref main; then
+              exit 0
+            fi
+            sleep "$((attempt * 5))"
+          done
+          exit 1
