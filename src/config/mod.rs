@@ -473,10 +473,12 @@ mod tests {
     fn default_settings_include_all_targets_with_default_paths() {
         let settings = Settings::default();
 
-        assert_eq!(settings.schema_version, 12);
+        assert_eq!(settings.schema_version, 13);
         assert_eq!(settings.selected_browser, TargetId::Firefox);
         assert_eq!(settings.theme, ThemeMode::System);
         assert_eq!(settings.language, Language::Chinese);
+        assert!(settings.auto_check_metadata);
+        assert!(settings.use_signed_metadata_cache);
         assert_eq!(settings.targets.len(), TargetId::ALL.len());
         assert!(
             settings
@@ -509,6 +511,48 @@ mod tests {
     }
 
     #[test]
+    fn schema_v12_defaults_metadata_options_to_enabled() {
+        let directory = tempdir().unwrap();
+        let path = temp_path(&directory);
+        let store = ConfigStore::new(path.clone());
+        let mut value = serde_json::to_value(Settings::default()).unwrap();
+        value["schemaVersion"] = serde_json::json!(12);
+        value.as_object_mut().unwrap().remove("autoCheckMetadata");
+        value
+            .as_object_mut()
+            .unwrap()
+            .remove("useSignedMetadataCache");
+        fs::write(&path, serde_json::to_vec_pretty(&value).unwrap()).unwrap();
+
+        let loaded = store.load().unwrap();
+
+        assert_eq!(loaded.schema_version, 13);
+        assert!(loaded.auto_check_metadata);
+        assert!(loaded.use_signed_metadata_cache);
+    }
+
+    #[test]
+    fn disabled_metadata_options_round_trip() {
+        let directory = tempdir().unwrap();
+        let path = temp_path(&directory);
+        let store = ConfigStore::new(path.clone());
+        let settings = Settings {
+            auto_check_metadata: false,
+            use_signed_metadata_cache: false,
+            ..Settings::default()
+        };
+
+        store.save(&settings).unwrap();
+        let loaded = store.load().unwrap();
+
+        assert!(!loaded.auto_check_metadata);
+        assert!(!loaded.use_signed_metadata_cache);
+        let raw = fs::read_to_string(path).unwrap();
+        assert!(raw.contains("\"autoCheckMetadata\": false"));
+        assert!(raw.contains("\"useSignedMetadataCache\": false"));
+    }
+
+    #[test]
     fn default_settings_save_a_minimal_document() {
         let directory = tempdir().unwrap();
         let path = temp_path(&directory);
@@ -517,12 +561,14 @@ mod tests {
         store.save(&Settings::default()).unwrap();
 
         let value: serde_json::Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
-        assert_eq!(value["schemaVersion"], 12);
+        assert_eq!(value["schemaVersion"], 13);
         assert!(value.get("targets").is_none());
         assert!(value.get("network").is_none());
         assert!(value.get("theme").is_none());
         assert!(value.get("language").is_none());
         assert!(value.get("windowPosition").is_none());
+        assert!(value.get("autoCheckMetadata").is_none());
+        assert!(value.get("useSignedMetadataCache").is_none());
         assert!(fs::metadata(&path).unwrap().len() < 1_000);
         assert_eq!(store.load().unwrap(), Settings::default());
     }
@@ -541,7 +587,7 @@ mod tests {
 
         let loaded = store.load().unwrap();
 
-        assert_eq!(loaded.schema_version, 12);
+        assert_eq!(loaded.schema_version, 13);
         assert_eq!(loaded.targets.len(), TargetId::ALL.len());
         assert_eq!(
             loaded.targets[&TargetId::Helium].browser_root,
@@ -680,7 +726,7 @@ mod tests {
 
         let loaded = store.load().unwrap();
 
-        assert_eq!(loaded.schema_version, 12);
+        assert_eq!(loaded.schema_version, 13);
         for (target, installed_version) in [
             (TargetId::Iceweasel, "159.0"),
             (TargetId::SkyKakapo, "158.0.1"),
@@ -697,7 +743,7 @@ mod tests {
         }
         assert!(store.compact_if_needed(&loaded).unwrap());
         let saved: serde_json::Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
-        assert_eq!(saved["schemaVersion"], 12);
+        assert_eq!(saved["schemaVersion"], 13);
     }
 
     #[test]
@@ -721,7 +767,7 @@ mod tests {
 
         let loaded = store.load().unwrap();
 
-        assert_eq!(loaded.schema_version, 12);
+        assert_eq!(loaded.schema_version, 13);
         let edge = &loaded.targets[&TargetId::Edge];
         assert_eq!(
             edge.browser_directory,
@@ -732,7 +778,7 @@ mod tests {
         assert_eq!(edge.installed_version.as_deref(), Some("156.0.4314.42"));
         assert!(store.compact_if_needed(&loaded).unwrap());
         let saved: serde_json::Value = serde_json::from_slice(&fs::read(path).unwrap()).unwrap();
-        assert_eq!(saved["schemaVersion"], 12);
+        assert_eq!(saved["schemaVersion"], 13);
     }
 
     #[test]
@@ -766,7 +812,7 @@ mod tests {
 
         let loaded = store.load().unwrap();
 
-        assert_eq!(loaded.schema_version, 12);
+        assert_eq!(loaded.schema_version, 13);
         assert_eq!(
             loaded.targets[&TargetId::Floorp].profile_directory,
             Some(std::path::PathBuf::from(
@@ -800,7 +846,7 @@ mod tests {
 
         let loaded = store.load().unwrap();
 
-        assert_eq!(loaded.schema_version, 12);
+        assert_eq!(loaded.schema_version, 13);
         assert_eq!(
             loaded.targets[&TargetId::Floorp].profile_directory,
             Some(std::path::PathBuf::from(r"E:\BrowserProfiles\Floorp"))
@@ -820,7 +866,7 @@ mod tests {
         assert!(store.compact_if_needed(&loaded).unwrap());
 
         let saved: serde_json::Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
-        assert_eq!(saved["schemaVersion"], 12);
+        assert_eq!(saved["schemaVersion"], 13);
         assert!(saved.get("targets").is_none());
         assert_eq!(store.load().unwrap(), loaded);
         assert!(!store.compact_if_needed(&loaded).unwrap());
@@ -848,7 +894,7 @@ mod tests {
         assert_eq!(store.load().unwrap(), settings);
         assert!(!directory.path().join("BrowserHarbor.json.tmp").exists());
         let raw = fs::read_to_string(&path).unwrap();
-        assert!(raw.contains("\"schemaVersion\": 12"));
+        assert!(raw.contains("\"schemaVersion\": 13"));
         assert!(raw.contains("\"selectedBrowser\": \"firefox\""));
         assert!(raw.contains("\"theme\": \"dark\""));
         assert!(raw.contains("\"language\": \"english\""));
@@ -961,7 +1007,7 @@ mod tests {
             error,
             ConfigError::UnsupportedVersion {
                 found: 999,
-                supported: 12,
+                supported: 13,
                 ..
             }
         ));
@@ -981,7 +1027,7 @@ mod tests {
 
         let loaded = store.load().unwrap();
 
-        assert_eq!(loaded.schema_version, 12);
+        assert_eq!(loaded.schema_version, 13);
         assert_eq!(loaded.theme, ThemeMode::System);
         assert_eq!(fs::read(&path).unwrap(), raw);
     }
@@ -1004,7 +1050,7 @@ mod tests {
 
         let loaded = store.load().unwrap();
 
-        assert_eq!(loaded.schema_version, 12);
+        assert_eq!(loaded.schema_version, 13);
         assert_eq!(
             loaded.targets[&TargetId::Iceweasel].channel,
             crate::domain::release::ReleaseChannel::Esr
@@ -1043,7 +1089,7 @@ mod tests {
         let loaded = store.load().unwrap();
         let helium = &loaded.targets[&TargetId::Helium];
 
-        assert_eq!(loaded.schema_version, 12);
+        assert_eq!(loaded.schema_version, 13);
         assert_eq!(
             helium.browser_root,
             Some(std::path::PathBuf::from(r".\Helium"))

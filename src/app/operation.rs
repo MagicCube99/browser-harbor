@@ -36,6 +36,11 @@ const SIGNED_METADATA_SIGNATURE_URL: &str = "https://raw.githubusercontent.com/M
 const TRUSTED_METADATA_CACHE_MAX_AGE_SECONDS: u64 = 24 * 60 * 60;
 pub const UPSTREAM_REUSE_SECONDS: u64 = 10 * 60;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct MetadataSelectionPolicy {
+    allow_signed_cache: bool,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum OperationPhase {
     CatsxpIdentified {
@@ -74,6 +79,9 @@ pub enum OperationPhase {
     },
     ChromePlusInstalled {
         version: String,
+    },
+    MetadataRefreshed {
+        generated_at: u64,
     },
     Cancelled,
     Failed {
@@ -122,6 +130,10 @@ impl CachedReleaseMetadata {
     }
 }
 
+fn cached_release_source_allowed(source: MetadataSource, allow_signed_cache: bool) -> bool {
+    source != MetadataSource::SignedCache || allow_signed_cache
+}
+
 impl UpstreamCheck {
     pub fn fresh(version: String, channel: ReleaseChannel, cpu_build: CpuBuild) -> Self {
         Self {
@@ -164,12 +176,14 @@ pub struct StartOperationRequest {
     pub chrome_plus_expected_version: Option<String>,
     pub replace_same_version: bool,
     pub allow_local_package: bool,
+    pub allow_signed_metadata_cache: bool,
     pub cached_release: Option<CachedReleaseMetadata>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum OperationMode {
     Check,
+    MetadataRefresh,
     ChromePlusCheck,
     ChromePlusInstall,
     Install,
@@ -254,6 +268,12 @@ pub fn start_operation(request: StartOperationRequest) -> OperationController {
                     OperationPhase::ChromePlusInstalled { version },
                 ));
             }
+            Ok(OperationResult::MetadataRefreshed { generated_at }) => {
+                let _ = sender.send(OperationEvent::new(
+                    target,
+                    OperationPhase::MetadataRefreshed { generated_at },
+                ));
+            }
             Err(error) => {
                 let phase = if error.to_string().contains("cancelled") {
                     OperationPhase::Cancelled
@@ -290,19 +310,40 @@ async fn run_operation(
     }
     emit(OperationPhase::Resolving);
     let http = HttpClient::new(&request.network)?.with_operation(Arc::clone(&cancellation));
+    let metadata_policy = MetadataSelectionPolicy {
+        allow_signed_cache: request.allow_signed_metadata_cache,
+    };
+    if request.mode == OperationMode::MetadataRefresh {
+        let metadata =
+            fetch_trusted_metadata(&http, &request.network, &request.cache_dir, |_| true).await?;
+        return Ok(OperationResult::MetadataRefreshed {
+            generated_at: metadata.generated_at,
+        });
+    }
     if request.mode == OperationMode::ChromePlusCheck {
-        let latest_version =
-            resolve_chrome_plus_release(&http, &request.network, &request.cache_dir, true)
-                .await?
-                .version;
+        let latest_version = resolve_chrome_plus_release(
+            &http,
+            &request.network,
+            &request.cache_dir,
+            true,
+            metadata_policy,
+        )
+        .await?
+        .version;
         return Ok(OperationResult::ChromePlusChecked {
             current_version: request.target_config.chrome_plus_version,
             latest_version,
         });
     }
     if request.mode == OperationMode::ChromePlusInstall {
-        let release =
-            resolve_chrome_plus_release(&http, &request.network, &request.cache_dir, true).await?;
+        let release = resolve_chrome_plus_release(
+            &http,
+            &request.network,
+            &request.cache_dir,
+            true,
+            metadata_policy,
+        )
+        .await?;
         require_expected_chrome_plus_version(
             request.chrome_plus_expected_version.as_deref(),
             &release.version,
@@ -370,6 +411,10 @@ async fn run_operation(
             && cached.release.channel == request.target_config.channel
             && cached.release.cpu_build == request.target_config.cpu_build
             && cached.release.artifact.integrity.is_some()
+            && cached_release_source_allowed(
+                cached.check.source,
+                request.allow_signed_metadata_cache,
+            )
     }) {
         metadata_source = cached.check.source;
         metadata_checked_at = Some(cached.check.checked_at);
@@ -396,6 +441,7 @@ async fn run_operation(
                     ),
                     true,
                     Some(&official.version),
+                    metadata_policy,
                 )
                 .await
                 .map_err(|error| {
@@ -436,6 +482,7 @@ async fn run_operation(
                     ),
                     request.mode == OperationMode::Check,
                     None,
+                    metadata_policy,
                 )
                 .await
                 .map_err(|signed_error| {
@@ -716,11 +763,14 @@ async fn load_trusted_metadata(
     network: &NetworkSettings,
     cache_dir: &std::path::Path,
     force_refresh: bool,
+    policy: MetadataSelectionPolicy,
 ) -> Result<TrustedMetadata, Box<dyn std::error::Error + Send + Sync>> {
-    select_verified_metadata(
+    select_verified_metadata_with_policy(
         TrustedMetadata::load_cached(cache_dir).ok().flatten(),
         cached_metadata_is_recent(cache_dir),
         force_refresh,
+        policy,
+        |_| true,
         |_| true,
         fetch_trusted_metadata(http, network, cache_dir, |_| true),
     )
@@ -735,6 +785,7 @@ async fn load_trusted_metadata_for_release(
     (target, channel, cpu_build): (TargetId, ReleaseChannel, CpuBuild),
     force_refresh: bool,
     expected_version: Option<&str>,
+    policy: MetadataSelectionPolicy,
 ) -> Result<(TrustedMetadata, MetadataSource), Box<dyn std::error::Error + Send + Sync>> {
     if target == TargetId::Edge {
         return Err(
@@ -742,7 +793,7 @@ async fn load_trusted_metadata_for_release(
                 .into(),
         );
     }
-    let accepts = |metadata: &TrustedMetadata| {
+    let accepts_live = |metadata: &TrustedMetadata| {
         metadata
             .release(target, channel, cpu_build)
             .is_some_and(|release| {
@@ -751,12 +802,24 @@ async fn load_trusted_metadata_for_release(
                 })
             })
     };
-    select_verified_metadata(
+    let accepts_cache =
+        |metadata: &TrustedMetadata| metadata.release(target, channel, cpu_build).is_some();
+    select_verified_metadata_with_policy(
         TrustedMetadata::load_cached(cache_dir).ok().flatten(),
         cached_metadata_is_recent(cache_dir),
         force_refresh,
-        &accepts,
-        fetch_trusted_metadata(http, network, cache_dir, &accepts),
+        policy,
+        accepts_live,
+        accepts_cache,
+        fetch_trusted_metadata(http, network, cache_dir, |metadata| {
+            metadata
+                .release(target, channel, cpu_build)
+                .is_some_and(|release| {
+                    expected_version.is_none_or(|version| {
+                        signed_version_matches_discovery(version, &release.version)
+                    })
+                })
+        }),
     )
     .await
 }
@@ -769,6 +832,7 @@ fn signed_version_matches_discovery(discovered: &str, signed: &str) -> bool {
     )
 }
 
+#[cfg(test)]
 async fn select_verified_metadata(
     cached: Option<TrustedMetadata>,
     recent: bool,
@@ -778,14 +842,40 @@ async fn select_verified_metadata(
         Output = Result<TrustedMetadata, Box<dyn std::error::Error + Send + Sync>>,
     >,
 ) -> Result<(TrustedMetadata, MetadataSource), Box<dyn std::error::Error + Send + Sync>> {
-    if let Some(metadata) = cached
-        .as_ref()
-        .filter(|metadata| !force_refresh && recent && accepts(metadata))
+    select_verified_metadata_with_policy(
+        cached,
+        recent,
+        force_refresh,
+        MetadataSelectionPolicy {
+            allow_signed_cache: true,
+        },
+        &accepts,
+        &accepts,
+        live,
+    )
+    .await
+}
+
+async fn select_verified_metadata_with_policy(
+    cached: Option<TrustedMetadata>,
+    recent: bool,
+    force_refresh: bool,
+    policy: MetadataSelectionPolicy,
+    accepts_live: impl Fn(&TrustedMetadata) -> bool,
+    accepts_cache: impl Fn(&TrustedMetadata) -> bool,
+    live: impl std::future::Future<
+        Output = Result<TrustedMetadata, Box<dyn std::error::Error + Send + Sync>>,
+    >,
+) -> Result<(TrustedMetadata, MetadataSource), Box<dyn std::error::Error + Send + Sync>> {
+    if policy.allow_signed_cache
+        && let Some(metadata) = cached
+            .as_ref()
+            .filter(|metadata| !force_refresh && recent && accepts_cache(metadata))
     {
         return Ok((metadata.clone(), MetadataSource::SignedCache));
     }
     let error = match live.await {
-        Ok(metadata) if accepts(&metadata) => {
+        Ok(metadata) if accepts_live(&metadata) => {
             return Ok((metadata, MetadataSource::SignedManifest));
         }
         Ok(_) => "live signed metadata has no compatible release entry".to_owned(),
@@ -798,11 +888,13 @@ async fn select_verified_metadata(
         }
         Err(error) => error.to_string(),
     };
-    if let Some(cached) = cached.filter(&accepts) {
+    if policy.allow_signed_cache
+        && let Some(cached) = cached.filter(&accepts_cache)
+    {
         return Ok((cached, MetadataSource::SignedCache));
     }
     match TrustedMetadata::load_embedded() {
-        Ok(metadata) if accepts(&metadata) => Ok((metadata, MetadataSource::Embedded)),
+        Ok(metadata) if accepts_live(&metadata) => Ok((metadata, MetadataSource::Embedded)),
         Ok(_) => Err(format!("live signed metadata failed: {error}; cached and embedded metadata have no compatible release entry").into()),
         Err(embedded_error) => Err(format!(
             "live signed metadata failed: {error}; embedded metadata failed: {embedded_error}"
@@ -900,6 +992,9 @@ enum OperationResult {
     ChromePlusInstalled {
         version: String,
     },
+    MetadataRefreshed {
+        generated_at: u64,
+    },
 }
 
 async fn download_artifact(
@@ -943,6 +1038,7 @@ async fn resolve_chrome_plus_release(
     network: &NetworkSettings,
     cache_dir: &std::path::Path,
     force_refresh: bool,
+    policy: MetadataSelectionPolicy,
 ) -> Result<ChromePlusRelease, Box<dyn std::error::Error + Send + Sync>> {
     match runtime::chromeplus::resolve_latest(http).await {
         Ok(release)
@@ -951,7 +1047,7 @@ async fn resolve_chrome_plus_release(
         {
             Ok(release)
         }
-        Ok(_) | Err(_) => load_trusted_metadata(http, network, cache_dir, force_refresh)
+        Ok(_) | Err(_) => load_trusted_metadata(http, network, cache_dir, force_refresh, policy)
             .await?
             .chrome_plus
             .ok_or_else(|| "签名发布清单没有 Chrome++ 完整记录".into()),
@@ -1026,9 +1122,16 @@ async fn prepare_runtime_archives(
 
     match request.target.spec().runtime {
         RuntimeKind::ChromePlusFull | RuntimeKind::ChromePlusDataOnly => {
-            let release =
-                resolve_chrome_plus_release(http, &request.network, &request.cache_dir, false)
-                    .await?;
+            let release = resolve_chrome_plus_release(
+                http,
+                &request.network,
+                &request.cache_dir,
+                false,
+                MetadataSelectionPolicy {
+                    allow_signed_cache: request.allow_signed_metadata_cache,
+                },
+            )
+            .await?;
             if request.chrome_plus_expected_version.is_some() {
                 require_expected_chrome_plus_version(
                     request.chrome_plus_expected_version.as_deref(),
@@ -1043,12 +1146,18 @@ async fn prepare_runtime_archives(
         RuntimeKind::Libportable => {
             let release = match runtime::libportable::resolve_latest(http).await {
                 Ok(release) if release.artifact.integrity.is_some() => release,
-                Ok(_) | Err(_) => {
-                    load_trusted_metadata(http, &request.network, &request.cache_dir, false)
-                        .await?
-                        .libportable
-                        .ok_or("签名发布清单没有 Libportable 记录")?
-                }
+                Ok(_) | Err(_) => load_trusted_metadata(
+                    http,
+                    &request.network,
+                    &request.cache_dir,
+                    false,
+                    MetadataSelectionPolicy {
+                        allow_signed_cache: request.allow_signed_metadata_cache,
+                    },
+                )
+                .await?
+                .libportable
+                .ok_or("签名发布清单没有 Libportable 记录")?,
             };
             let descriptor = ReleaseDescriptor {
                 target: request.target,
@@ -1101,6 +1210,7 @@ impl OperationPhase {
                 | Self::Installed { .. }
                 | Self::ChromePlusChecked { .. }
                 | Self::ChromePlusInstalled { .. }
+                | Self::MetadataRefreshed { .. }
                 | Self::Cancelled
                 | Self::Failed { .. }
         )
@@ -1162,8 +1272,16 @@ mod tests {
         let http = crate::services::http::HttpClient::new(&network)
             .unwrap()
             .with_operation(cancelled);
-        let result =
-            super::resolve_chrome_plus_release(&http, &network, directory.path(), true).await;
+        let result = super::resolve_chrome_plus_release(
+            &http,
+            &network,
+            directory.path(),
+            true,
+            super::MetadataSelectionPolicy {
+                allow_signed_cache: true,
+            },
+        )
+        .await;
         assert!(
             result.is_err(),
             "cancelled checks must not finish successfully from cache"
@@ -1430,6 +1548,9 @@ mod tests {
             ),
             true,
             None,
+            super::MetadataSelectionPolicy {
+                allow_signed_cache: true,
+            },
         )
         .await;
         assert!(result.unwrap_err().to_string().contains("Microsoft"));
@@ -1490,6 +1611,7 @@ mod tests {
             }
             .is_terminal()
         );
+        assert!(OperationPhase::MetadataRefreshed { generated_at: 1 }.is_terminal());
         assert!(
             OperationPhase::Failed {
                 message: "failed".to_owned()
@@ -1544,6 +1666,74 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(metadata.generated_at, 123);
+        assert_eq!(source, MetadataSource::SignedCache);
+    }
+
+    #[tokio::test]
+    async fn disabled_metadata_cache_skips_the_cached_pair_but_allows_embedded_fallback() {
+        let embedded = crate::services::trusted_metadata::TrustedMetadata::load_embedded().unwrap();
+        let mut cached = embedded.clone();
+        cached.generated_at = 123;
+
+        let (selected, source) = super::select_verified_metadata_with_policy(
+            Some(cached),
+            true,
+            false,
+            super::MetadataSelectionPolicy {
+                allow_signed_cache: false,
+            },
+            |_| true,
+            |_| true,
+            async { Err("offline".into()) },
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(source, MetadataSource::Embedded);
+        assert_eq!(selected.generated_at, embedded.generated_at);
+    }
+
+    #[tokio::test]
+    async fn enabled_metadata_cache_allows_an_older_signed_release_when_live_is_unavailable() {
+        let mut cached =
+            crate::services::trusted_metadata::TrustedMetadata::load_embedded().unwrap();
+        let mut old = descriptor();
+        old.version = "1.0".to_owned();
+        cached.releases = vec![old];
+        let live_accepts = |metadata: &crate::services::trusted_metadata::TrustedMetadata| {
+            metadata
+                .release(
+                    crate::domain::target::TargetId::Brave,
+                    ReleaseChannel::Stable,
+                    CpuBuild::X64,
+                )
+                .is_some_and(|release| release.version == "2.0")
+        };
+        let cache_accepts = |metadata: &crate::services::trusted_metadata::TrustedMetadata| {
+            metadata
+                .release(
+                    crate::domain::target::TargetId::Brave,
+                    ReleaseChannel::Stable,
+                    CpuBuild::X64,
+                )
+                .is_some()
+        };
+
+        let (selected, source) = super::select_verified_metadata_with_policy(
+            Some(cached.clone()),
+            true,
+            true,
+            super::MetadataSelectionPolicy {
+                allow_signed_cache: true,
+            },
+            live_accepts,
+            cache_accepts,
+            async { Err("offline".into()) },
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(selected.releases[0].version, "1.0");
         assert_eq!(source, MetadataSource::SignedCache);
     }
 
@@ -1609,6 +1799,7 @@ mod tests {
                 chrome_plus_expected_version: None,
                 replace_same_version: false,
                 allow_local_package: true,
+                allow_signed_metadata_cache: true,
                 cached_release: Some(CachedReleaseMetadata {
                     check: super::UpstreamCheck::fresh(
                         "999.0".to_owned(),
@@ -1656,6 +1847,7 @@ mod tests {
                 chrome_plus_expected_version: None,
                 replace_same_version: false,
                 allow_local_package: false,
+                allow_signed_metadata_cache: true,
                 cached_release: None,
             },
             sender,
@@ -1702,6 +1894,7 @@ mod tests {
                 chrome_plus_expected_version: None,
                 replace_same_version: false,
                 allow_local_package: false,
+                allow_signed_metadata_cache: true,
                 cached_release: Some(CachedReleaseMetadata {
                     check: super::UpstreamCheck::fresh(
                         "1.0.0".to_owned(),
@@ -1775,6 +1968,26 @@ mod tests {
         assert!(cached.is_fresh());
     }
 
+    #[test]
+    fn signed_cache_reuse_respects_the_metadata_setting() {
+        assert!(!super::cached_release_source_allowed(
+            MetadataSource::SignedCache,
+            false
+        ));
+        assert!(super::cached_release_source_allowed(
+            MetadataSource::SignedCache,
+            true
+        ));
+        assert!(super::cached_release_source_allowed(
+            MetadataSource::SignedManifest,
+            false
+        ));
+        assert!(super::cached_release_source_allowed(
+            MetadataSource::Official,
+            false
+        ));
+    }
+
     #[tokio::test]
     async fn recent_complete_metadata_cache_avoids_a_redundant_fetch() {
         let cached = crate::services::trusted_metadata::TrustedMetadata::load_embedded().unwrap();
@@ -1806,6 +2019,7 @@ mod tests {
                 chrome_plus_expected_version: None,
                 replace_same_version: false,
                 allow_local_package: false,
+                allow_signed_metadata_cache: true,
                 cached_release: None,
             },
             sender,

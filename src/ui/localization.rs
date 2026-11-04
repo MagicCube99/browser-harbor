@@ -117,6 +117,18 @@ fn exact_translation(text: &str) -> Option<&'static str> {
         "外观：深色" => "Appearance: Dark",
         "浏览器" => "Browser",
         "高级" => "Advanced",
+        "自动检查校验信息" => "Automatically check verification info",
+        "进入浏览器页面时自动检查所选浏览器的官方版本和签名校验信息。" => {
+            "Automatically check the selected browser's official version and signed verification info when opening its page."
+        }
+        "离线时使用最近一次已签名的校验信息" => {
+            "Use the latest signed offline verification info"
+        }
+        "实时校验信息不可用时使用最近一次已验签缓存；签名、大小和摘要仍会校验。" => {
+            "Use the latest verified cache when live verification info is unavailable; signature, size, and digest checks remain mandatory."
+        }
+        "立即重新获取校验信息" => "Refresh verification info now",
+        "校验信息已更新" => "Verification info updated",
         "后台任务意外中断，请重试；上次安装若未完成，将先恢复后重新安装。" => {
             "Background task ended unexpectedly. Retry; an interrupted installation will be recovered before reinstalling."
         }

@@ -318,7 +318,7 @@ async fn probe(
         ..NetworkSettings::default()
     };
     let http = HttpClient::new(&network)?;
-    let provider = ProviderResolver::new(http);
+    let provider = ProviderResolver::new(http.clone());
     let mut changed = false;
 
     for target in TargetId::ALL {
@@ -362,6 +362,16 @@ async fn probe(
         }
     }
 
+    let chrome_plus = runtime::chromeplus::resolve_latest(&http)
+        .await
+        .map(|release| release.version)
+        .map_err(|error| safe_refresh_error(&error));
+    let libportable = runtime::libportable::resolve_latest(&http)
+        .await
+        .map(|release| release.version)
+        .map_err(|error| safe_refresh_error(&error));
+    changed |= runtime_probe_requires_refresh(&baseline, chrome_plus, libportable);
+
     println!("changed={changed}");
     Ok(())
 }
@@ -373,6 +383,55 @@ fn version_probe_requires_refresh(official: &str, signed: Option<&str>) -> bool 
             VersionRelation::Same | VersionRelation::UpstreamNewer
         )
     })
+}
+
+fn runtime_probe_requires_refresh(
+    baseline: &TrustedMetadata,
+    chrome_plus: Result<String, String>,
+    libportable: Result<String, String>,
+) -> bool {
+    let mut changed = false;
+    record_runtime_probe(
+        "Chrome++",
+        baseline
+            .chrome_plus
+            .as_ref()
+            .map(|release| release.version.as_str()),
+        chrome_plus,
+        &mut changed,
+    );
+    record_runtime_probe(
+        "Libportable",
+        baseline
+            .libportable
+            .as_ref()
+            .map(|release| release.version.as_str()),
+        libportable,
+        &mut changed,
+    );
+    changed
+}
+
+fn record_runtime_probe(
+    component: &str,
+    signed: Option<&str>,
+    official: Result<String, String>,
+    changed: &mut bool,
+) {
+    match official {
+        Ok(version) if version_probe_requires_refresh(&version, signed) => {
+            *changed = true;
+            eprintln!(
+                "Probe detected {component}: {} -> {version}",
+                signed.unwrap_or("missing")
+            );
+        }
+        Ok(_) => {}
+        Err(error) => {
+            *changed = true;
+            eprintln!("Probe could not verify {component}: {error}; refresh required");
+        }
+    }
 }
 
 async fn refresh_component<T: Clone>(
@@ -880,6 +939,30 @@ mod tests {
                 super::version_probe_requires_refresh(official, signed),
                 expected,
                 "official={official}, signed={signed:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn runtime_probe_requests_refresh_for_newer_or_unknown_component_versions() {
+        let baseline =
+            browser_harbor::services::trusted_metadata::TrustedMetadata::load_embedded().unwrap();
+        let chrome_plus = baseline.chrome_plus.as_ref().unwrap().version.clone();
+        let libportable = baseline.libportable.as_ref().unwrap().version.clone();
+        for (chrome_plus_result, libportable_result, expected) in [
+            (Ok(chrome_plus.clone()), Ok(libportable.clone()), false),
+            (Ok("999.0.0".to_owned()), Ok(libportable.clone()), true),
+            (Ok(chrome_plus.clone()), Ok("999.0.0".to_owned()), true),
+            (Err("offline".to_owned()), Ok(libportable.clone()), true),
+            (Ok(chrome_plus.clone()), Err("offline".to_owned()), true),
+        ] {
+            assert_eq!(
+                super::runtime_probe_requires_refresh(
+                    &baseline,
+                    chrome_plus_result,
+                    libportable_result,
+                ),
+                expected
             );
         }
     }

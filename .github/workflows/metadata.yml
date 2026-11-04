@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   probe:
-    name: Probe official browser versions
+    name: Probe official release versions
     runs-on: windows-2025
     timeout-minutes: 10
     outputs:
