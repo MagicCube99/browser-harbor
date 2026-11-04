@@ -172,6 +172,7 @@ impl InstallService {
         if root.is_dir() {
             install_transaction::reject_links(root, &program)
                 .map_err(|source| io_error(&program, source))?;
+            ensure_target_closed(&program)?;
         }
         let protected = [
             config.data_directory.as_deref(),
@@ -1718,6 +1719,37 @@ mod tests {
     }
 
     #[test]
+    fn install_preflight_rejects_a_running_turbo_before_extraction() {
+        let directory = tempfile::tempdir().unwrap();
+        let root = directory.path().join("Turbo");
+        fs::create_dir_all(&root).unwrap();
+        let command = std::env::var_os("COMSPEC").unwrap();
+        fs::copy(&command, root.join("turbo.exe")).unwrap();
+        let mut child = Command::new(root.join("turbo.exe"))
+            .args(["/C", "ping 127.0.0.1 -n 10 > nul"])
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .spawn()
+            .unwrap();
+        let deadline = Instant::now() + Duration::from_secs(3);
+        while Instant::now() < deadline {
+            if running_process_count_in_directory(&root).unwrap() > 0 {
+                break;
+            }
+            thread::sleep(Duration::from_millis(50));
+        }
+
+        let mut config = TargetConfig::for_target(TargetId::Turbo);
+        config.browser_root = Some(root.clone());
+        config.derive_paths_from_root(TargetId::Turbo);
+        let error = InstallService::prepare_retry(TargetId::Turbo, &config).unwrap_err();
+
+        let _ = child.kill();
+        let _ = child.wait();
+        assert!(matches!(error, InstallError::BrowserRunning(path) if path == root));
+    }
+
+    #[test]
     fn native_update_rejects_data_inside_program_instead_of_mixing_versions() {
         let directory = tempfile::tempdir().unwrap();
         let root = directory.path().join("Zen");
@@ -1859,9 +1891,9 @@ mod tests {
     use zip::{ZipWriter, write::SimpleFileOptions};
 
     use super::{
-        ChromePlusUpdateRequest, ChromePlusUpdateService, InstallRequest, InstallService,
-        RuntimeArchive, commit_chrome_plus_files, commit_native_package, placement_paths,
-        resolve_cache_directory, stored_browser_directory,
+        ChromePlusUpdateRequest, ChromePlusUpdateService, InstallError, InstallRequest,
+        InstallService, RuntimeArchive, commit_chrome_plus_files, commit_native_package,
+        placement_paths, resolve_cache_directory, stored_browser_directory,
     };
     use crate::domain::{
         release::{
@@ -1873,6 +1905,7 @@ mod tests {
         target::TargetId,
     };
     use crate::infra::ini::{IniEncoding, write_ini};
+    use crate::infra::windows::process::running_process_count_in_directory;
 
     fn fake_x64_exe() -> Vec<u8> {
         let mut bytes = vec![0u8; 0x200];

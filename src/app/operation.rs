@@ -285,7 +285,8 @@ async fn run_operation(
         request.mode,
         OperationMode::Install | OperationMode::ChromePlusInstall
     ) {
-        InstallService::prepare_retry(target, &request.target_config)?;
+        InstallService::prepare_retry(target, &request.target_config)
+            .map_err(install_error_for_operation)?;
     }
     emit(OperationPhase::Resolving);
     let http = HttpClient::new(&request.network)?.with_operation(Arc::clone(&cancellation));
@@ -319,26 +320,7 @@ async fn run_operation(
             config: request.target_config,
             runtime,
         })
-        .map_err(|error| -> Box<dyn std::error::Error + Send + Sync> {
-            match error {
-                crate::services::install::InstallError::BrowserRunning(path) => format!(
-                    "浏览器仍在运行，请手工关闭所有实例后再更新 Chrome++：{}",
-                    path.display()
-                )
-                .into(),
-                crate::services::install::InstallError::Io { path, source }
-                    if source.kind() == std::io::ErrorKind::PermissionDenied
-                        || source.raw_os_error() == Some(5) =>
-                {
-                    format!(
-                        "文件操作受系统权限保护（{}）。请将浏览器根目录移至普通用户目录（如 D 盘或 C:\\Tools），或右键以管理员身份运行。",
-                        path.display()
-                    )
-                    .into()
-                }
-                error => error.into(),
-            }
-        })?;
+        .map_err(install_error_for_operation)?;
         return Ok(OperationResult::ChromePlusInstalled {
             version: receipt.version,
         });
@@ -605,30 +587,7 @@ async fn run_operation(
         chrome_plus_runtime,
         libportable_runtime,
     })
-    .map_err(|error| -> Box<dyn std::error::Error + Send + Sync> {
-        match error {
-            crate::services::install::InstallError::Io { path, source }
-                if source.kind() == std::io::ErrorKind::PermissionDenied
-                    || source.raw_os_error() == Some(5) =>
-            {
-                format!(
-                    "文件操作受系统权限保护（{}）。请将浏览器根目录移至普通用户目录（如 D 盘或 C:\\Tools），或右键以管理员身份运行。",
-                    path.display()
-                )
-                .into()
-            }
-            crate::services::install::InstallError::Runtime(
-                crate::runtime::RuntimeError::UnsupportedLibportableVersion { product, version },
-            ) => format!(
-                "Libportable 暂不支持 {product} 版本 {version}，请等待适配或选择兼容版本。"
-            )
-            .into(),
-            crate::services::install::InstallError::Runtime(error) => {
-                format!("便携运行时准备失败：{error}").into()
-            }
-            error => Box::new(error),
-        }
-    })?;
+    .map_err(install_error_for_operation)?;
     Ok(OperationResult::Installed(receipt))
 }
 
@@ -663,6 +622,73 @@ fn verify_local_package(
         )
         .into()),
         Err(error) => Err(format!("本地安装包校验失败：{error}").into()),
+    }
+}
+
+fn install_error_for_operation(
+    error: crate::services::install::InstallError,
+) -> Box<dyn std::error::Error + Send + Sync> {
+    match error {
+        crate::services::install::InstallError::BrowserRunning(path) => {
+            format!("浏览器仍在运行，请手工关闭所有实例：{}", path.display()).into()
+        }
+        crate::services::install::InstallError::Archive(error) => {
+            format!("解压失败：{error}").into()
+        }
+        crate::services::install::InstallError::Process(error) => {
+            format!("无法检查浏览器运行状态：{error}").into()
+        }
+        crate::services::install::InstallError::Io { path, source }
+            if source.kind() == std::io::ErrorKind::PermissionDenied
+                || source.raw_os_error() == Some(5) =>
+        {
+            format!(
+                "文件操作受系统权限保护（{}）。请将浏览器根目录移至普通用户目录（如 D 盘或 C:\\Tools），或右键以管理员身份运行。",
+                path.display()
+            )
+            .into()
+        }
+        crate::services::install::InstallError::Runtime(
+            crate::runtime::RuntimeError::UnsupportedLibportableVersion { product, version },
+        ) => format!("Libportable 暂不支持 {product} 版本 {version}，请等待适配或选择兼容版本。")
+            .into(),
+        crate::services::install::InstallError::Runtime(error) => {
+            format!("便携运行时准备失败：{error}").into()
+        }
+        error => Box::new(error),
+    }
+}
+
+fn download_error_for_operation(
+    error: crate::services::ServiceError,
+) -> Box<dyn std::error::Error + Send + Sync> {
+    use crate::services::ServiceError;
+    match error {
+        ServiceError::InvalidRange => {
+            "下载服务器返回了不一致的文件范围；已保留可用断点，请重试或更换加速站".into()
+        }
+        ServiceError::InvalidIntegrity => "下载信息缺少可信摘要，已阻止安装".into(),
+        ServiceError::HashMismatch { .. } => "下载文件完整性校验失败，已丢弃不完整文件".into(),
+        ServiceError::SizeMismatch { expected, actual } => {
+            format!("下载文件大小不符：应为 {expected} 字节，实际为 {actual} 字节").into()
+        }
+        ServiceError::Transport { host, reason } => {
+            format!("下载连接中断：{host}（{reason}）").into()
+        }
+        ServiceError::Status { status, host } => {
+            format!("下载服务器返回 HTTP {status}：{host}").into()
+        }
+        ServiceError::Io { path, source } => {
+            format!("无法写入下载缓存：{}（{source}）", path.display()).into()
+        }
+        ServiceError::ResponseTooLarge => "下载内容超出允许大小".into(),
+        ServiceError::AllCandidatesFailed => "所有下载来源均不可用；请检查网络或稍后重试".into(),
+        ServiceError::Network(_) => "下载网络请求失败".into(),
+        ServiceError::InvalidResponse(_) => "下载响应格式无效".into(),
+        ServiceError::InvalidUrl => "下载地址无效".into(),
+        ServiceError::Cancelled => "任务已取消".into(),
+        ServiceError::ResolutionTimedOut => "下载元数据等待超时；请检查网络后重试".into(),
+        ServiceError::Cache(_) => "下载缓存记录无效".into(),
     }
 }
 
@@ -895,7 +921,8 @@ async fn download_artifact(
                 });
             }
         })
-        .await?;
+        .await
+        .map_err(download_error_for_operation)?;
     emit(OperationPhase::Verifying);
     Ok(path)
 }
@@ -1082,6 +1109,27 @@ impl OperationPhase {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn download_errors_use_actionable_source_language_messages() {
+        let invalid_range =
+            super::download_error_for_operation(crate::services::ServiceError::InvalidRange);
+        assert!(
+            invalid_range
+                .to_string()
+                .contains("下载服务器返回了不一致的文件范围")
+        );
+        assert!(!invalid_range.to_string().contains("invalid byte range"));
+
+        let invalid_integrity =
+            super::download_error_for_operation(crate::services::ServiceError::InvalidIntegrity);
+        assert!(invalid_integrity.to_string().contains("缺少可信摘要"));
+        assert!(
+            !invalid_integrity
+                .to_string()
+                .contains("trusted artifact digest")
+        );
+    }
+
     #[test]
     fn discovery_gate_accepts_newer_verified_metadata_but_never_older() {
         assert!(super::signed_version_matches_discovery(

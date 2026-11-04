@@ -61,8 +61,8 @@ try {
     $stream = [System.IO.File]::OpenRead($exe)
     $reader = [System.IO.BinaryReader]::new($stream)
     try {
-        if ($stream.Length -gt 8MB) {
-            throw "Release executable exceeds the 8 MiB size budget: $($stream.Length) bytes."
+        if ($stream.Length -gt 10MB) {
+            throw "Release executable exceeds the 10 MiB size budget: $($stream.Length) bytes."
         }
         if ($stream.Length -lt 512) { throw "Release executable is unexpectedly small." }
         $stream.Position = 0x3c

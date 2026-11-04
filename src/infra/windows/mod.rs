@@ -1,3 +1,4 @@
+pub mod file_move;
 pub mod folder_picker;
 pub mod process;
 pub mod shortcut;
