@@ -13,6 +13,7 @@ use browser_harbor::{
         runtime::{ChromePlusRelease, LibportableRelease},
         settings::NetworkSettings,
         target::TargetId,
+        version::{VersionRelation, compare_versions},
     },
     providers::ProviderResolver,
     runtime,
@@ -74,7 +75,13 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
             let output = required_path(&mut args, "--output")?;
             refresh(&baseline, &signature, &public_key, &output).await
         }
-        _ => Err("usage: metadata keygen|sign|sign-env|verify|refresh [--path VALUE]".into()),
+        Some("probe") => {
+            let baseline = required_path(&mut args, "--baseline")?;
+            let signature = required_path(&mut args, "--signature")?;
+            let public_key = required_path(&mut args, "--public-key")?;
+            probe(&baseline, &signature, &public_key).await
+        }
+        _ => Err("usage: metadata keygen|sign|sign-env|verify|refresh|probe [--path VALUE]".into()),
     }
 }
 
@@ -295,6 +302,77 @@ async fn refresh(
     let bytes = serde_json::to_vec_pretty(&metadata)?;
     fs::write(output_path, [bytes.as_slice(), b"\n"].concat())?;
     Ok(())
+}
+
+async fn probe(
+    baseline_path: &Path,
+    signature_path: &Path,
+    public_key_path: &Path,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let baseline_bytes = fs::read(baseline_path)?;
+    let signature = fs::read_to_string(signature_path)?;
+    let public_key = fs::read_to_string(public_key_path)?;
+    let baseline = verify_with_public_key(&baseline_bytes, &signature, &public_key)?;
+    let network = NetworkSettings {
+        accelerators_enabled: false,
+        ..NetworkSettings::default()
+    };
+    let http = HttpClient::new(&network)?;
+    let provider = ProviderResolver::new(http);
+    let mut changed = false;
+
+    for target in TargetId::ALL {
+        if target == TargetId::Edge {
+            eprintln!("Probe skips Edge because its official URL is transient");
+            continue;
+        }
+        let spec = target.spec();
+        for channel in spec.channels {
+            for cpu_build in spec.cpu_builds {
+                let signed_version = baseline
+                    .release(target, *channel, *cpu_build)
+                    .map(|release| release.version.as_str());
+                match resolve_target(&provider, target, *channel, *cpu_build).await {
+                    Ok(descriptor)
+                        if version_probe_requires_refresh(&descriptor.version, signed_version) =>
+                    {
+                        changed = true;
+                        eprintln!(
+                            "Probe detected {} {} {}: {} -> {}",
+                            target.display_name(),
+                            channel.display_name(),
+                            cpu_build.display_name(),
+                            signed_version.unwrap_or("missing"),
+                            descriptor.version
+                        );
+                    }
+                    Ok(_) => {}
+                    Err(error) => {
+                        changed = true;
+                        eprintln!(
+                            "Probe could not verify {} {} {}: {}; refresh required",
+                            target.display_name(),
+                            channel.display_name(),
+                            cpu_build.display_name(),
+                            safe_refresh_error(error.as_ref())
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    println!("changed={changed}");
+    Ok(())
+}
+
+fn version_probe_requires_refresh(official: &str, signed: Option<&str>) -> bool {
+    signed.is_none_or(|signed| {
+        !matches!(
+            compare_versions(official, signed),
+            VersionRelation::Same | VersionRelation::UpstreamNewer
+        )
+    })
 }
 
 async fn refresh_component<T: Clone>(
@@ -786,6 +864,23 @@ mod tests {
             integrity: None,
             urls: vec![url],
             signature_url: None,
+        }
+    }
+
+    #[test]
+    fn probe_requests_refresh_only_for_missing_newer_or_unparseable_versions() {
+        for (official, signed, expected) in [
+            ("156.0.8078.81", None, true),
+            ("156.0.8078.81", Some("156.0.8078.80"), true),
+            ("156.0.8078.81", Some("156.0.8078.81"), false),
+            ("156.0.8078.80", Some("156.0.8078.81"), false),
+            ("unparseable", Some("156.0.8078.81"), true),
+        ] {
+            assert_eq!(
+                super::version_probe_requires_refresh(official, signed),
+                expected,
+                "official={official}, signed={signed:?}"
+            );
         }
     }
 
