@@ -2,7 +2,7 @@
 
 [简体中文](CHANGELOG.zh-CN.md) · English
 
-## Unreleased
+## v0.9.0 — 2026-11-04
 
 - Signed verification info now prefers the project-maintained Gitee mirror before existing GitHub accelerator and direct routes.
 - Older signed metadata can no longer replace a newer verified cache, including during manual refresh.
