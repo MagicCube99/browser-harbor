@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": 1793878404,
+  "generatedAt": 1793905344,
   "expiresAt": 253402300799,
   "releases": [
     {
@@ -78,20 +78,20 @@
     },
     {
       "target": "catsxp",
-      "version": "157.6.11.1.6",
+      "version": "157.6.11.1.7",
       "channel": "beta",
       "cpuBuild": "x64",
       "provider": "catsxp",
       "artifact": {
-        "fileName": "portable_x64_beta_157_6_11_1_6.zip",
+        "fileName": "portable_x64_beta_157_6_11_1_7.zip",
         "format": "zip",
-        "size": 234143530,
+        "size": 234728076,
         "integrity": {
           "algorithm": "sha256",
-          "value": "379164957330df69cee8fd9d0dcd9f557407e48bb931dffd74cf6008087f88a6"
+          "value": "93523100d2286c8903b35f211f92f8e895b4b8beafa1db38a1933189b6b0790d"
         },
         "urls": [
-          "https://b2.catsxp.com/catsxp_portable/win_x64/portable_x64_beta_157_6_11_1_6.zip"
+          "https://b2.catsxp.com/catsxp_portable/win_x64/portable_x64_beta_157_6_11_1_7.zip"
         ],
         "signatureUrl": null
       },
@@ -280,27 +280,27 @@
     },
     {
       "target": "iceweasel",
-      "version": "115.44.0esr",
+      "version": "115.45.0esr",
       "channel": "esr",
       "cpuBuild": "x64",
       "provider": "git_hub_release",
       "artifact": {
-        "fileName": "Iceweasel-v115.44.0esr.l10n_win64_pgo.7z",
+        "fileName": "Iceweasel-v115.45.0esr.l10n_win64_pgo.7z",
         "format": "sevenzip",
-        "size": 59462037,
+        "size": 59502233,
         "integrity": {
           "algorithm": "sha256",
-          "value": "039e912b57470e1f9162e7d94d1a0f98e1ee586e15da1dcf01f84f72d877f6f1"
+          "value": "86ddd496ce07721639b0860910f7d302dfdb7e7f3438efb5cff9d991ac5ae757"
         },
         "urls": [
-          "https://github.com/adonais/iceweasel/releases/download/v115.44.0esr/Iceweasel-v115.44.0esr.l10n_win64_pgo.7z"
+          "https://github.com/adonais/iceweasel/releases/download/v115.45.0esr/Iceweasel-v115.45.0esr.l10n_win64_pgo.7z"
         ],
         "signatureUrl": null
       },
       "placement": "native_package",
       "innerArchive": null,
-      "source": "https://github.com/adonais/iceweasel/releases/tag/v115.44.0esr",
-      "publishedAt": "2026-10-23T06:35:24Z"
+      "source": "https://github.com/adonais/iceweasel/releases/tag/v115.45.0esr",
+      "publishedAt": "2026-11-05T18:09:47Z"
     },
     {
       "target": "iceweasel",
@@ -544,20 +544,20 @@
     },
     {
       "target": "vivaldi",
-      "version": "8.3.4191.26",
+      "version": "8.2.4133.96",
       "channel": "stable",
       "cpuBuild": "x64",
       "provider": "vivaldi",
       "artifact": {
-        "fileName": "Vivaldi.8.3.4191.26.x64.exe",
+        "fileName": "Vivaldi.8.2.4133.96.x64.exe",
         "format": "sevenzip",
-        "size": 160049576,
+        "size": 156264872,
         "integrity": {
           "algorithm": "sha256",
-          "value": "97c6e6b3d8d01351994ec88623ccfdc370317a1c5b89758746d615a60490363e"
+          "value": "cd3374dbbffe20ccc8dd1f621c171831ae4e79548af1d41db4dadadf3decb034"
         },
         "urls": [
-          "https://downloads.vivaldi.com/stable/Vivaldi.8.3.4191.26.x64.exe"
+          "https://downloads.vivaldi.com/stable/Vivaldi.8.2.4133.96.x64.exe"
         ],
         "signatureUrl": null
       },
