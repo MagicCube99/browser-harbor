@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": 1793832992,
+  "generatedAt": 1793878404,
   "expiresAt": 253402300799,
   "releases": [
     {
@@ -29,27 +29,27 @@
     },
     {
       "target": "brave",
-      "version": "1.100.48",
+      "version": "1.100.49",
       "channel": "beta",
       "cpuBuild": "x64",
       "provider": "git_hub_release",
       "artifact": {
-        "fileName": "brave-v1.100.48-win32-x64.zip",
+        "fileName": "brave-v1.100.49-win32-x64.zip",
         "format": "zip",
-        "size": 255098629,
+        "size": 255098881,
         "integrity": {
           "algorithm": "sha256",
-          "value": "efae61d2d3a015c6e18bc0572aba984c7aa676e23d437ff81f2b3a58fa2be84c"
+          "value": "800407cdc8ae6867a4d02ca1b15a425637f3fc7ae849a9042cd121381f735592"
         },
         "urls": [
-          "https://github.com/brave/brave-browser/releases/download/v1.100.48/brave-v1.100.48-win32-x64.zip"
+          "https://github.com/brave/brave-browser/releases/download/v1.100.49/brave-v1.100.49-win32-x64.zip"
         ],
         "signatureUrl": null
       },
       "placement": "native_package",
       "innerArchive": null,
-      "source": "https://github.com/brave/brave-browser/releases/tag/v1.100.48",
-      "publishedAt": "2026-11-04T05:23:26Z"
+      "source": "https://github.com/brave/brave-browser/releases/tag/v1.100.49",
+      "publishedAt": "2026-11-05T05:17:15Z"
     },
     {
       "target": "catsxp",
@@ -256,27 +256,27 @@
     },
     {
       "target": "helium",
-      "version": "0.20.3.1",
+      "version": "0.21.1.1",
       "channel": "stable",
       "cpuBuild": "x64",
       "provider": "git_hub_release",
       "artifact": {
-        "fileName": "helium_0.20.3.1_x64-windows.zip",
+        "fileName": "helium_0.21.1.1_x64-windows.zip",
         "format": "zip",
-        "size": 195771721,
+        "size": 199491635,
         "integrity": {
           "algorithm": "sha256",
-          "value": "07f602a49fd2712dc13e1d9ce8793ccd1bb2c1a6b2b06b864e2b56e22970cc46"
+          "value": "a339c758791aeea9fa2ef1a70a8722de61ba123d3ca6e972d0dbe3d2b528c6ec"
         },
         "urls": [
-          "https://github.com/imputnet/helium-windows/releases/download/0.20.3.1/helium_0.20.3.1_x64-windows.zip"
+          "https://github.com/imputnet/helium-windows/releases/download/0.21.1.1/helium_0.21.1.1_x64-windows.zip"
         ],
         "signatureUrl": null
       },
       "placement": "native_package",
       "innerArchive": null,
-      "source": "https://github.com/imputnet/helium-windows/releases/tag/0.20.3.1",
-      "publishedAt": "2026-10-30T11:37:39Z"
+      "source": "https://github.com/imputnet/helium-windows/releases/tag/0.21.1.1",
+      "publishedAt": "2026-11-05T00:26:33Z"
     },
     {
       "target": "iceweasel",
@@ -544,20 +544,20 @@
     },
     {
       "target": "vivaldi",
-      "version": "8.2.4133.96",
+      "version": "8.3.4191.26",
       "channel": "stable",
       "cpuBuild": "x64",
       "provider": "vivaldi",
       "artifact": {
-        "fileName": "Vivaldi.8.2.4133.96.x64.exe",
+        "fileName": "Vivaldi.8.3.4191.26.x64.exe",
         "format": "sevenzip",
-        "size": 156264872,
+        "size": 160049576,
         "integrity": {
           "algorithm": "sha256",
-          "value": "cd3374dbbffe20ccc8dd1f621c171831ae4e79548af1d41db4dadadf3decb034"
+          "value": "97c6e6b3d8d01351994ec88623ccfdc370317a1c5b89758746d615a60490363e"
         },
         "urls": [
-          "https://downloads.vivaldi.com/stable/Vivaldi.8.2.4133.96.x64.exe"
+          "https://downloads.vivaldi.com/stable/Vivaldi.8.3.4191.26.x64.exe"
         ],
         "signatureUrl": null
       },
