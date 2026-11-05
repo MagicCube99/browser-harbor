@@ -4,7 +4,7 @@ This project downloads third-party runtime components and browser distributions 
 
 ## Chrome++ Next
 
-- Component: Chrome++ Next 1.18.x
+- Component: Chrome++ Next (version selected by the current Ed25519-verified metadata)
 - Project: <https://github.com/Bush2021/chrome_plus>
 - License: GPL-3.0-only
 - Use: downloaded at runtime and installed beside supported Chromium executables
@@ -14,7 +14,7 @@ The application must display the component version, source repository, and licen
 
 ## Chrome++ setdll
 
-- Component: Chrome++ setdll 1.18.x
+- Component: Chrome++ setdll (matching the Chrome++ version selected by the current Ed25519-verified metadata)
 - Project: <https://github.com/Bush2021/chrome_plus>
 - License: GPL-3.0-only
 - Use: downloaded at runtime for Microsoft Edge only, then used in the staging directory to add a `version.dll` import to `msedge.exe`
@@ -78,7 +78,7 @@ Licenses below were read from the exact packages resolved in `Cargo.lock`; trans
 - Native directory selection: rfd 0.17.2 (`MIT`), using the Windows `IFileOpenDialog` folder picker without Linux backend features.
 - Windows icon resources: winresource 0.1.34 (`MIT`), build-time only.
 - Networking and runtime: reqwest 0.13.5 (`MIT OR Apache-2.0`), tokio 1.54.1 (`MIT`), futures-util 0.3.34 (`MIT OR Apache-2.0`).
-- Archives: zip 9.0.5 (`MIT`), sevenz-rust2 0.24.1 (`Apache-2.0`, built with LZMA/LZMA2/BCJ support but without BZIP2/PPMd), msi 0.10 and cab 0.6 (`MIT`), quick-xml (`MIT`).
+- Archives: zip 9.0.5 (`MIT`), sevenz-rust2 0.24.1 (`Apache-2.0`, built with LZMA/LZMA2/BCJ/BCJ2/Copy support but without BZIP2/PPMd), msi 0.10 and cab 0.6 (`MIT`), quick-xml (`MIT`).
 - Integrity and signatures: sha2 (`MIT OR Apache-2.0`), pgp 0.21 (`MIT OR Apache-2.0`), ed25519-dalek 2.2 (`BSD-3-Clause`) and rand_core 0.6 (`MIT OR Apache-2.0`).
 - Data, parsing and platform: serde, serde_json, thiserror, regex-lite, url, base64 and windows-sys (`MIT OR Apache-2.0`); walkdir (`Unlicense/MIT`).
 - Development-only: tempfile and egui_system_font_provider; these are not included in the release binary.
