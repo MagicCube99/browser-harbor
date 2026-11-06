@@ -1,7 +1,9 @@
 //! egui application shell.
 
+mod chrome_plus;
 mod dialogs;
 mod localization;
+mod network;
 
 use std::{
     collections::{BTreeMap, BTreeSet},
@@ -44,13 +46,13 @@ use crate::{
 
 pub const APP_TITLE: &str = "Browser Harbor";
 pub const BODY_FONT_SIZE: f32 = 12.5;
-const FIELD_LABEL_WIDTH: f32 = 116.0;
+pub(super) const FIELD_LABEL_WIDTH: f32 = 116.0;
 const RELEASES_URL: &str = "https://github.com/MagicCube99/browser-harbor/releases";
 const GITEE_RELEASES_URL: &str = "https://gitee.com/MagicCube99/browser-harbor/releases";
-const CHROME_PLUS_SOURCE_URL: &str = "https://github.com/Bush2021/chrome_plus";
+pub(super) const CHROME_PLUS_SOURCE_URL: &str = "https://github.com/Bush2021/chrome_plus";
 
 #[derive(Clone, Copy)]
-struct ThemePalette {
+pub(super) struct ThemePalette {
     canvas: Color32,
     panel: Color32,
     surface: Color32,
@@ -159,7 +161,7 @@ pub fn apply_theme_preference(ctx: &egui::Context, theme: ThemeMode) {
     });
 }
 
-fn palette(ui: &egui::Ui) -> ThemePalette {
+pub(super) fn palette(ui: &egui::Ui) -> ThemePalette {
     match ui.ctx().theme() {
         egui::Theme::Light => LIGHT_PALETTE,
         egui::Theme::Dark => DARK_PALETTE,
@@ -679,7 +681,7 @@ impl BrowserHarborApp {
             .then_some((current, latest))
     }
 
-    fn request_chrome_plus_update(
+    pub(super) fn request_chrome_plus_update(
         &mut self,
         target: TargetId,
         current_version: Option<String>,
@@ -1388,7 +1390,12 @@ impl BrowserHarborApp {
             ),
             Some(LocalVersionState::Incomplete(path)) => (
                 localized("安装不完整"),
-                format!("未找到浏览器程序：{}", path.display()),
+                format!(
+                    "{}：{}；{}",
+                    localized("未找到浏览器程序"),
+                    path.display(),
+                    localized("若此前正常使用，请检查杀毒软件是否误将其隔离，建议添加目录排除项")
+                ),
                 palette.error,
             ),
             Some(LocalVersionState::Unavailable(error)) => {
@@ -1596,8 +1603,13 @@ impl BrowserHarborApp {
                 ui.add_space(10.0);
 
                 ui.localized_label(RichText::new("来源").color(palette.muted));
-                ui.localized_label(provider_label(spec.provider))
-                    .localized_hover(&release_hint);
+                ui.hyperlink_to(localized(provider_label(spec.provider)), spec.upstream_url)
+                    .on_hover_text(format!(
+                        "{}\n{}\n{}",
+                        release_hint,
+                        localized("打开上游发布或官网页面"),
+                        spec.upstream_url,
+                    ));
             });
             ui.add_space(3.0);
             ui.horizontal(|ui| {
@@ -1886,949 +1898,7 @@ impl BrowserHarborApp {
         }
     }
 
-    fn show_network(&mut self, ui: &mut egui::Ui) {
-        ui.spacing_mut().item_spacing.y = 3.0;
-        let palette = palette(ui);
-        let cache_usage = self.state.download_cache_usage().ok();
-        let mut network = self.state.draft().network.clone();
-        let mut accelerator_input = std::mem::take(&mut self.accelerator_input);
-        let mut changed = false;
-        let mut add_requested = false;
-        let mut validation_error = None;
-        let mut clear_cache = false;
-        let mut requested_config_location = None;
-        let mut show_local_package = self.state.draft().show_local_package;
-        let mut auto_check_metadata = self.state.draft().auto_check_metadata;
-        let mut use_signed_metadata_cache = self.state.draft().use_signed_metadata_cache;
-        let mut refresh_metadata = false;
-
-        changed |= section(ui, "下载加速", |ui| {
-            let mut section_changed = ui
-                .localized_checkbox(&mut network.accelerators_enabled, "启用内置下载加速站")
-                .changed();
-            ui.localized_label(
-                RichText::new("添加额外的自定义加速站（可选）")
-                    .size(11.0)
-                    .color(palette.muted),
-            );
-            ui.horizontal(|ui| {
-                let label = field_label(ui, "加速站前缀", FIELD_LABEL_WIDTH)
-                    .localized_hover("加速站 URL 前缀；程序会在原始下载地址前拼接此文本");
-                let response = ui
-                    .add_sized(
-                        [(ui.available_width() - 52.0).max(80.0), 24.0],
-                        egui::TextEdit::singleline(&mut accelerator_input)
-                            .hint_text("https://example.com/"),
-                    )
-                    .labelled_by(label.id);
-                if response.lost_focus() && ui.input(|input| input.key_pressed(egui::Key::Enter)) {
-                    add_requested = true;
-                }
-                add_requested |= ui
-                    .add_sized([46.0, 24.0], localized_button("添加"))
-                    .clicked();
-            });
-            let mut remove = None;
-            let mut move_up = None;
-            let mut move_down = None;
-            for index in 0..network.accelerators.len() {
-                let prefix = network.accelerators[index].prefix.clone();
-                ui.horizontal(|ui| {
-                    ui.localized_checkbox(
-                        &mut network.accelerators[index].enabled,
-                        RichText::new(prefix).size(11.0),
-                    );
-                    ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                        if ui.localized_button("删除").clicked() {
-                            remove = Some(index);
-                        }
-                        if ui
-                            .add_enabled(
-                                index + 1 < network.accelerators.len(),
-                                localized_button("下移"),
-                            )
-                            .clicked()
-                        {
-                            move_down = Some(index);
-                        }
-                        if ui
-                            .add_enabled(index > 0, localized_button("上移"))
-                            .clicked()
-                        {
-                            move_up = Some(index);
-                        }
-                    });
-                });
-            }
-            if let Some(index) = remove {
-                network.accelerators.remove(index);
-                section_changed = true;
-            } else if let Some(index) = move_up {
-                network.accelerators.swap(index, index - 1);
-                section_changed = true;
-            } else if let Some(index) = move_down {
-                network.accelerators.swap(index, index + 1);
-                section_changed = true;
-            }
-            if network.accelerators.is_empty() {
-                ui.localized_label(
-                    RichText::new("未添加自定义加速站；仍会尝试内置 GitHub 加速入口。")
-                        .size(11.0)
-                        .color(palette.muted),
-                );
-            }
-            ui.localized_label(
-                RichText::new("加速站只改变 GitHub 传输路径，不改变版本、长度或摘要校验。")
-                    .size(11.0)
-                    .color(palette.muted),
-            );
-            section_changed
-        });
-
-        if add_requested {
-            let accelerator = crate::domain::settings::Accelerator {
-                prefix: accelerator_input.trim().to_owned(),
-                enabled: true,
-            };
-            if network.accelerators.len() >= 20 {
-                validation_error = Some("最多添加 20 个加速站".to_owned());
-            } else if let Err(error) = accelerator.validate() {
-                validation_error = Some(error);
-            } else if network.accelerators.iter().any(|existing| {
-                existing
-                    .prefix
-                    .trim()
-                    .eq_ignore_ascii_case(&accelerator.prefix)
-            }) {
-                validation_error = Some("加速站已经存在".to_owned());
-            } else {
-                network.accelerators.push(accelerator);
-                accelerator_input.clear();
-                changed = true;
-            }
-        }
-        if let Some(error) = &validation_error {
-            ui.colored_label(palette.error, localized(error));
-        }
-
-        ui.add_space(7.0);
-        let mut proxy_changed = false;
-        ui.columns(2, |columns| {
-            let mut timeout_changed = false;
-            proxy_changed = Frame::new()
-                .fill(palette.surface)
-                .stroke(Stroke::new(1.0, palette.border))
-                .corner_radius(CornerRadius::same(4))
-                .inner_margin(Margin::symmetric(9, 4))
-                .show(&mut columns[0], |ui| {
-                    ui.set_width(ui.available_width());
-                    ui.horizontal(|ui| {
-                        let (title_rect, _) = ui.allocate_exact_size(
-                            egui::vec2(FIELD_LABEL_WIDTH, 24.0),
-                            egui::Sense::hover(),
-                        );
-                        let mut title_ui = ui.new_child(
-                            egui::UiBuilder::new()
-                                .max_rect(title_rect)
-                                .layout(Layout::left_to_right(Align::Center)),
-                        );
-                        title_ui.localized_label(
-                            RichText::new("代理与超时")
-                                .size(12.0)
-                                .strong()
-                                .color(palette.text),
-                        );
-                        let timeout = ui
-                            .add_sized(
-                                [76.0, 24.0],
-                                egui::DragValue::new(&mut network.timeout_seconds)
-                                    .range(5..=300)
-                                    .speed(1.0)
-                                    .suffix(format!(" {}", localized("秒"))),
-                            )
-                            .on_hover_text(localized("代理请求超时（秒）"));
-                        timeout.widget_info(|| {
-                            egui::WidgetInfo::labeled(
-                                egui::Role::SpinButton,
-                                true,
-                                localized("超时"),
-                            )
-                        });
-                        timeout_changed = timeout.changed();
-                    });
-                    ui.add_space(1.0);
-                    let mut section_changed = false;
-                    let mut proxy = network.proxy.clone().unwrap_or_default();
-                    let changed =
-                        text_field(ui, "代理地址", &mut proxy, "留空时使用系统代理").changed();
-                    if changed {
-                        network.proxy = (!proxy.trim().is_empty()).then(|| proxy.trim().to_owned());
-                        section_changed = true;
-                    }
-                    section_changed
-                })
-                .inner;
-            proxy_changed |= timeout_changed;
-
-            section_with_header(
-                &mut columns[1],
-                "下载缓存",
-                |_| {},
-                |ui| {
-                    let usage = cache_usage.map_or_else(
-                        || "无法读取缓存目录".to_owned(),
-                        |usage| {
-                            format!(
-                                "{} {}，{}",
-                                usage.files,
-                                localized("个文件"),
-                                format_bytes(usage.bytes)
-                            )
-                        },
-                    );
-                    egui::Sides::new()
-                        .height(24.0)
-                        .spacing(6.0)
-                        .shrink_left()
-                        .truncate()
-                        .show(
-                            ui,
-                            |ui| {
-                                ui.localized_label(
-                                    RichText::new(&usage).size(11.0).color(palette.muted),
-                                )
-                                .localized_hover(&usage);
-                            },
-                            |ui| {
-                                let detail = format!(
-                                    "{}\n{}",
-                                    self.state.cache_dir().display(),
-                                    localized("仅删除可重新下载的安装包，不影响浏览器数据。")
-                                );
-                                clear_cache = ui
-                                    .add_enabled(
-                                        self.operation.is_none()
-                                            && cache_usage.is_some_and(|usage| usage.files > 0),
-                                        localized_button("清理下载缓存"),
-                                    )
-                                    .on_hover_text(detail)
-                                    .clicked();
-                            },
-                        );
-                },
-            );
-        });
-        changed |= proxy_changed;
-
-        ui.add_space(7.0);
-        section(ui, "配置位置", |ui| {
-            let mut portable = self.state.is_portable_config();
-            ui.horizontal(|ui| {
-                let user = ui.radio_value(&mut portable, false, localized("系统用户目录（默认）"));
-                let user_changed = user.changed();
-                user.localized_hover("保存在 %LOCALAPPDATA%\\browser-harbor\\BrowserHarbor.json");
-                let portable_response =
-                    ui.radio_value(&mut portable, true, localized("程序目录（便携）"));
-                let portable_changed = portable_response.changed();
-                portable_response.localized_hover(
-                    "将 BrowserHarbor.json 保存在 Browser Harbor EXE 旁，可随程序一起带走",
-                );
-                if user_changed || portable_changed {
-                    requested_config_location = Some(portable);
-                }
-            });
-            ui.horizontal(|ui| {
-                ui.localized_label(
-                    RichText::new("当前配置文件")
-                        .size(10.5)
-                        .color(palette.muted),
-                );
-                let path = self.state.config_path().display().to_string();
-                ui.add(
-                    egui::Label::new(
-                        RichText::new(&path)
-                            .size(10.5)
-                            .monospace()
-                            .color(palette.text),
-                    )
-                    .truncate(),
-                )
-                .localized_hover(path);
-            });
-            ui.localized_label(
-                RichText::new(
-                    "便携模式要求 EXE 所在目录可写（避免放在 C 盘根目录或 Program Files 等受保护位置）；浏览器绝对路径在新电脑上仍需重新定位。",
-                )
-                .size(10.5)
-                .color(palette.muted),
-            );
-        });
-
-        ui.add_space(5.0);
-        let mut advanced_changed = false;
-        egui::CollapsingHeader::new(localized("高级"))
-            .id_salt("advanced_settings")
-            .show(ui, |ui| {
-                advanced_changed =
-                    ui.localized_checkbox(&mut auto_check_metadata, "自动检查校验信息")
-                        .changed();
-                ui.localized_label(
-                    RichText::new("进入浏览器页面时自动检查所选浏览器的官方版本和签名校验信息。")
-                        .size(10.5)
-                        .color(palette.muted),
-                );
-                ui.add_space(3.0);
-                advanced_changed |=
-                    ui.localized_checkbox(
-                        &mut use_signed_metadata_cache,
-                        "离线时使用最近一次已签名的校验信息",
-                    )
-                    .changed();
-                ui.localized_label(
-                    RichText::new("实时校验信息不可用时使用最近一次已验签缓存；签名、大小和摘要仍会校验。")
-                        .size(10.5)
-                        .color(palette.muted),
-                );
-                ui.add_space(3.0);
-                refresh_metadata = ui
-                    .add_enabled(
-                        self.operation.is_none(),
-                        localized_button("立即重新获取校验信息"),
-                    )
-                    .clicked();
-                ui.add_space(3.0);
-                advanced_changed = ui.localized_checkbox(&mut show_local_package, "使用本地包替代下载").changed()
-                    || advanced_changed;
-                ui.localized_label(RichText::new("仅替代当前发布包的下载，不支持导入其他版本。仍会校验大小、摘要和必要的签名，并可能需要联网。关闭会清除选择记录，不删除文件。").size(10.5).color(palette.muted));
-            });
-        self.accelerator_input = accelerator_input;
-        if clear_cache {
-            self.status_message = Some(match self.state.clear_download_cache() {
-                Ok(removed) => {
-                    format!("已清理下载缓存：{}", format_bytes(removed.bytes))
-                }
-                Err(error) => format!("清理下载缓存失败：{error}"),
-            });
-        }
-        if changed || advanced_changed {
-            self.status_message = None;
-            self.operation_phase = None;
-            self.state.update_draft(|settings| {
-                settings.network = network;
-                settings.show_local_package = show_local_package;
-                settings.auto_check_metadata = auto_check_metadata;
-                settings.use_signed_metadata_cache = use_signed_metadata_cache;
-                if !show_local_package {
-                    for config in settings.targets.values_mut() {
-                        config.local_package = None;
-                    }
-                }
-            });
-            self.auto_save();
-        }
-        if refresh_metadata && self.operation.is_none() {
-            self.start_operation(OperationMode::MetadataRefresh, false);
-        }
-        if let Some(portable) = requested_config_location
-            && self.startup_error.is_none()
-        {
-            match self.state.switch_config_location(portable) {
-                Ok(()) => {
-                    self.status_message = Some(format!(
-                        "{}：{}",
-                        localized("配置位置已切换"),
-                        self.state.config_path().display()
-                    ));
-                }
-                Err(error) => {
-                    let message = if error.is_permission_denied() {
-                        localized(
-                            "切换配置位置失败：当前目录受系统权限保护（如 C 盘根目录或 Program Files）。请将程序移至普通用户目录（如 D 盘或 C:\\Tools），或右键以管理员身份运行。",
-                        )
-                    } else {
-                        format!("{}：{error}", localized("切换配置位置失败"))
-                    };
-                    self.status_message = Some(message);
-                }
-            }
-        }
-    }
-
-    fn show_chrome_plus(&mut self, ui: &mut egui::Ui) {
-        let palette = palette(ui);
-        let target = self.state.selected_target();
-        let mode = target.chrome_plus_mode();
-        let mut config = self.state.draft().targets[&target].clone();
-        let ini_path = chrome_plus_ini_path(target, &config, self.state.tool_root());
-        if !self.chrome_plus_versions.contains_key(&target) {
-            let detected = chrome_plus_program_directory(target, &config, self.state.tool_root())
-                .and_then(|directory| {
-                    crate::runtime::chromeplus::installed_version(&directory).ok()
-                });
-            self.chrome_plus_versions.insert(target, detected);
-        }
-        let detected_version = self.chrome_plus_versions.get(&target).cloned().flatten();
-        let installed = ini_path.is_some();
-        let installed_version = if installed {
-            detected_version.or_else(|| config.chrome_plus_version.clone())
-        } else {
-            None
-        };
-        let stored_chrome_plus_version = config.chrome_plus_version.clone();
-        if installed_version.is_some() {
-            config.chrome_plus_version = installed_version.clone();
-        }
-        let backup_dir = config
-            .browser_root
-            .as_deref()
-            .and_then(|root| resolve_preview_path(self.state.tool_root(), root))
-            .map(|root| root.join("backups"));
-        let latest_version = self.chrome_plus_latest.get(&target).cloned();
-        let update_label = chrome_plus_update_button_label(
-            installed_version.as_deref(),
-            latest_version.as_deref(),
-        );
-        let mut changed = config.chrome_plus_version != stored_chrome_plus_version;
-        let mut ini_changed = false;
-        let mut pending_status = None;
-        if self.state.has_pending_chromeplus()
-            && ui.localized_button("重试应用 Chrome++ 配置").clicked()
-            && self.auto_save()
-        {
-            self.status_message = Some("Chrome++ 配置已自动写入".to_owned());
-        }
-        if !self.state.has_pending_chromeplus()
-            && !self.chrome_plus_ini_loaded.contains(&target)
-            && let Some(path) = &ini_path
-        {
-            match crate::runtime::chromeplus::read_config_from_ini(path, &config.chrome_plus) {
-                Ok(loaded) => {
-                    changed |= loaded != config.chrome_plus;
-                    config.chrome_plus = loaded;
-                    self.chrome_plus_ini_loaded.insert(target);
-                }
-                Err(error) => {
-                    pending_status = Some(format!("读取 Chrome++ 配置失败：{error}"));
-                }
-            }
-        }
-        let mut open_ini = false;
-        let mut open_ini_folder = false;
-        let mut backup_ini = false;
-        let mut restore_defaults = false;
-        let mut check_update = false;
-        let mut request_update = false;
-        let mut load_keymapping = false;
-        let mut load_ini = false;
-
-        ui.columns(2, |columns| {
-            section_with_header(
-                &mut columns[0],
-                "Chrome++ 集成",
-                |ui| {
-                    ui.allocate_ui_with_layout(
-                        egui::vec2(86.0, 24.0),
-                        Layout::right_to_left(Align::Center),
-                        |ui| {
-                            let update_available = update_label == "可更新";
-                            let update_hover = if update_available {
-                                chrome_plus_update_hover(
-                                    self.state.draft().language,
-                                    installed_version.as_deref().unwrap_or("—"),
-                                    latest_version.as_deref().unwrap_or("—"),
-                                )
-                            } else {
-                                latest_version.as_deref().map_or_else(
-                                    || "检查 Bush2021/chrome_plus 的最新正式版本".to_owned(),
-                                    |latest| format!("最新版本：{latest}；点击重新检查"),
-                                )
-                            };
-                            let update = ui
-                                .add_enabled(
-                                    self.operation.is_none(),
-                                    localized_button("")
-                                        .min_size(egui::vec2(24.0, 24.0))
-                                        .frame(false),
-                                )
-                                .localized_hover(update_hover);
-                            let hovered = update.hovered() || update.has_focus();
-                            ui.painter().rect_filled(
-                                update.rect,
-                                CornerRadius::same(5),
-                                if hovered {
-                                    palette.hover
-                                } else {
-                                    Color32::TRANSPARENT
-                                },
-                            );
-                            if update.has_focus() {
-                                ui.painter().rect_stroke(
-                                    update.rect,
-                                    CornerRadius::same(5),
-                                    Stroke::new(1.0, palette.accent),
-                                    egui::StrokeKind::Inside,
-                                );
-                            }
-                            let update_color = match update_label.as_str() {
-                                "已最新" => palette.success,
-                                "可更新" => palette.accent_text,
-                                _ => palette.text,
-                            };
-                            let icon_color = if hovered {
-                                palette.accent_text
-                            } else {
-                                update_color
-                            };
-                            if update_available {
-                                paint_update_icon(ui.painter(), update.rect.center(), icon_color);
-                            } else {
-                                paint_refresh_icon(ui.painter(), update.rect.center(), icon_color);
-                            }
-                            let accessible_label = if update_available {
-                                chrome_plus_update_action_label(
-                                    self.state.draft().language,
-                                    latest_version.as_deref().unwrap_or("—"),
-                                )
-                            } else {
-                                localized(update_label.as_str())
-                            };
-                            update.widget_info(|| {
-                                egui::WidgetInfo::labeled(
-                                    egui::Role::Button,
-                                    self.operation.is_none(),
-                                    accessible_label.clone(),
-                                )
-                            });
-                            if update.clicked() {
-                                if update_available {
-                                    request_update = true;
-                                } else {
-                                    check_update = true;
-                                }
-                            }
-
-                            ui.add_space(3.0);
-                            let version_text = installed_version
-                                .as_deref()
-                                .map_or_else(|| "—".to_owned(), |version| format!("v{version}"));
-                            ui.add(
-                                egui::Label::new(
-                                    RichText::new(version_text).monospace().strong().color(
-                                        if installed_version.is_some() {
-                                            palette.text
-                                        } else {
-                                            palette.muted
-                                        },
-                                    ),
-                                )
-                                .show_tooltip_when_elided(false)
-                                .truncate(),
-                            )
-                            .localized_hover(if installed {
-                                "已安装的 Chrome++ 版本"
-                            } else {
-                                "Chrome++ 尚未安装"
-                            });
-                        },
-                    );
-                },
-                |ui| {
-                    ui.horizontal(|ui| {
-                        metadata_label(ui, "模式", 72.0);
-                        ui.localized_label(RichText::new(chrome_plus_label(mode)).strong().color(
-                            if mode == ChromePlusMode::DataOnly {
-                                palette.warning
-                            } else {
-                                palette.text
-                            },
-                        ));
-                    });
-                    ui.horizontal(|ui| {
-                        metadata_label(ui, "状态", 72.0);
-                        ui.localized_label(if installed {
-                            "已安装"
-                        } else {
-                            "尚未安装"
-                        })
-                        .localized_hover(if installed {
-                            "Chrome++ 文件位于浏览器程序目录"
-                        } else {
-                            "浏览器安装或升级时会自动下载、校验并放置 Chrome++，无需手工下载"
-                        });
-                    });
-                    ui.horizontal(|ui| {
-                        metadata_label(ui, "来源", 72.0);
-                        ui.hyperlink_to(
-                            localized("Chrome++ 源码与 GPL-3.0 许可证"),
-                            CHROME_PLUS_SOURCE_URL,
-                        )
-                        .on_hover_text(CHROME_PLUS_SOURCE_URL);
-                    });
-                },
-            );
-            section_with_header(
-                &mut columns[1],
-                "配置文件",
-                |_| {},
-                |ui| {
-                    ui.spacing_mut().item_spacing.y = 4.0;
-                    let button_width = ui.available_width();
-                    load_ini = ui
-                        .add_enabled(
-                            ini_path.is_some(),
-                            localized_button("从 INI 载入")
-                                .min_size(egui::vec2(button_width, 24.0)),
-                        )
-                        .clicked();
-                    open_ini = ui
-                        .add_enabled(
-                            ini_path.is_some(),
-                            localized_button("打开配置文件")
-                                .min_size(egui::vec2(button_width, 24.0)),
-                        )
-                        .clicked();
-                    let menu = egui::containers::menu::MenuButton::from_button(
-                        localized_button("更多操作…").min_size(egui::vec2(button_width, 24.0)),
-                    );
-                    menu.ui(ui, |ui| {
-                        if ui
-                            .add_enabled(ini_path.is_some(), localized_button("打开所在文件夹"))
-                            .clicked()
-                        {
-                            open_ini_folder = true;
-                            ui.close();
-                        }
-                        if ui
-                            .add_enabled(
-                                ini_path.is_some() && backup_dir.is_some(),
-                                localized_button("备份当前 INI"),
-                            )
-                            .clicked()
-                        {
-                            backup_ini = true;
-                            ui.close();
-                        }
-                        if ui
-                            .add_enabled(
-                                ini_path.is_some() && backup_dir.is_some(),
-                                localized_button("恢复默认配置"),
-                            )
-                            .localized_hover("先备份当前 INI，再将可编辑配置恢复为默认值")
-                            .clicked()
-                        {
-                            restore_defaults = true;
-                            ui.close();
-                        }
-                    });
-                },
-            );
-        });
-        if target.support_level() == SupportLevel::Experimental {
-            ui.add_space(5.0);
-            ui.localized_label(
-                RichText::new(
-                    "该浏览器的 Chrome++ 兼容性仍为实验性；完整功能已开放，若启动异常请关闭相关选项。",
-                )
-                .size(11.0)
-                .color(palette.warning),
-            );
-        }
-        ui.add_space(4.0);
-        if mode == ChromePlusMode::Full {
-            ui.localized_label(
-                RichText::new("完整模式：以下选项对应 Chrome++ 的全部公开配置。")
-                    .size(11.0)
-                    .color(palette.muted),
-            );
-        } else if mode == ChromePlusMode::DataOnly {
-            ui.localized_label(
-                RichText::new("实验性 DataOnly 只写入用户数据与缓存路径，不开放标签或策略补丁。")
-                    .size(11.5)
-                    .color(palette.muted),
-            );
-        }
-
-        if mode == ChromePlusMode::Full {
-            ui.add_space(7.0);
-            let section_changed = section(ui, "启动与快捷键", |ui| {
-                let mut section_changed = text_field(
-                    ui,
-                    "附加参数",
-                    &mut config.chrome_plus.command_line,
-                    "例如 --disable-features=OutdatedBuildDetector",
-                )
-                .changed();
-                section_changed |= text_field(
-                    ui,
-                    "启动命令",
-                    &mut config.chrome_plus.launch_on_startup,
-                    "浏览器启动后执行；不需要请留空",
-                )
-                .changed();
-                section_changed |= text_field(
-                    ui,
-                    "退出命令",
-                    &mut config.chrome_plus.launch_on_exit,
-                    r#"多条命令用 ; 分隔，例如 "D:\App\clean.bat";"#,
-                )
-                .changed();
-                ui.columns(2, |columns| {
-                    section_changed |= text_field(
-                        &mut columns[0],
-                        "老板键",
-                        &mut config.chrome_plus.boss_key,
-                        "例如 Ctrl+Alt+B",
-                    )
-                    .changed();
-                    section_changed |= text_field(
-                        &mut columns[1],
-                        "翻译键",
-                        &mut config.chrome_plus.translate_key,
-                        "例如 Ctrl+Alt+T",
-                    )
-                    .changed();
-                });
-                ui.localized_label(
-                    RichText::new("启动和退出命令会由 Chrome++ 执行，请只填写可信命令。")
-                        .size(10.5)
-                        .color(palette.warning),
-                );
-                section_changed
-            });
-            changed |= section_changed;
-            ini_changed |= section_changed;
-
-            ui.add_space(7.0);
-            let section_changed = section(ui, "标签页与书签", |ui| {
-                let mut section_changed = false;
-                ui.columns(2, |columns| {
-                    section_changed |= columns[0]
-                        .localized_checkbox(
-                            &mut config.chrome_plus.double_click_close,
-                            "双击关闭标签",
-                        )
-                        .changed();
-                    section_changed |= columns[0]
-                        .localized_checkbox(
-                            &mut config.chrome_plus.right_click_close,
-                            "右键关闭标签",
-                        )
-                        .changed();
-                    section_changed |= columns[0]
-                        .localized_checkbox(
-                            &mut config.chrome_plus.keep_last_tab,
-                            "保留最后一个标签",
-                        )
-                        .changed();
-                    section_changed |= columns[0]
-                        .localized_checkbox(&mut config.chrome_plus.wheel_tab, "标签栏滚轮切换")
-                        .changed();
-                    section_changed |= columns[0]
-                        .localized_checkbox(
-                            &mut config.chrome_plus.wheel_tab_when_press_rbutton,
-                            "按住右键滚轮切换",
-                        )
-                        .changed();
-                    section_changed |= columns[1]
-                        .localized_checkbox(
-                            &mut config.chrome_plus.open_url_new_tab,
-                            "地址栏新标签打开",
-                        )
-                        .changed();
-                    section_changed |= columns[1]
-                        .localized_checkbox(
-                            &mut config.chrome_plus.open_bookmark_new_tab,
-                            "书签在新标签打开",
-                        )
-                        .changed();
-                    section_changed |= columns[1]
-                        .localized_checkbox(
-                            &mut config.chrome_plus.new_tab_disable,
-                            "禁用指定新标签页",
-                        )
-                        .changed();
-                    section_changed |= columns[1]
-                        .localized_checkbox(&mut config.chrome_plus.hover_tab, "悬停自动切换标签")
-                        .changed();
-                });
-                section_changed |= text_field(
-                    ui,
-                    "新标签匹配",
-                    &mut config.chrome_plus.new_tab_disable_name,
-                    "\"about:blank\",\"新建标签\"",
-                )
-                .changed();
-                ui.horizontal(|ui| {
-                    field_label(ui, "悬停延迟", FIELD_LABEL_WIDTH);
-                    section_changed |= ui
-                        .add_enabled(
-                            config.chrome_plus.hover_tab,
-                            egui::DragValue::new(&mut config.chrome_plus.hover_tab_delay)
-                                .range(0..=10_000)
-                                .suffix(" ms"),
-                        )
-                        .changed();
-                });
-                section_changed
-            });
-            changed |= section_changed;
-            ini_changed |= section_changed;
-
-            ui.add_space(7.0);
-            let section_changed = section(ui, "兼容与策略", |ui| {
-                let mut section_changed = false;
-                ui.columns(2, |columns| {
-                    section_changed |= columns[0]
-                        .localized_checkbox(
-                            &mut config.chrome_plus.show_password,
-                            "免系统验证查看密码",
-                        )
-                        .changed();
-                    section_changed |= columns[0]
-                        .localized_checkbox(&mut config.chrome_plus.win32k, "启用 win32k")
-                        .changed();
-                    section_changed |= columns[1]
-                        .localized_checkbox(&mut config.chrome_plus.ignore_policies, "忽略企业策略")
-                        .changed();
-                    section_changed |= columns[1]
-                        .localized_checkbox(
-                            &mut config.chrome_plus.suppress_false_upgrade_notification,
-                            "抑制错误升级提示",
-                        )
-                        .changed();
-                });
-                ui.localized_label(
-                    RichText::new(
-                        "win32k 仅在 Chrome++ 导致启动崩溃时启用；免验证查看密码会降低本机账户保护。",
-                    )
-                    .size(10.5)
-                    .color(palette.warning),
-                );
-                section_changed
-            });
-            changed |= section_changed;
-            ini_changed |= section_changed;
-
-            ui.add_space(7.0);
-            let section_changed = section(ui, "按键映射", |ui| {
-                let mut section_changed = false;
-                if let Some(mapping) = &mut config.chrome_plus.keymapping {
-                    section_changed |= ui
-                        .add_sized(
-                            [ui.available_width(), 68.0],
-                            egui::TextEdit::multiline(mapping)
-                                .hint_text(localized("每行一个映射，例如 F2=Ctrl+PageUp")),
-                        )
-                        .changed();
-                    if ui.localized_button("移除全部按键映射").clicked() {
-                        mapping.clear();
-                        section_changed = true;
-                    }
-                    ui.localized_label(
-                        RichText::new("支持 SourceKey=TargetKey 或 SourceKey=command:ID。")
-                            .size(10.5)
-                            .color(palette.muted),
-                    );
-                } else {
-                    ui.localized_label(
-                        RichText::new("未编辑时保留 INI 中已有的按键映射。")
-                            .size(11.0)
-                            .color(palette.muted),
-                    );
-                    load_keymapping = ui
-                        .add_enabled(ini_path.is_some(), localized_button("载入现有映射"))
-                        .clicked();
-                }
-                section_changed
-            });
-            changed |= section_changed;
-            ini_changed |= section_changed;
-        }
-
-        if load_keymapping && let Some(path) = &ini_path {
-            match crate::runtime::chromeplus::keymapping_text(path) {
-                Ok(mapping) => {
-                    config.chrome_plus.keymapping = Some(mapping);
-                    changed = true;
-                }
-                Err(error) => {
-                    self.status_message = Some(format!("读取按键映射失败：{error}"));
-                }
-            }
-        }
-        if load_ini && let Some(path) = &ini_path {
-            match crate::runtime::chromeplus::read_config_from_ini(path, &config.chrome_plus) {
-                Ok(loaded) => {
-                    config.chrome_plus = loaded;
-                    changed = true;
-                }
-                Err(error) => {
-                    self.status_message = Some(format!("读取 Chrome++ 配置失败：{error}"));
-                }
-            }
-        }
-        if open_ini_folder
-            && let Some(path) = &ini_path
-            && let Err(error) = std::process::Command::new("explorer.exe")
-                .arg(format!("/select,{}", path.display()))
-                .spawn()
-        {
-            pending_status = Some(format!("无法打开配置文件所在目录：{error}"));
-        }
-        if backup_ini && let (Some(path), Some(directory)) = (&ini_path, &backup_dir) {
-            pending_status = Some(
-                match crate::runtime::chromeplus::backup_ini(path, directory, "manual") {
-                    Ok(backup) => format!("INI 已备份：{}", backup.display()),
-                    Err(error) => format!("备份 INI 失败：{error}"),
-                },
-            );
-        }
-        if restore_defaults && let (Some(path), Some(directory)) = (&ini_path, &backup_dir) {
-            pending_status = Some(
-                match crate::runtime::chromeplus::restore_default_config(path, directory) {
-                    Ok(backup) => {
-                        config.chrome_plus = crate::domain::runtime::ChromePlusConfig::default();
-                        changed = true;
-                        format!("已恢复默认配置；原文件备份到 {}", backup.display())
-                    }
-                    Err(error) => format!("恢复默认配置失败：{error}"),
-                },
-            );
-        }
-        if ini_changed
-            && mode == ChromePlusMode::Full
-            && let Some(path) = &ini_path
-        {
-            self.status_message = Some(
-                match self
-                    .state
-                    .update_chromeplus_config(target, config.clone(), path.clone())
-                {
-                    Ok(()) => "Chrome++ 配置已自动写入".to_owned(),
-                    Err(error) => format!("{}：{error}", localized("Chrome++ 配置未应用，可重试")),
-                },
-            );
-        } else if changed {
-            self.update_target_config(target, config.clone());
-        }
-        if let Some(message) = pending_status {
-            self.status_message = Some(message);
-        }
-        if open_ini
-            && let Some(path) = &ini_path
-            && let Err(error) = std::process::Command::new("notepad.exe").arg(path).spawn()
-        {
-            self.status_message = Some(format!("无法打开配置文件：{error}"));
-        }
-        if request_update && let Some(latest) = latest_version {
-            self.request_chrome_plus_update(target, installed_version, latest);
-        }
-        if check_update {
-            self.start_operation(OperationMode::ChromePlusCheck, false);
-        }
-    }
-
-    fn update_target_config(
+    pub(super) fn update_target_config(
         &mut self,
         target: TargetId,
         config: crate::domain::settings::TargetConfig,
@@ -3364,7 +2434,7 @@ fn paint_settings_icon(painter: &egui::Painter, center: egui::Pos2, color: Color
     }
 }
 
-fn paint_refresh_icon(painter: &egui::Painter, center: egui::Pos2, color: Color32) {
+pub(super) fn paint_refresh_icon(painter: &egui::Painter, center: egui::Pos2, color: Color32) {
     let stroke = Stroke::new(1.25, color);
     let radius = 5.5;
     let start = -0.65 * std::f32::consts::PI;
@@ -3386,7 +2456,7 @@ fn paint_refresh_icon(painter: &egui::Painter, center: egui::Pos2, color: Color3
     painter.line_segment([tip, back - radial * 2.1], stroke);
 }
 
-fn paint_update_icon(painter: &egui::Painter, center: egui::Pos2, color: Color32) {
+pub(super) fn paint_update_icon(painter: &egui::Painter, center: egui::Pos2, color: Color32) {
     let stroke = Stroke::new(1.3, color);
     painter.line_segment(
         [
@@ -3638,7 +2708,10 @@ fn chrome_plus_label(mode: ChromePlusMode) -> &'static str {
     }
 }
 
-fn chrome_plus_update_button_label(current: Option<&str>, latest: Option<&str>) -> String {
+pub(super) fn chrome_plus_update_button_label(
+    current: Option<&str>,
+    latest: Option<&str>,
+) -> String {
     match (current, latest) {
         (Some(current), Some(latest))
             if compare_versions(current, latest) == VersionRelation::Same =>
@@ -3654,7 +2727,11 @@ fn chrome_plus_update_button_label(current: Option<&str>, latest: Option<&str>) 
     }
 }
 
-fn chrome_plus_running_message(language: Language, target: TargetId, count: usize) -> String {
+pub(super) fn chrome_plus_running_message(
+    language: Language,
+    target: TargetId,
+    count: usize,
+) -> String {
     let name = target.display_name();
     match language {
         Language::Chinese => {
@@ -3666,14 +2743,14 @@ fn chrome_plus_running_message(language: Language, target: TargetId, count: usiz
     }
 }
 
-fn chrome_plus_update_action_label(language: Language, latest: &str) -> String {
+pub(super) fn chrome_plus_update_action_label(language: Language, latest: &str) -> String {
     match language {
         Language::Chinese => format!("更新 Chrome++ 到 {latest}"),
         Language::English => format!("Update Chrome++ to {latest}"),
     }
 }
 
-fn chrome_plus_update_hover(language: Language, current: &str, latest: &str) -> String {
+pub(super) fn chrome_plus_update_hover(language: Language, current: &str, latest: &str) -> String {
     match language {
         Language::Chinese => {
             format!(
@@ -3766,7 +2843,7 @@ fn provider_label(provider: ProviderKind) -> &'static str {
     }
 }
 
-fn chrome_plus_ini_path(
+pub(super) fn chrome_plus_ini_path(
     target: TargetId,
     config: &crate::domain::settings::TargetConfig,
     tool_root: &std::path::Path,
@@ -3777,7 +2854,7 @@ fn chrome_plus_ini_path(
     })
 }
 
-fn chrome_plus_program_directory(
+pub(super) fn chrome_plus_program_directory(
     target: TargetId,
     config: &crate::domain::settings::TargetConfig,
     tool_root: &std::path::Path,
@@ -3823,7 +2900,10 @@ fn local_browser_executable(
     locate_executable(target, &program).ok()
 }
 
-fn resolve_preview_path(root: &std::path::Path, path: &std::path::Path) -> Option<PathBuf> {
+pub(super) fn resolve_preview_path(
+    root: &std::path::Path,
+    path: &std::path::Path,
+) -> Option<PathBuf> {
     if path.is_absolute() {
         Some(path.to_path_buf())
     } else if path.has_root() {
@@ -3919,7 +2999,7 @@ fn checked_age(checked_at: u64) -> String {
     }
 }
 
-fn format_bytes(bytes: u64) -> String {
+pub(super) fn format_bytes(bytes: u64) -> String {
     const UNITS: [&str; 5] = ["B", "KB", "MB", "GB", "TB"];
     let mut value = bytes as f64;
     let mut unit = 0;
@@ -3934,7 +3014,11 @@ fn format_bytes(bytes: u64) -> String {
     }
 }
 
-fn section<R>(ui: &mut egui::Ui, title: &str, add_contents: impl FnOnce(&mut egui::Ui) -> R) -> R {
+pub(super) fn section<R>(
+    ui: &mut egui::Ui,
+    title: &str,
+    add_contents: impl FnOnce(&mut egui::Ui) -> R,
+) -> R {
     let palette = palette(ui);
     Frame::new()
         .fill(palette.surface)
@@ -3950,7 +3034,7 @@ fn section<R>(ui: &mut egui::Ui, title: &str, add_contents: impl FnOnce(&mut egu
         .inner
 }
 
-fn section_with_header<R>(
+pub(super) fn section_with_header<R>(
     ui: &mut egui::Ui,
     title: &str,
     add_header: impl FnOnce(&mut egui::Ui),
@@ -4002,7 +3086,7 @@ fn section_with_action<R>(
         .inner
 }
 
-fn metadata_label(ui: &mut egui::Ui, text: &str, width: f32) -> egui::Response {
+pub(super) fn metadata_label(ui: &mut egui::Ui, text: &str, width: f32) -> egui::Response {
     ui.allocate_ui_with_layout(
         egui::vec2(width, 18.0),
         Layout::left_to_right(Align::Center),
@@ -4011,7 +3095,7 @@ fn metadata_label(ui: &mut egui::Ui, text: &str, width: f32) -> egui::Response {
     .inner
 }
 
-fn field_label(ui: &mut egui::Ui, text: &str, width: f32) -> egui::Response {
+pub(super) fn field_label(ui: &mut egui::Ui, text: &str, width: f32) -> egui::Response {
     let (rect, _) = ui.allocate_exact_size(egui::vec2(width, 24.0), egui::Sense::hover());
     let mut label_ui = ui.new_child(
         egui::UiBuilder::new()
@@ -4175,7 +3259,12 @@ fn path_field_impl(
     (changed, action_response.inner)
 }
 
-fn text_field(ui: &mut egui::Ui, label: &str, value: &mut String, hint: &str) -> egui::Response {
+pub(super) fn text_field(
+    ui: &mut egui::Ui,
+    label: &str,
+    value: &mut String,
+    hint: &str,
+) -> egui::Response {
     ui.horizontal(|ui| {
         let label = field_label(ui, label, FIELD_LABEL_WIDTH);
         ui.add_sized(
@@ -4189,7 +3278,7 @@ fn text_field(ui: &mut egui::Ui, label: &str, value: &mut String, hint: &str) ->
     .inner
 }
 
-fn readonly_field(ui: &mut egui::Ui, label: &str, value: &str) {
+pub(super) fn readonly_field(ui: &mut egui::Ui, label: &str, value: &str) {
     ui.horizontal(|ui| {
         field_label(ui, label, FIELD_LABEL_WIDTH);
         ui.localized_label(RichText::new(value).color(palette(ui).muted));

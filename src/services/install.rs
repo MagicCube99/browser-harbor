@@ -915,6 +915,7 @@ fn commit_native_package(
             continue;
         }
         let target = destination.join(&name);
+        ensure_files_not_locked(&target)?;
         if let Err(source) = transaction.replace(&name, Some(&staged)) {
             return Err(rollback_error(
                 &mut transaction,
@@ -974,10 +975,46 @@ fn recover_error(
 
 fn ensure_target_closed(program: &Path) -> Result<(), InstallError> {
     if running_process_count_in_directory(program)? > 0 {
-        Err(InstallError::BrowserRunning(program.to_path_buf()))
-    } else {
-        Ok(())
+        return Err(InstallError::BrowserRunning(program.to_path_buf()));
     }
+    ensure_files_not_locked(program)?;
+    Ok(())
+}
+
+fn ensure_files_not_locked(path: &Path) -> Result<(), InstallError> {
+    if path.is_file() {
+        if is_file_locked(path) {
+            return Err(InstallError::BrowserRunning(path.to_path_buf()));
+        }
+    } else if path.is_dir() {
+        for entry in fs::read_dir(path).map_err(|source| io_error(path, source))? {
+            let entry = entry.map_err(|source| io_error(path, source))?;
+            let entry_path = entry.path();
+            if entry_path.is_file() {
+                let is_binary = entry_path
+                    .extension()
+                    .and_then(|ext| ext.to_str())
+                    .is_some_and(|ext| {
+                        ext.eq_ignore_ascii_case("exe") || ext.eq_ignore_ascii_case("dll")
+                    });
+                if is_binary && is_file_locked(&entry_path) {
+                    return Err(InstallError::BrowserRunning(entry_path));
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+fn is_file_locked(path: &Path) -> bool {
+    match fs::OpenOptions::new().write(true).open(path) {
+        Ok(_) => false,
+        Err(error) => is_sharing_violation(&error),
+    }
+}
+
+fn is_sharing_violation(error: &std::io::Error) -> bool {
+    error.raw_os_error() == Some(32) || error.raw_os_error() == Some(33)
 }
 
 fn prepared_runtime_hash(program: &Path, target: TargetId) -> Result<Option<String>, InstallError> {
@@ -1599,6 +1636,22 @@ mod tests {
             1
         );
         assert_eq!(std::fs::read(&target).unwrap(), b"original");
+    }
+
+    #[test]
+    fn ensure_target_closed_rejects_file_locked_by_another_process() {
+        use std::os::windows::fs::OpenOptionsExt;
+        let directory = tempfile::tempdir().unwrap();
+        let file_path = directory.path().join("thorium.exe");
+        std::fs::write(&file_path, fake_x64_exe()).unwrap();
+        let _lock = std::fs::OpenOptions::new()
+            .read(true)
+            .share_mode(1)
+            .open(&file_path)
+            .unwrap();
+
+        let err = super::ensure_target_closed(directory.path()).unwrap_err();
+        assert!(matches!(err, super::InstallError::BrowserRunning(path) if path == file_path));
     }
 
     #[test]

@@ -138,6 +138,13 @@ fn exact_translation(text: &str) -> Option<&'static str> {
         }
         "打开配置目录" => "Open config folder",
         "打开配置目录失败" => "Could not open config folder",
+        "打开上游发布或官网页面" => "Open upstream release or official website",
+        "若此前正常使用，请检查杀毒软件是否误将其隔离，建议添加目录排除项" => {
+            "If it worked previously, check if antivirus quarantined it and consider adding an exclusion"
+        }
+        "若此前正常使用过，请检查杀毒软件（如 ESET / Windows Defender）是否误将其隔离，建议将浏览器目录添加至排除项" => {
+            "If it worked previously, check if antivirus (e.g. ESET / Windows Defender) quarantined it, and consider adding the browser folder to exclusions"
+        }
         "备份后重建管理器配置" => "Back up and reset config",
         "复制诊断详情" => "Copy diagnostics",
         "重建管理器配置" => "Reset manager config",

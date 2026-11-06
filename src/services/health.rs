@@ -185,11 +185,16 @@ pub fn inspect(target: TargetId, config: &TargetConfig) -> HealthReport {
             executable
         }
         Err(error) => {
-            items.push(item(
-                HealthAspect::Program,
-                HealthState::Error,
-                error.to_string(),
-            ));
+            let detail = if program.is_dir() {
+                format!(
+                    "{}；{}",
+                    error,
+                    "若此前正常使用过，请检查杀毒软件（如 ESET / Windows Defender）是否误将其隔离，建议将浏览器目录添加至排除项"
+                )
+            } else {
+                error.to_string()
+            };
+            items.push(item(HealthAspect::Program, HealthState::Error, detail));
             return report(items);
         }
     };
@@ -1254,5 +1259,29 @@ mod tests {
         let report = inspect(TargetId::Chrome, &config);
 
         assert_eq!(report.state, HealthState::Healthy);
+    }
+
+    #[test]
+    fn health_inspect_missing_executable_includes_antivirus_guidance() {
+        let directory = tempdir().unwrap();
+        let root = directory.path().join("Thorium");
+        let bin = root.join("BIN");
+        fs::create_dir_all(&bin).unwrap();
+        let mut config = TargetConfig::for_target(TargetId::Thorium);
+        config.browser_root = Some(root);
+        config.browser_directory = Some(bin);
+
+        let report = inspect(TargetId::Thorium, &config);
+        assert_eq!(report.state, HealthState::Error);
+        let program_item = report
+            .items
+            .iter()
+            .find(|item| item.aspect == super::HealthAspect::Program)
+            .expect("Program aspect should be reported");
+        assert!(
+            program_item.detail.contains("ESET") || program_item.detail.contains("杀毒软件"),
+            "detail: {}",
+            program_item.detail
+        );
     }
 }

@@ -21,6 +21,7 @@ cache/
 .superpowers/
 .vscode/
 .idea/
+.claude/
 Thumbs.db
 .DS_Store
 
@@ -34,6 +35,7 @@ metadata-private-key.hex
 # Local AI and maintainer-only material
 /.internal/
 /AGENTS.md
+/CLAUDE.md
 /AI_LOG.md
 /.brooks-lint-history.json
 /DESIGN.md

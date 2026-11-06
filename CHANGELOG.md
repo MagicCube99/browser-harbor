@@ -2,6 +2,12 @@
 
 [简体中文](CHANGELOG.zh-CN.md) · English
 
+## v0.9.1 — 2026-11-06
+
+- The "Source" label on the browser overview page is now a clickable hyperlink to each browser's official website or GitHub Releases page.
+- Enhanced file-lock detection before browser installations and updates, safely blocking replacements while browser executables are in use to prevent crashes.
+- Added actionable guidance in configuration diagnostics and status tooltips when browser executables are missing or quarantined by antivirus software.
+
 ## v0.9.0 — 2026-11-04
 
 - Signed verification info now prefers the project-maintained Gitee mirror before existing GitHub accelerator and direct routes.
