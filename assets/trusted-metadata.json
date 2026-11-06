@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": 1793905344,
+  "generatedAt": 1793948123,
   "expiresAt": 253402300799,
   "releases": [
     {
@@ -496,20 +496,20 @@
     },
     {
       "target": "turbo",
-      "version": "156.0.8078.81",
+      "version": "156.0.8078.82",
       "channel": "stable",
       "cpuBuild": "x64",
       "provider": "turbo",
       "artifact": {
-        "fileName": "Turbo_156.0.8078.81_portable.7z",
+        "fileName": "Turbo_156.0.8078.82_portable.7z",
         "format": "sevenzip",
-        "size": 127067785,
+        "size": 127054156,
         "integrity": {
           "algorithm": "sha256",
-          "value": "068c1483b42487606089605a88663407b6800e6ec79a6261b0de86a9f6fbc242"
+          "value": "7f7ed66eb6195fde18f11d80e9b9b4587c421bc0b305a88dbfe6b875e9c09271"
         },
         "urls": [
-          "https://dl.tbrowser.cn/download/Turbo_156.0.8078.81_portable.7z"
+          "https://dl.tbrowser.cn/download/Turbo_156.0.8078.82_portable.7z"
         ],
         "signatureUrl": null
       },
