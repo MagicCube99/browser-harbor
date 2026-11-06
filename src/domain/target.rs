@@ -42,6 +42,7 @@ pub struct TargetSpec {
     pub executable_candidates: &'static [&'static str],
     pub preserved_program_files: &'static [&'static str],
     pub display_beta: bool,
+    pub upstream_url: &'static str,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -107,6 +108,7 @@ const TARGET_SPECS: [TargetSpec; 15] = [
         executable_candidates: &["brave.exe", "chrome.exe"],
         preserved_program_files: CHROME_PLUS_FILES,
         display_beta: false,
+        upstream_url: "https://github.com/brave/brave-browser/releases",
     },
     TargetSpec {
         target: TargetId::Catsxp,
@@ -131,6 +133,7 @@ const TARGET_SPECS: [TargetSpec; 15] = [
         executable_candidates: &["catsxp.exe", "chrome.exe"],
         preserved_program_files: &["StartupParm.txt"],
         display_beta: false,
+        upstream_url: "https://www.catsxp.com/",
     },
     TargetSpec {
         target: TargetId::Chrome,
@@ -149,6 +152,7 @@ const TARGET_SPECS: [TargetSpec; 15] = [
         executable_candidates: &["chrome.exe"],
         preserved_program_files: CHROME_PLUS_FILES,
         display_beta: false,
+        upstream_url: "https://www.google.com/chrome/",
     },
     TargetSpec {
         target: TargetId::Edge,
@@ -173,6 +177,7 @@ const TARGET_SPECS: [TargetSpec; 15] = [
         executable_candidates: &["msedge.exe"],
         preserved_program_files: CHROME_PLUS_FILES,
         display_beta: false,
+        upstream_url: "https://www.microsoft.com/edge",
     },
     TargetSpec {
         target: TargetId::Firefox,
@@ -191,6 +196,7 @@ const TARGET_SPECS: [TargetSpec; 15] = [
         executable_candidates: &["firefox.exe"],
         preserved_program_files: FIREFOX_RUNTIME_FILES,
         display_beta: false,
+        upstream_url: "https://www.mozilla.org/firefox/",
     },
     TargetSpec {
         target: TargetId::Floorp,
@@ -215,6 +221,7 @@ const TARGET_SPECS: [TargetSpec; 15] = [
         executable_candidates: &["floorp.exe"],
         preserved_program_files: FIREFOX_RUNTIME_FILES,
         display_beta: false,
+        upstream_url: "https://github.com/Floorp-Projects/Floorp-Portable-v2/releases",
     },
     TargetSpec {
         target: TargetId::Helium,
@@ -239,6 +246,7 @@ const TARGET_SPECS: [TargetSpec; 15] = [
         executable_candidates: &["chrome.exe", "helium.exe"],
         preserved_program_files: CHROME_PLUS_FILES,
         display_beta: false,
+        upstream_url: "https://github.com/imputnet/helium-windows/releases",
     },
     TargetSpec {
         target: TargetId::Iceweasel,
@@ -263,6 +271,7 @@ const TARGET_SPECS: [TargetSpec; 15] = [
         executable_candidates: &["iceweasel.exe", "firefox.exe"],
         preserved_program_files: &["portable.ini"],
         display_beta: false,
+        upstream_url: "https://github.com/adonais/iceweasel/releases",
     },
     TargetSpec {
         target: TargetId::LibreWolf,
@@ -287,6 +296,7 @@ const TARGET_SPECS: [TargetSpec; 15] = [
         executable_candidates: &["librewolf.exe"],
         preserved_program_files: FIREFOX_RUNTIME_FILES,
         display_beta: false,
+        upstream_url: "https://librewolf.net/",
     },
     TargetSpec {
         target: TargetId::SkyKakapo,
@@ -311,6 +321,7 @@ const TARGET_SPECS: [TargetSpec; 15] = [
         executable_candidates: &["skykakapo.exe", "firefox.exe"],
         preserved_program_files: &["tmemutil.ini"],
         display_beta: false,
+        upstream_url: "https://tete009.pages.dev/en-US/software",
     },
     TargetSpec {
         target: TargetId::Thorium,
@@ -335,6 +346,7 @@ const TARGET_SPECS: [TargetSpec; 15] = [
         executable_candidates: &["thorium.exe", "chrome.exe"],
         preserved_program_files: CHROME_PLUS_FILES,
         display_beta: true,
+        upstream_url: "https://github.com/gz83/thorium/releases",
     },
     TargetSpec {
         target: TargetId::Turbo,
@@ -359,6 +371,7 @@ const TARGET_SPECS: [TargetSpec; 15] = [
         executable_candidates: &["turbo.exe", "chrome.exe"],
         preserved_program_files: &[],
         display_beta: false,
+        upstream_url: "https://tbrowser.cn/",
     },
     TargetSpec {
         target: TargetId::UngoogledChromium,
@@ -383,6 +396,7 @@ const TARGET_SPECS: [TargetSpec; 15] = [
         executable_candidates: &["chrome.exe"],
         preserved_program_files: CHROME_PLUS_FILES,
         display_beta: false,
+        upstream_url: "https://github.com/ungoogled-software/ungoogled-chromium-windows/releases",
     },
     TargetSpec {
         target: TargetId::Vivaldi,
@@ -407,6 +421,7 @@ const TARGET_SPECS: [TargetSpec; 15] = [
         executable_candidates: &["vivaldi.exe"],
         preserved_program_files: &["stp.viv"],
         display_beta: false,
+        upstream_url: "https://vivaldi.com/",
     },
     TargetSpec {
         target: TargetId::Zen,
@@ -431,6 +446,7 @@ const TARGET_SPECS: [TargetSpec; 15] = [
         executable_candidates: &["zen.exe"],
         preserved_program_files: FIREFOX_RUNTIME_FILES,
         display_beta: false,
+        upstream_url: "https://github.com/zen-browser/desktop/releases",
     },
 ];
 
@@ -606,6 +622,10 @@ impl TargetId {
         };
         &TARGET_SPECS[index]
     }
+
+    pub const fn upstream_url(self) -> &'static str {
+        self.spec().upstream_url
+    }
 }
 
 #[cfg(test)]
@@ -778,6 +798,8 @@ mod tests {
             assert!(!spec.layout.data.is_empty());
             assert!(!spec.layout.profile.is_empty());
             assert!(!spec.layout.cache.is_empty());
+            assert!(spec.upstream_url.starts_with("https://"));
+            assert_eq!(target.upstream_url(), spec.upstream_url);
         }
     }
 

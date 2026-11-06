@@ -610,6 +610,29 @@ fn overview_has_no_scroll_bar() {
 }
 
 #[test]
+fn overview_source_is_a_clickable_upstream_hyperlink() {
+    let mut harness = harness();
+    harness.run();
+
+    let link = harness.get_by_role_and_label(Role::Link, "Mozilla 官方");
+    let y = |label: &str| harness.get_by_label(label).rect().center().y;
+    assert!((link.rect().center().y - y("来源")).abs() < 1.0);
+    assert!(link.rect().min.x > harness.get_by_label("来源").rect().max.x);
+
+    // Switch to English and verify link label is translated and aligned without scrollbar
+    harness.state_mut().state.update_draft(|settings| {
+        settings.language = Language::English;
+    });
+    harness.run();
+
+    let en_link = harness.get_by_role_and_label(Role::Link, "Mozilla official");
+    let y_en = |label: &str| harness.get_by_label(label).rect().center().y;
+    assert!((en_link.rect().center().y - y_en("Source")).abs() < 1.0);
+    assert!(en_link.rect().min.x > harness.get_by_label("Source").rect().max.x);
+    assert!(harness.query_by_role(Role::ScrollBar).is_none());
+}
+
+#[test]
 fn vivaldi_warns_about_password_portability_without_overflowing_the_compact_window() {
     for language in [Language::Chinese, Language::English] {
         let mut harness = harness();
