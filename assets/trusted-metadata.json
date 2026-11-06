@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": 1793977542,
+  "generatedAt": 1793998657,
   "expiresAt": 253402300799,
   "releases": [
     {
@@ -568,27 +568,27 @@
     },
     {
       "target": "zen",
-      "version": "1.24b",
+      "version": "1.24.1b",
       "channel": "stable",
       "cpuBuild": "x64",
       "provider": "git_hub_release",
       "artifact": {
         "fileName": "zen.installer.exe",
         "format": "sevenzip",
-        "size": 118588392,
+        "size": 118933392,
         "integrity": {
           "algorithm": "sha256",
-          "value": "2d55965f1952f2e5489dfaf954d613ebbf6361c5ca2bcad95ab8d3c0a481d6a4"
+          "value": "ce649f801579fb40a02499bfceeb66f2c049f87988b4c2cef73046540c46e8a3"
         },
         "urls": [
-          "https://github.com/zen-browser/desktop/releases/download/1.24b/zen.installer.exe"
+          "https://github.com/zen-browser/desktop/releases/download/1.24.1b/zen.installer.exe"
         ],
         "signatureUrl": null
       },
       "placement": "native_package",
       "innerArchive": null,
-      "source": "https://github.com/zen-browser/desktop/releases/tag/1.24b",
-      "publishedAt": "2026-10-29T21:28:59Z"
+      "source": "https://github.com/zen-browser/desktop/releases/tag/1.24.1b",
+      "publishedAt": "2026-11-06T19:03:31Z"
     }
   ],
   "chromePlus": {
