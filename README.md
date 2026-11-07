@@ -21,7 +21,8 @@
 <p align="center">
   <a href="README.zh-CN.md">简体中文</a> ·
   <a href="docs/USER_GUIDE.md">User guide</a> ·
-  <a href="CHANGELOG.md">Changelog</a>
+  <a href="CHANGELOG.md">Changelog</a> ·
+  <a href="https://gitee.com/MagicCube99/browser-harbor">Gitee mirror</a>
 </p>
 
 <p align="center">
@@ -50,20 +51,25 @@ the current desktop.
 
 ## ⚡ What it does
 
-- **Downloads from declared sources.** Official vendor endpoints, release APIs,
-  signed metadata, and approved mirrors. No mystery `.exe` from page four of a
-  forum thread.
+- **Downloads from declared sources with direct links.** Official vendor endpoints,
+  release APIs, signed metadata, and approved mirrors. The browser overview panel
+  provides direct clickable hyperlinks to each browser's official website or GitHub
+  Releases page. No mystery `.exe` from page four of a forum thread.
 - **Spends less time waiting on slow routes.** Prefer responsive accelerators,
   switch away from stalled ones, and resume interrupted downloads before running
   the same mandatory integrity check.
 - **Trusts bytes only after checking them.** Browsers, Chrome++, Libportable,
   and local packages require trusted integrity data; LibreWolf additionally
   gets an OpenPGP signature check.
-- **Works offline without weakening verification.** Automatic verification
-  checks and signed offline fallback are configurable; cached fallback never
-  bypasses signature, size, or digest checks.
+- **Domestic Gitee mirror & signed offline verification.** Verification metadata
+  prefers the project-maintained Gitee mirror for fast access in mainland China,
+  with signed offline cache fallback. Cached fallback never bypasses signature, size,
+  or digest checks.
 - **Keeps the layout sane.** Program, data, profile, optional cache, and
   auto-created shortcuts have predictable places.
+- **Safe replacements with file-lock protection.** Inspects running processes and
+  Windows kernel file write locks before directory replacements; safely blocks
+  replacements while browser executables or libraries are in use to prevent crashes.
 - **Handles Chromium’s awkward corners.** Check and update Chrome++ independently,
   reuse one verified download across targets, keep other running browsers out of
   the way, and patch Edge’s dynamic version directories and `version.dll` import.
@@ -74,8 +80,10 @@ the current desktop.
   remaps the paths. A known different browser is rejected even when its
   executable is also named `chrome.exe`; an unknown custom build gets an explicit
   warning first.
-- **Checks before it repairs.** Diagnostics are read-only. Path fixes require
-  confirmation, a closed browser, and an INI backup.
+- **Checks before it repairs, with security guidance.** Diagnostics are read-only.
+  Actionable guidance helps diagnose whether antivirus software (e.g. ESET,
+  Windows Defender) quarantined missing executables. Path fixes require confirmation,
+  a closed browser, and an INI backup.
 - **Keeps the window on a screen that exists.** Saved coordinates are clamped to
   the current virtual desktop.
 - **Saves immediately.** Every valid edit is persisted. Keep manager state in
@@ -119,6 +127,7 @@ running.
 
 ## 🧨 Known rough edges
 
+- **Antivirus heuristic false positives:** Portable runtime DLL redirection (Chrome++'s `version.dll` or Libportable) can trigger heuristic detection (e.g. `@Object.Suspicious`) in security software such as ESET Security, Windows Defender, or third-party suites, potentially terminating running browser processes or quarantining executables. If an installed browser executable unexpectedly disappears, check your antivirus logs and consider adding the browser directory (e.g., `D:\Tools\Browser\`) to your antivirus exclusions.
 - **Moving Vivaldi to another PC:** Vivaldi's official Standalone mode does not support moving saved passwords and extensions just by copying the folder. Use Vivaldi Sync beforehand; websites and extensions may still require a fresh sign-in. The app also shows this limitation when Vivaldi is selected.
 - **Remote Desktop:** Some graphics-driver and remote-session combinations may prevent the app from opening. Try the local desktop.
 - **Experimental labels:** Brave, Helium, and Ungoogled Chromium are usable, but

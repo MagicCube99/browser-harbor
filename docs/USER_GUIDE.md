@@ -183,6 +183,12 @@ The pending edit is retained. Close software holding the INI file open, check wr
 
 Some graphics-driver and remote-session combinations may prevent the window from opening. Try running the same EXE on the local desktop. Browser Harbor does not change display drivers or Remote Desktop settings.
 
+### Browser executable disappeared or terminated unexpectedly
+
+Portable runtimes (such as Chrome++'s `version.dll` or Libportable) rely on local DLL redirection, which may trigger heuristic false positives (e.g., `@Object.Suspicious`) in certain antivirus software (such as ESET Security, Windows Defender, or third-party suites). The security software may terminate running processes and quarantine browser executables (`thorium.exe`, `chrome.exe`, etc.).
+
+Check your antivirus detection logs or quarantine area. If an exclusion is needed, add the browser root directory (e.g., `D:\Tools\Browser\`) to your antivirus exclusions/whitelist, then reinstall or replace the browser via Browser Harbor.
+
 ### The browser is not detected
 
 Run **Check configuration**. Verify the target, Browser Root, program directory, and x64 browser executable.

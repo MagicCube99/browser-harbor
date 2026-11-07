@@ -21,7 +21,8 @@
 <p align="center">
   <a href="README.md">English</a> ·
   <a href="docs/USER_GUIDE.zh-CN.md">用户指南</a> ·
-  <a href="CHANGELOG.zh-CN.md">更新记录</a>
+  <a href="CHANGELOG.zh-CN.md">更新记录</a> ·
+  <a href="https://gitee.com/MagicCube99/browser-harbor">Gitee 镜像</a>
 </p>
 
 <p align="center">
@@ -43,15 +44,16 @@
 
 ## 功能
 
-- **来源明确。** 下载地址来自厂商官方接口、Release API、签名元数据或允许的加速站；论坛附件不算来源。
+- **来源明确且直达。** 下载地址来自厂商官方接口、Release API、签名元数据或允许的加速站；概览面板内提供官方网站与项目发布页的直达超链接，论坛附件不算来源。
 - **下载少等、中断可续。** 自动优先响应更快的可用加速线路，线路停滞时快速切换；下载中断后可继续，并保留相同的完整性校验。
 - **校验后才放行。** 浏览器、Chrome++、Libportable 和本地安装包都要匹配可信的校验信息；LibreWolf 还会检查 OpenPGP 签名。
-- **离线可用但不弱化校验。** 可配置自动检查与已签名离线回退；使用缓存不会跳过签名、大小或摘要校验。
+- **国内镜像优先与离线回退。** 签名校验信息优先从项目维护的 Gitee 国内镜像获取，网络受限时自动使用最近一次已验证签名快照；使用缓存绝不跳过签名、大小或摘要校验。
 - **目录互不打扰。** 程序、数据、Profile、可选缓存和自动创建的快捷方式都有固定位置。
+- **更新替换安全锁定。** 目录替换前执行进程扫描与内核级文件排他写锁探测，浏览器正在运行或文件被系统占用时自动阻止替换，防止目录重命名引发程序崩溃。
 - **处理 Chromium 系常见的兼容问题。** Chrome++ 可独立检查和更新；同一版本只下载一次，并可在多个目标间复用；其他浏览器继续运行不会误阻止当前目标，同时支持 Edge 动态版本目录和 `version.dll` 导入修复。
 - **Firefox 系全部直接便携。** Firefox、Floorp、LibreWolf 和 Zen 使用 Libportable，Iceweasel 与 SkyKakapo 保留各自原生运行时；多余的 Floorp/LibreWolf 启动器会被删除。
 - **重定位先核对。** 选择新的 Browser Root 后再映射路径；已知属于其他浏览器的 `chrome.exe` 会被拒绝，未知自定义构建会先给出警告。
-- **检查只读，修复留痕。** “检查配置”不会修改文件；修复路径前需要确认、关闭浏览器并备份 INI。
+- **检查只读，诊断排查。** “检查配置”不会修改文件；若检测到主程序缺失，会自动提示排查杀毒软件（如 ESET、Windows Defender）误报隔离；修复路径前需要确认、关闭浏览器并备份 INI。
 - **窗口不会留在屏幕外。** 保存的坐标会限制在当前虚拟桌面内。
 - **编辑立即保存。** 管理器配置默认保存在用户目录，也可把 `BrowserHarbor.json`
   放到 EXE 旁，随程序一起带走；旧 `manager.json` 会自动迁移。
@@ -87,6 +89,7 @@ Thorium 提供面向 SSE3、SSE4、AVX、AVX2 和 AVX512 的 CPU 构建。
 
 ## 当前限制
 
+- **杀毒软件误报隔离排查：** 便携运行时注入（Chrome++ 的 `version.dll` 或 Libportable）采用了本地 DLL 重定向技术，可能会被部分杀毒软件（如 ESET Security、Windows Defender、360 等）的启发式实时防护引擎误报拦截（例如 `@Object.Suspicious`），造成主程序被强制退出甚至 EXE 文件被隔离。若发现程序突然失踪或无法启动，请检查杀毒软件日志并建议将浏览器总目录（如 `D:\Tools\Browser\`）添加至杀软排除项（白名单）。
 - **Vivaldi 官方限制：** 原生 Standalone 模式不支持仅靠复制目录把密码和扩展迁移到另一台电脑。建议提前使用 Vivaldi Sync；部分网站和扩展可能仍需重新登录。选中 Vivaldi 时，程序也会显示这一限制。
 - **远程桌面兼容性：** 部分显卡驱动与远程会话组合可能导致程序无法启动，请尝试在本地桌面运行。
 - **三个实验性目标：** Brave、Helium 和 Ungoogled Chromium 可以使用，但完整 Chrome++ 兼容性仍标记为实验性。

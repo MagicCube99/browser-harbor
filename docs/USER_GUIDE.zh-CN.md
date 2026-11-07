@@ -175,6 +175,12 @@ Vivaldi 采用官方原生 Standalone 隔离模式：
 
 部分显卡驱动与远程会话组合可能导致窗口无法打开。请尝试在本地桌面运行同一份 EXE。Browser Harbor 不会修改显卡驱动或远程桌面设置。
 
+### 浏览器程序突然失踪或闪退
+
+便携运行时（如 Chrome++ 的 `version.dll` 或 Libportable）采用了本地 DLL 重定向技术，可能会被部分杀毒软件（如 ESET Security、Windows Defender、360 等）的启发式实时防护引擎（如 `@Object.Suspicious`）误报拦截，导致杀软静默结束进程或将 `thorium.exe`、`chrome.exe` 等主程序移入隔离区。
+
+请打开杀毒软件日志或隔离区检查拦截记录，建议将浏览器总目录（如 `D:\Tools\Browser\`）添加至杀毒软件的排除项（白名单），然后通过“重新下载并替换”或“下载并安装”重新补齐文件。
+
 ### 找不到浏览器
 
 运行“检查配置”，确认目标、Browser Root、程序目录和 x64 浏览器 EXE。
