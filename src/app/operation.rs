@@ -693,6 +693,14 @@ fn install_error_for_operation(
         crate::services::install::InstallError::BrowserRunning(path) => {
             format!("浏览器仍在运行，请手工关闭所有实例：{}", path.display()).into()
         }
+        crate::services::install::InstallError::BrowserRunningInDirectory { path, processes } => {
+            format!(
+                "浏览器仍在运行，请手工关闭所有实例：{}{}",
+                path.display(),
+                describe_running_processes(&processes)
+            )
+            .into()
+        }
         crate::services::install::InstallError::Archive(error) => {
             format!("解压失败：{error}").into()
         }
@@ -717,6 +725,24 @@ fn install_error_for_operation(
             format!("便携运行时准备失败：{error}").into()
         }
         error => Box::new(error),
+    }
+}
+
+const MAX_NAMED_PROCESSES: usize = 3;
+
+fn describe_running_processes(
+    processes: &[crate::infra::windows::process::RunningProcess],
+) -> String {
+    let listed = processes
+        .iter()
+        .take(MAX_NAMED_PROCESSES)
+        .map(|process| format!("{} (PID {})", process.name, process.process_id))
+        .collect::<Vec<_>>()
+        .join(", ");
+    if processes.len() > MAX_NAMED_PROCESSES {
+        format!(" [{listed}, …]")
+    } else {
+        format!(" [{listed}]")
     }
 }
 
@@ -1286,6 +1312,36 @@ mod tests {
                 .to_string()
                 .contains("trusted artifact digest")
         );
+    }
+
+    #[test]
+    fn browser_running_errors_name_the_detected_processes() {
+        let process = |process_id, name: &str| crate::infra::windows::process::RunningProcess {
+            process_id,
+            name: name.to_owned(),
+            path: std::path::PathBuf::from(format!(r"D:\app\Catsxp\{name}")),
+        };
+        let message = super::install_error_for_operation(
+            crate::services::install::InstallError::BrowserRunningInDirectory {
+                path: std::path::PathBuf::from(r"D:\app\Catsxp"),
+                processes: vec![
+                    process(1204, "Catsxp.exe"),
+                    process(3310, "chrome_crashpad_handler.exe"),
+                ],
+            },
+        )
+        .to_string();
+        assert!(message.starts_with("浏览器仍在运行，请手工关闭所有实例：D:\\app\\Catsxp ["));
+        assert!(message.contains("Catsxp.exe (PID 1204)"));
+        assert!(message.contains("chrome_crashpad_handler.exe (PID 3310)"));
+
+        let many = super::describe_running_processes(&[
+            process(1, "a.exe"),
+            process(2, "b.exe"),
+            process(3, "c.exe"),
+            process(4, "d.exe"),
+        ]);
+        assert_eq!(many, " [a.exe (PID 1), b.exe (PID 2), c.exe (PID 3), …]");
     }
 
     #[test]

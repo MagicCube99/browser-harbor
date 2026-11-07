@@ -20,25 +20,42 @@ pub enum ProcessError {
     Snapshot(#[source] std::io::Error),
 }
 
+/// A process whose image path could be read; used for diagnostics only.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RunningProcess {
+    pub process_id: u32,
+    pub name: String,
+    pub path: PathBuf,
+}
+
 pub fn is_process_running(executable: &Path) -> Result<bool, ProcessError> {
     running_process_count(executable).map(|count| count > 0)
 }
 
 pub fn running_process_count(executable: &Path) -> Result<usize, ProcessError> {
     let target = normalized_path(executable);
-    count_processes(|path| normalized_path(path) == target)
+    collect_processes(|process| normalized_path(&process.path) == target).map(|items| items.len())
 }
 
 pub fn running_process_count_in_directory(directory: &Path) -> Result<usize, ProcessError> {
+    running_processes_in_directory(directory).map(|items| items.len())
+}
+
+/// Lists processes whose image lives inside `directory`, excluding this tool itself.
+pub fn running_processes_in_directory(
+    directory: &Path,
+) -> Result<Vec<RunningProcess>, ProcessError> {
     let directory = normalized_path(directory);
     let prefix = format!("{}\\", directory.trim_end_matches('\\'));
-    count_processes(|path| {
-        let path = normalized_path(path);
-        path.starts_with(&prefix)
+    let current = std::process::id();
+    collect_processes(|process| {
+        process.process_id != current && normalized_path(&process.path).starts_with(&prefix)
     })
 }
 
-fn count_processes(predicate: impl Fn(&Path) -> bool) -> Result<usize, ProcessError> {
+fn collect_processes(
+    predicate: impl Fn(&RunningProcess) -> bool,
+) -> Result<Vec<RunningProcess>, ProcessError> {
     let snapshot = unsafe { CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0) };
     if snapshot == INVALID_HANDLE_VALUE {
         return Err(ProcessError::Snapshot(std::io::Error::last_os_error()));
@@ -47,17 +64,17 @@ fn count_processes(predicate: impl Fn(&Path) -> bool) -> Result<usize, ProcessEr
         let mut entry: PROCESSENTRY32W = unsafe { std::mem::zeroed() };
         entry.dwSize = std::mem::size_of::<PROCESSENTRY32W>() as u32;
         if unsafe { Process32FirstW(snapshot, &mut entry) } == 0 {
-            return Ok(0);
+            return Ok(Vec::new());
         }
-        let mut count = 0;
+        let mut processes = Vec::new();
         loop {
-            if let Some(path) = process_path(entry.th32ProcessID)
-                && predicate(&path)
+            if let Some(process) = running_process(&entry)
+                && predicate(&process)
             {
-                count += 1;
+                processes.push(process);
             }
             if unsafe { Process32NextW(snapshot, &mut entry) } == 0 {
-                return Ok(count);
+                return Ok(processes);
             }
         }
     })();
@@ -65,6 +82,23 @@ fn count_processes(predicate: impl Fn(&Path) -> bool) -> Result<usize, ProcessEr
         CloseHandle(snapshot);
     }
     result
+}
+
+fn running_process(entry: &PROCESSENTRY32W) -> Option<RunningProcess> {
+    let path = process_path(entry.th32ProcessID)?;
+    Some(RunningProcess {
+        process_id: entry.th32ProcessID,
+        name: process_name(&entry.szExeFile),
+        path,
+    })
+}
+
+fn process_name(executable: &[u16]) -> String {
+    let length = executable
+        .iter()
+        .position(|unit| *unit == 0)
+        .unwrap_or(executable.len());
+    String::from_utf16_lossy(&executable[..length])
 }
 
 fn process_path(process_id: u32) -> Option<PathBuf> {
@@ -101,7 +135,10 @@ mod tests {
         time::{Duration, Instant},
     };
 
-    use super::{is_process_running, running_process_count, running_process_count_in_directory};
+    use super::{
+        is_process_running, normalized_path, running_process_count,
+        running_process_count_in_directory, running_processes_in_directory,
+    };
 
     #[test]
     fn finds_the_current_test_executable_by_full_path() {
@@ -177,5 +214,55 @@ mod tests {
             let _ = child.wait();
         }
         assert!(count >= 2);
+    }
+
+    #[test]
+    fn reports_the_process_name_and_path_inside_the_directory() {
+        let directory = tempfile::tempdir().unwrap();
+        let command = std::env::var_os("COMSPEC").expect("Windows command processor is missing");
+        let executable = directory.path().join("browser-a.exe");
+        std::fs::copy(&command, &executable).unwrap();
+        let mut child = Command::new(&executable)
+            .args(["/C", "ping 127.0.0.1 -n 10 > nul"])
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .spawn()
+            .unwrap();
+        let expected = normalized_path(&executable);
+        let deadline = Instant::now() + Duration::from_secs(5);
+        let processes = loop {
+            let processes = running_processes_in_directory(directory.path()).unwrap();
+            if processes
+                .iter()
+                .any(|process| normalized_path(&process.path) == expected)
+            {
+                break processes;
+            }
+            assert!(
+                Instant::now() < deadline,
+                "expected the started process to be reported"
+            );
+            thread::sleep(Duration::from_millis(50));
+        };
+        let _ = child.kill();
+        let _ = child.wait();
+        let process = processes
+            .iter()
+            .find(|process| normalized_path(&process.path) == expected)
+            .unwrap();
+        assert_eq!(process.name, "browser-a.exe");
+        assert_ne!(process.process_id, std::process::id());
+    }
+
+    #[test]
+    fn never_reports_the_current_process_as_running() {
+        let executable = std::env::current_exe().unwrap();
+        let directory = executable.parent().unwrap();
+        let processes = running_processes_in_directory(directory).unwrap();
+        assert!(
+            processes
+                .iter()
+                .all(|process| process.process_id != std::process::id())
+        );
     }
 }

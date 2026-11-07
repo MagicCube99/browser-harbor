@@ -23,7 +23,7 @@ use crate::{
         target::{ChromePlusMode, TargetId},
     },
     infra::windows::process::{
-        ProcessError, is_process_running, running_process_count_in_directory,
+        ProcessError, RunningProcess, is_process_running, running_processes_in_directory,
     },
     runtime::{RuntimeError, chromeplus, libportable, native},
     services::version_probe::locate_executable,
@@ -89,6 +89,11 @@ pub enum InstallError {
     DataInsideProgram,
     #[error("browser executable is already running: {0}")]
     BrowserRunning(PathBuf),
+    #[error("browser processes are still running in {path}")]
+    BrowserRunningInDirectory {
+        path: PathBuf,
+        processes: Vec<RunningProcess>,
+    },
     #[error("browser executable could not be located")]
     ExecutableNotFound,
     #[error("declared inner archive was not found: {0}")]
@@ -458,8 +463,12 @@ impl ChromePlusUpdateService {
         let program_directory = executable
             .parent()
             .ok_or(InstallError::ExecutableNotFound)?;
-        if running_process_count_in_directory(configured_program)? > 0 {
-            return Err(InstallError::BrowserRunning(executable));
+        let running = running_processes_in_directory(configured_program)?;
+        if !running.is_empty() {
+            return Err(InstallError::BrowserRunningInDirectory {
+                path: configured_program.to_path_buf(),
+                processes: running,
+            });
         }
 
         verify_runtime_artifact(&request.runtime.archive_path, &request.runtime.artifact)?;
@@ -517,8 +526,12 @@ impl ChromePlusUpdateService {
         })?;
         let prepared_hash = prepared_runtime_hash(&staging_program, target)?;
 
-        if running_process_count_in_directory(configured_program)? > 0 {
-            return Err(InstallError::BrowserRunning(executable));
+        let running = running_processes_in_directory(configured_program)?;
+        if !running.is_empty() {
+            return Err(InstallError::BrowserRunningInDirectory {
+                path: configured_program.to_path_buf(),
+                processes: running,
+            });
         }
         commit_chrome_plus_files(
             &staging_program,
@@ -974,8 +987,12 @@ fn recover_error(
 }
 
 fn ensure_target_closed(program: &Path) -> Result<(), InstallError> {
-    if running_process_count_in_directory(program)? > 0 {
-        return Err(InstallError::BrowserRunning(program.to_path_buf()));
+    let processes = running_processes_in_directory(program)?;
+    if !processes.is_empty() {
+        return Err(InstallError::BrowserRunningInDirectory {
+            path: program.to_path_buf(),
+            processes,
+        });
     }
     ensure_files_not_locked(program)?;
     Ok(())
@@ -1799,7 +1816,19 @@ mod tests {
 
         let _ = child.kill();
         let _ = child.wait();
-        assert!(matches!(error, InstallError::BrowserRunning(path) if path == root));
+        let processes = match error {
+            InstallError::BrowserRunningInDirectory { path, processes } => {
+                assert_eq!(path, root);
+                processes
+            }
+            other => panic!("unexpected error: {other:?}"),
+        };
+        assert!(
+            processes
+                .iter()
+                .any(|process| process.name.eq_ignore_ascii_case("turbo.exe")),
+            "the error should name the detected processes: {processes:?}"
+        );
     }
 
     #[test]
@@ -2210,7 +2239,10 @@ mod tests {
 
         let _ = child.kill();
         let _ = child.wait();
-        assert!(matches!(error, super::InstallError::BrowserRunning(_)));
+        assert!(matches!(
+            error,
+            super::InstallError::BrowserRunningInDirectory { .. }
+        ));
         assert_eq!(
             fs::read(program.join("version.dll")).unwrap(),
             b"old-chromeplus-dll"
