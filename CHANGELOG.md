@@ -2,6 +2,11 @@
 
 [简体中文](CHANGELOG.zh-CN.md) · English
 
+## v0.9.2 — 2026-11-08
+
+- When an installation or upgrade is blocked because the browser is still running, the message now lists the detected process names and PIDs (up to three), so you can see exactly what is holding the program files.
+- Browser Harbor no longer counts its own process as a running browser, so the tool cannot block itself when it sits inside the browser directory.
+
 ## v0.9.1 — 2026-11-06
 
 - The "Source" label on the browser overview page is now a clickable hyperlink to each browser's official website or GitHub Releases page.
