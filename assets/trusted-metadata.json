@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": 1794102829,
+  "generatedAt": 1794128492,
   "expiresAt": 253402300799,
   "releases": [
     {
@@ -78,20 +78,20 @@
     },
     {
       "target": "catsxp",
-      "version": "157.6.11.1.7",
+      "version": "157.6.11.2.1",
       "channel": "beta",
       "cpuBuild": "x64",
       "provider": "catsxp",
       "artifact": {
-        "fileName": "portable_x64_beta_157_6_11_1_7.zip",
+        "fileName": "portable_x64_beta_157_6_11_2_1.zip",
         "format": "zip",
-        "size": 234728076,
+        "size": 234981724,
         "integrity": {
           "algorithm": "sha256",
-          "value": "93523100d2286c8903b35f211f92f8e895b4b8beafa1db38a1933189b6b0790d"
+          "value": "e6304af1ea375ac72596b15daf894904d0881ea4f654265f4a6e0df2029e477d"
         },
         "urls": [
-          "https://b2.catsxp.com/catsxp_portable/win_x64/portable_x64_beta_157_6_11_1_7.zip"
+          "https://b2.catsxp.com/catsxp_portable/win_x64/portable_x64_beta_157_6_11_2_1.zip"
         ],
         "signatureUrl": null
       },
