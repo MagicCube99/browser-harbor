@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": 1794087780,
+  "generatedAt": 1794102829,
   "expiresAt": 253402300799,
   "releases": [
     {
@@ -520,44 +520,44 @@
     },
     {
       "target": "ungoogled_chromium",
-      "version": "156.0.8078.79",
+      "version": "157.0.8103.38",
       "channel": "stable",
       "cpuBuild": "x64",
       "provider": "git_hub_release",
       "artifact": {
-        "fileName": "ungoogled-chromium_156.0.8078.79-1.1_windows_x64.zip",
+        "fileName": "ungoogled-chromium_157.0.8103.38-1.1_windows_x64.zip",
         "format": "zip",
-        "size": 200807142,
+        "size": 203547113,
         "integrity": {
           "algorithm": "sha256",
-          "value": "a97c5378e16075967660f85cc34150444a9cfbc79733f048b9c6b42a851e4eb9"
+          "value": "7aae503c42974753de7e2fa3910106b8594b027e7e567baf7e69016b2a4e6c74"
         },
         "urls": [
-          "https://github.com/ungoogled-software/ungoogled-chromium-windows/releases/download/156.0.8078.79-1.1/ungoogled-chromium_156.0.8078.79-1.1_windows_x64.zip"
+          "https://github.com/ungoogled-software/ungoogled-chromium-windows/releases/download/157.0.8103.38-1.1/ungoogled-chromium_157.0.8103.38-1.1_windows_x64.zip"
         ],
         "signatureUrl": null
       },
       "placement": "native_package",
       "innerArchive": null,
-      "source": "https://github.com/ungoogled-software/ungoogled-chromium-windows/releases/tag/156.0.8078.79-1.1",
-      "publishedAt": "2026-11-01T22:55:23Z"
+      "source": "https://github.com/ungoogled-software/ungoogled-chromium-windows/releases/tag/157.0.8103.38-1.1",
+      "publishedAt": "2026-11-07T22:51:14Z"
     },
     {
       "target": "vivaldi",
-      "version": "8.2.4133.96",
+      "version": "8.1.4087.61",
       "channel": "stable",
       "cpuBuild": "x64",
       "provider": "vivaldi",
       "artifact": {
-        "fileName": "Vivaldi.8.2.4133.96.x64.exe",
+        "fileName": "Vivaldi.8.1.4087.61.x64.exe",
         "format": "sevenzip",
-        "size": 156264872,
+        "size": 146559912,
         "integrity": {
           "algorithm": "sha256",
-          "value": "cd3374dbbffe20ccc8dd1f621c171831ae4e79548af1d41db4dadadf3decb034"
+          "value": "5f897427cb9caee96751b8b4a08eefb83898008fb5d9ad7e5d1323a1b4b55179"
         },
         "urls": [
-          "https://downloads.vivaldi.com/stable/Vivaldi.8.2.4133.96.x64.exe"
+          "https://downloads.vivaldi.com/stable/Vivaldi.8.1.4087.61.x64.exe"
         ],
         "signatureUrl": null
       },
