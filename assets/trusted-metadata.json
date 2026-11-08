@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": 1794128492,
+  "generatedAt": 1794153658,
   "expiresAt": 253402300799,
   "releases": [
     {
@@ -53,21 +53,21 @@
     },
     {
       "target": "catsxp",
-      "version": "157.6.11.1",
+      "version": "156.6.10.5",
       "channel": "stable",
       "cpuBuild": "x64",
       "provider": "catsxp",
       "artifact": {
-        "fileName": "portable_x64_release_157_6_11_1.zip",
+        "fileName": "portable_x64_release_156_6_10_5.zip",
         "format": "zip",
-        "size": 234775941,
+        "size": 231137277,
         "integrity": {
           "algorithm": "sha256",
-          "value": "3bea7436488160b2977dc3caf19ef7044353a063bc6ced4bb1a8c3d9836b618f"
+          "value": "6276ecf305b329a3528d82be0d8969b0a4ccb321329871cbdb808676486d6c3e"
         },
         "urls": [
-          "https://b2.catsxp.com/catsxp_portable/win_x64/portable_x64_release_157_6_11_1.zip",
-          "https://r2.catsxp.com/catsxp_portable/win_x64/portable_x64_release_157_6_11_1.zip"
+          "https://b2.catsxp.com/catsxp_portable/win_x64/portable_x64_release_156_6_10_5.zip",
+          "https://r2.catsxp.com/catsxp_portable/win_x64/portable_x64_release_156_6_10_5.zip"
         ],
         "signatureUrl": null
       },
@@ -78,20 +78,20 @@
     },
     {
       "target": "catsxp",
-      "version": "157.6.11.2.1",
+      "version": "157.6.11.2.2",
       "channel": "beta",
       "cpuBuild": "x64",
       "provider": "catsxp",
       "artifact": {
-        "fileName": "portable_x64_beta_157_6_11_2_1.zip",
+        "fileName": "portable_x64_beta_157_6_11_2_2.zip",
         "format": "zip",
-        "size": 234981724,
+        "size": 234977695,
         "integrity": {
           "algorithm": "sha256",
-          "value": "e6304af1ea375ac72596b15daf894904d0881ea4f654265f4a6e0df2029e477d"
+          "value": "2a94024fb15dd3924bc94a7d94d0bd6d35e28982542f3cc94de28a7727b3d041"
         },
         "urls": [
-          "https://b2.catsxp.com/catsxp_portable/win_x64/portable_x64_beta_157_6_11_2_1.zip"
+          "https://b2.catsxp.com/catsxp_portable/win_x64/portable_x64_beta_157_6_11_2_2.zip"
         ],
         "signatureUrl": null
       },
@@ -304,27 +304,27 @@
     },
     {
       "target": "iceweasel",
-      "version": "159.0.1",
+      "version": "160.0",
       "channel": "release",
       "cpuBuild": "x64",
       "provider": "git_hub_release",
       "artifact": {
-        "fileName": "Iceweasel-v159.0.1.l10n_win64_pgo.7z",
+        "fileName": "Iceweasel-v160.0.l10n_win64_pgo.7z",
         "format": "sevenzip",
-        "size": 91694744,
+        "size": 92767659,
         "integrity": {
           "algorithm": "sha256",
-          "value": "4187a5a66bba67571a0039f1c8c522b14a102c96b73f8b40e1656b4ed23d0eb5"
+          "value": "edec6d352020fafbed4fe78d7b83e38927366125b3289494e26b4b43b0f79337"
         },
         "urls": [
-          "https://github.com/adonais/iceweasel/releases/download/v159.0.1/Iceweasel-v159.0.1.l10n_win64_pgo.7z"
+          "https://github.com/adonais/iceweasel/releases/download/v160.0/Iceweasel-v160.0.l10n_win64_pgo.7z"
         ],
         "signatureUrl": null
       },
       "placement": "native_package",
       "innerArchive": null,
-      "source": "https://github.com/adonais/iceweasel/releases/tag/v159.0.1",
-      "publishedAt": "2026-11-04T04:33:30Z"
+      "source": "https://github.com/adonais/iceweasel/releases/tag/v160.0",
+      "publishedAt": "2026-11-08T10:17:20Z"
     },
     {
       "target": "libre_wolf",
@@ -544,20 +544,20 @@
     },
     {
       "target": "vivaldi",
-      "version": "8.1.4087.61",
+      "version": "8.2.4133.94",
       "channel": "stable",
       "cpuBuild": "x64",
       "provider": "vivaldi",
       "artifact": {
-        "fileName": "Vivaldi.8.1.4087.61.x64.exe",
+        "fileName": "Vivaldi.8.2.4133.94.x64.exe",
         "format": "sevenzip",
-        "size": 146559912,
+        "size": 156217256,
         "integrity": {
           "algorithm": "sha256",
-          "value": "5f897427cb9caee96751b8b4a08eefb83898008fb5d9ad7e5d1323a1b4b55179"
+          "value": "6f2eee78fd43c9cb5d04150487aa786625c3361c96c43e6032f753909850a893"
         },
         "urls": [
-          "https://downloads.vivaldi.com/stable/Vivaldi.8.1.4087.61.x64.exe"
+          "https://downloads.vivaldi.com/stable/Vivaldi.8.2.4133.94.x64.exe"
         ],
         "signatureUrl": null
       },
