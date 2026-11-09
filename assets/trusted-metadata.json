@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": 1794205611,
+  "generatedAt": 1794243349,
   "expiresAt": 253402300799,
   "releases": [
     {
@@ -29,27 +29,27 @@
     },
     {
       "target": "brave",
-      "version": "1.100.50",
+      "version": "1.100.51",
       "channel": "beta",
       "cpuBuild": "x64",
       "provider": "git_hub_release",
       "artifact": {
-        "fileName": "brave-v1.100.50-win32-x64.zip",
+        "fileName": "brave-v1.100.51-win32-x64.zip",
         "format": "zip",
-        "size": 255102705,
+        "size": 255104944,
         "integrity": {
           "algorithm": "sha256",
-          "value": "4f9759d1bd63b492facc5cd79b4cc504cad32bd4562d1e7d62d5c9d6b696cd79"
+          "value": "b57691701b297387f259c94de91691bd75fb5a461f7d77239962351a01a20f2d"
         },
         "urls": [
-          "https://github.com/brave/brave-browser/releases/download/v1.100.50/brave-v1.100.50-win32-x64.zip"
+          "https://github.com/brave/brave-browser/releases/download/v1.100.51/brave-v1.100.51-win32-x64.zip"
         ],
         "signatureUrl": null
       },
       "placement": "native_package",
       "innerArchive": null,
-      "source": "https://github.com/brave/brave-browser/releases/tag/v1.100.50",
-      "publishedAt": "2026-11-06T05:16:54Z"
+      "source": "https://github.com/brave/brave-browser/releases/tag/v1.100.51",
+      "publishedAt": "2026-11-09T05:12:39Z"
     },
     {
       "target": "catsxp",
@@ -78,20 +78,20 @@
     },
     {
       "target": "catsxp",
-      "version": "157.6.11.2.2",
+      "version": "157.6.11.2.3",
       "channel": "beta",
       "cpuBuild": "x64",
       "provider": "catsxp",
       "artifact": {
-        "fileName": "portable_x64_beta_157_6_11_2_2.zip",
+        "fileName": "portable_x64_beta_157_6_11_2_3.zip",
         "format": "zip",
-        "size": 234977695,
+        "size": 234998539,
         "integrity": {
           "algorithm": "sha256",
-          "value": "2a94024fb15dd3924bc94a7d94d0bd6d35e28982542f3cc94de28a7727b3d041"
+          "value": "2bf6fdb83e41b926ab42432dc4c39062d6c68defb8e1b2596904fe2f3bf5aa7c"
         },
         "urls": [
-          "https://b2.catsxp.com/catsxp_portable/win_x64/portable_x64_beta_157_6_11_2_2.zip"
+          "https://b2.catsxp.com/catsxp_portable/win_x64/portable_x64_beta_157_6_11_2_3.zip"
         ],
         "signatureUrl": null
       },
@@ -544,20 +544,20 @@
     },
     {
       "target": "vivaldi",
-      "version": "8.2.4133.94",
+      "version": "8.2.4133.96",
       "channel": "stable",
       "cpuBuild": "x64",
       "provider": "vivaldi",
       "artifact": {
-        "fileName": "Vivaldi.8.2.4133.94.x64.exe",
+        "fileName": "Vivaldi.8.2.4133.96.x64.exe",
         "format": "sevenzip",
-        "size": 156217256,
+        "size": 156264872,
         "integrity": {
           "algorithm": "sha256",
-          "value": "6f2eee78fd43c9cb5d04150487aa786625c3361c96c43e6032f753909850a893"
+          "value": "cd3374dbbffe20ccc8dd1f621c171831ae4e79548af1d41db4dadadf3decb034"
         },
         "urls": [
-          "https://downloads.vivaldi.com/stable/Vivaldi.8.2.4133.94.x64.exe"
+          "https://downloads.vivaldi.com/stable/Vivaldi.8.2.4133.96.x64.exe"
         ],
         "signatureUrl": null
       },
