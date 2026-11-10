@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": 1794296933,
+  "generatedAt": 1794325974,
   "expiresAt": 253402300799,
   "releases": [
     {
@@ -53,21 +53,21 @@
     },
     {
       "target": "catsxp",
-      "version": "156.6.10.5",
+      "version": "157.6.11.2",
       "channel": "stable",
       "cpuBuild": "x64",
       "provider": "catsxp",
       "artifact": {
-        "fileName": "portable_x64_release_156_6_10_5.zip",
+        "fileName": "portable_x64_release_157_6_11_2.zip",
         "format": "zip",
-        "size": 231137277,
+        "size": 234918412,
         "integrity": {
           "algorithm": "sha256",
-          "value": "6276ecf305b329a3528d82be0d8969b0a4ccb321329871cbdb808676486d6c3e"
+          "value": "e220aee18814d41ba056819c0ed7430010c923b5fdacf130eb1752bf0e62b785"
         },
         "urls": [
-          "https://b2.catsxp.com/catsxp_portable/win_x64/portable_x64_release_156_6_10_5.zip",
-          "https://r2.catsxp.com/catsxp_portable/win_x64/portable_x64_release_156_6_10_5.zip"
+          "https://b2.catsxp.com/catsxp_portable/win_x64/portable_x64_release_157_6_11_2.zip",
+          "https://r2.catsxp.com/catsxp_portable/win_x64/portable_x64_release_157_6_11_2.zip"
         ],
         "signatureUrl": null
       },
@@ -160,50 +160,50 @@
     },
     {
       "target": "firefox",
-      "version": "159.0.1",
+      "version": "160.0",
       "channel": "stable",
       "cpuBuild": "x64",
       "provider": "mozilla",
       "artifact": {
-        "fileName": "Firefox Setup 159.0.1.exe",
+        "fileName": "Firefox Setup 160.0.exe",
         "format": "sevenzip",
         "size": null,
         "integrity": {
           "algorithm": "sha256",
-          "value": "26beb1bef5c59f24b64c8b47669566ccf16d5d7984ae1c20e81b6f4d3c580fa5"
+          "value": "729041e434a61bc7572a356297e4f43a71cdeec7c88b04aba5d4b95c2b285716"
         },
         "urls": [
-          "https://download-installer.cdn.mozilla.net/pub/firefox/releases/159.0.1/win64/zh-CN/Firefox%20Setup%20159.0.1.exe"
+          "https://download-installer.cdn.mozilla.net/pub/firefox/releases/160.0/win64/zh-CN/Firefox%20Setup%20160.0.exe"
         ],
         "signatureUrl": null
       },
       "placement": "app",
       "innerArchive": null,
-      "source": "https://download-installer.cdn.mozilla.net/pub/firefox/releases/159.0.1/SHA256SUMS",
+      "source": "https://download-installer.cdn.mozilla.net/pub/firefox/releases/160.0/SHA256SUMS",
       "publishedAt": null
     },
     {
       "target": "firefox",
-      "version": "153.6.0esr",
+      "version": "153.7.0esr",
       "channel": "esr",
       "cpuBuild": "x64",
       "provider": "mozilla",
       "artifact": {
-        "fileName": "Firefox Setup 153.6.0esr.exe",
+        "fileName": "Firefox Setup 153.7.0esr.exe",
         "format": "sevenzip",
         "size": null,
         "integrity": {
           "algorithm": "sha256",
-          "value": "bd8b93b0936c2c3505a4ff776bf5f2256e79b9b9c3a100fd0f5ddceafbce5b23"
+          "value": "0952ef41ffc816264b00871fd3eb7bd7204c3ea55ae91ad6566f1ef1fac578a9"
         },
         "urls": [
-          "https://download-installer.cdn.mozilla.net/pub/firefox/releases/153.6.0esr/win64/zh-CN/Firefox%20Setup%20153.6.0esr.exe"
+          "https://download-installer.cdn.mozilla.net/pub/firefox/releases/153.7.0esr/win64/zh-CN/Firefox%20Setup%20153.7.0esr.exe"
         ],
         "signatureUrl": null
       },
       "placement": "app",
       "innerArchive": null,
-      "source": "https://download-installer.cdn.mozilla.net/pub/firefox/releases/153.6.0esr/SHA256SUMS",
+      "source": "https://download-installer.cdn.mozilla.net/pub/firefox/releases/153.7.0esr/SHA256SUMS",
       "publishedAt": null
     },
     {
@@ -256,27 +256,27 @@
     },
     {
       "target": "helium",
-      "version": "0.21.1.1",
+      "version": "0.21.2.1",
       "channel": "stable",
       "cpuBuild": "x64",
       "provider": "git_hub_release",
       "artifact": {
-        "fileName": "helium_0.21.1.1_x64-windows.zip",
+        "fileName": "helium_0.21.2.1_x64-windows.zip",
         "format": "zip",
-        "size": 199491635,
+        "size": 199496924,
         "integrity": {
           "algorithm": "sha256",
-          "value": "a339c758791aeea9fa2ef1a70a8722de61ba123d3ca6e972d0dbe3d2b528c6ec"
+          "value": "1bcfe9f895bd43db4dfa1b121ca3dd6ce1a2561a89483e635aa6b1a4df96779c"
         },
         "urls": [
-          "https://github.com/imputnet/helium-windows/releases/download/0.21.1.1/helium_0.21.1.1_x64-windows.zip"
+          "https://github.com/imputnet/helium-windows/releases/download/0.21.2.1/helium_0.21.2.1_x64-windows.zip"
         ],
         "signatureUrl": null
       },
       "placement": "native_package",
       "innerArchive": null,
-      "source": "https://github.com/imputnet/helium-windows/releases/tag/0.21.1.1",
-      "publishedAt": "2026-11-05T00:26:33Z"
+      "source": "https://github.com/imputnet/helium-windows/releases/tag/0.21.2.1",
+      "publishedAt": "2026-11-10T08:09:48Z"
     },
     {
       "target": "iceweasel",
