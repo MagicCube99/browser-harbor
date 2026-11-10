@@ -1,55 +1,55 @@
 {
   "schemaVersion": 1,
-  "generatedAt": 1794271537,
+  "generatedAt": 1794296933,
   "expiresAt": 253402300799,
   "releases": [
     {
       "target": "brave",
-      "version": "1.99.55",
+      "version": "1.99.56",
       "channel": "stable",
       "cpuBuild": "x64",
       "provider": "git_hub_release",
       "artifact": {
-        "fileName": "brave-v1.99.55-win32-x64.zip",
+        "fileName": "brave-v1.99.56-win32-x64.zip",
         "format": "zip",
-        "size": 255062552,
+        "size": 255064631,
         "integrity": {
           "algorithm": "sha256",
-          "value": "ababc163488bfd58cab7ebe4a4057dd23227c81f5958f3a8597526a278fbae15"
+          "value": "1f72b0ac331de0f5b1d10a94a4d88ad19e8126e0ee066b71b38be3f485bf98a8"
         },
         "urls": [
-          "https://github.com/brave/brave-browser/releases/download/v1.99.55/brave-v1.99.55-win32-x64.zip"
+          "https://github.com/brave/brave-browser/releases/download/v1.99.56/brave-v1.99.56-win32-x64.zip"
         ],
         "signatureUrl": null
       },
       "placement": "native_package",
       "innerArchive": null,
-      "source": "https://github.com/brave/brave-browser/releases/tag/v1.99.55",
-      "publishedAt": "2026-11-04T18:56:17Z"
+      "source": "https://github.com/brave/brave-browser/releases/tag/v1.99.56",
+      "publishedAt": "2026-11-10T03:53:58Z"
     },
     {
       "target": "brave",
-      "version": "1.100.51",
+      "version": "1.100.52",
       "channel": "beta",
       "cpuBuild": "x64",
       "provider": "git_hub_release",
       "artifact": {
-        "fileName": "brave-v1.100.51-win32-x64.zip",
+        "fileName": "brave-v1.100.52-win32-x64.zip",
         "format": "zip",
-        "size": 255104944,
+        "size": 255122470,
         "integrity": {
           "algorithm": "sha256",
-          "value": "b57691701b297387f259c94de91691bd75fb5a461f7d77239962351a01a20f2d"
+          "value": "3539345faa54d5588cc9c9ba66d54bfc22e1e25921193950eadce96f15730de2"
         },
         "urls": [
-          "https://github.com/brave/brave-browser/releases/download/v1.100.51/brave-v1.100.51-win32-x64.zip"
+          "https://github.com/brave/brave-browser/releases/download/v1.100.52/brave-v1.100.52-win32-x64.zip"
         ],
         "signatureUrl": null
       },
       "placement": "native_package",
       "innerArchive": null,
-      "source": "https://github.com/brave/brave-browser/releases/tag/v1.100.51",
-      "publishedAt": "2026-11-09T05:12:39Z"
+      "source": "https://github.com/brave/brave-browser/releases/tag/v1.100.52",
+      "publishedAt": "2026-11-10T05:16:27Z"
     },
     {
       "target": "catsxp",
@@ -78,20 +78,20 @@
     },
     {
       "target": "catsxp",
-      "version": "157.6.11.2.4",
+      "version": "157.6.11.2.5",
       "channel": "beta",
       "cpuBuild": "x64",
       "provider": "catsxp",
       "artifact": {
-        "fileName": "portable_x64_beta_157_6_11_2_4.zip",
+        "fileName": "portable_x64_beta_157_6_11_2_5.zip",
         "format": "zip",
-        "size": 235043390,
+        "size": 234919380,
         "integrity": {
           "algorithm": "sha256",
-          "value": "78b1145c9837859d3e51edd7924b85f6000ffa25ad8f59a2e4ee7cd797b574e2"
+          "value": "768cabc842f227395afc87cbeacd410dd77dd4417ee8b97c50f45da4ec0e8358"
         },
         "urls": [
-          "https://b2.catsxp.com/catsxp_portable/win_x64/portable_x64_beta_157_6_11_2_4.zip"
+          "https://b2.catsxp.com/catsxp_portable/win_x64/portable_x64_beta_157_6_11_2_5.zip"
         ],
         "signatureUrl": null
       },
