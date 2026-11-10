@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": 1794243349,
+  "generatedAt": 1794271537,
   "expiresAt": 253402300799,
   "releases": [
     {
@@ -78,20 +78,20 @@
     },
     {
       "target": "catsxp",
-      "version": "157.6.11.2.3",
+      "version": "157.6.11.2.4",
       "channel": "beta",
       "cpuBuild": "x64",
       "provider": "catsxp",
       "artifact": {
-        "fileName": "portable_x64_beta_157_6_11_2_3.zip",
+        "fileName": "portable_x64_beta_157_6_11_2_4.zip",
         "format": "zip",
-        "size": 234998539,
+        "size": 235043390,
         "integrity": {
           "algorithm": "sha256",
-          "value": "2bf6fdb83e41b926ab42432dc4c39062d6c68defb8e1b2596904fe2f3bf5aa7c"
+          "value": "78b1145c9837859d3e51edd7924b85f6000ffa25ad8f59a2e4ee7cd797b574e2"
         },
         "urls": [
-          "https://b2.catsxp.com/catsxp_portable/win_x64/portable_x64_beta_157_6_11_2_3.zip"
+          "https://b2.catsxp.com/catsxp_portable/win_x64/portable_x64_beta_157_6_11_2_4.zip"
         ],
         "signatureUrl": null
       },
@@ -102,25 +102,25 @@
     },
     {
       "target": "chrome",
-      "version": "157.0.8103.39",
+      "version": "157.0.8103.51",
       "channel": "stable",
       "cpuBuild": "x64",
       "provider": "chrome_omaha",
       "artifact": {
-        "fileName": "157.0.8103.39_chrome_installer_uncompressed.exe",
+        "fileName": "157.0.8103.51_chrome_installer_uncompressed.exe",
         "format": "sevenzip",
         "size": 530228648,
         "integrity": {
           "algorithm": "sha256",
-          "value": "389b9e21de9a520a6e24ba807ee8760409ccc837457bbcc460d2fdce0d5e8df5"
+          "value": "cc7aca3546b69255ecc2419c2cbfd51a21ed47837e953cf9d84ab60eca758d57"
         },
         "urls": [
-          "https://edgedl.me.gvt1.com/edgedl/release2/chrome/lzz46e6auim6sx75xrn7xp5hza_157.0.8103.39/157.0.8103.39_chrome_installer_uncompressed.exe",
-          "https://edgedl.me.gvt1.com/edgedl/release2/chrome/lzz46e6auim6sx75xrn7xp5hza_157.0.8103.39/157.0.8103.39_chrome_installer_uncompressed.exe",
-          "https://dl.google.com/release2/chrome/lzz46e6auim6sx75xrn7xp5hza_157.0.8103.39/157.0.8103.39_chrome_installer_uncompressed.exe",
-          "https://dl.google.com/release2/chrome/lzz46e6auim6sx75xrn7xp5hza_157.0.8103.39/157.0.8103.39_chrome_installer_uncompressed.exe",
-          "https://www.google.com/dl/release2/chrome/lzz46e6auim6sx75xrn7xp5hza_157.0.8103.39/157.0.8103.39_chrome_installer_uncompressed.exe",
-          "https://www.google.com/dl/release2/chrome/lzz46e6auim6sx75xrn7xp5hza_157.0.8103.39/157.0.8103.39_chrome_installer_uncompressed.exe"
+          "https://edgedl.me.gvt1.com/edgedl/release2/chrome/hhb3n3my4axozv7qmzlcqqaspi_157.0.8103.51/157.0.8103.51_chrome_installer_uncompressed.exe",
+          "https://edgedl.me.gvt1.com/edgedl/release2/chrome/hhb3n3my4axozv7qmzlcqqaspi_157.0.8103.51/157.0.8103.51_chrome_installer_uncompressed.exe",
+          "https://dl.google.com/release2/chrome/hhb3n3my4axozv7qmzlcqqaspi_157.0.8103.51/157.0.8103.51_chrome_installer_uncompressed.exe",
+          "https://dl.google.com/release2/chrome/hhb3n3my4axozv7qmzlcqqaspi_157.0.8103.51/157.0.8103.51_chrome_installer_uncompressed.exe",
+          "https://www.google.com/dl/release2/chrome/hhb3n3my4axozv7qmzlcqqaspi_157.0.8103.51/157.0.8103.51_chrome_installer_uncompressed.exe",
+          "https://www.google.com/dl/release2/chrome/hhb3n3my4axozv7qmzlcqqaspi_157.0.8103.51/157.0.8103.51_chrome_installer_uncompressed.exe"
         ],
         "signatureUrl": null
       },
@@ -208,26 +208,26 @@
     },
     {
       "target": "firefox",
-      "version": "160.0b5",
+      "version": "161.0b1",
       "channel": "beta",
       "cpuBuild": "x64",
       "provider": "mozilla",
       "artifact": {
-        "fileName": "Firefox Setup 160.0b5.exe",
+        "fileName": "Firefox Setup 161.0b1.exe",
         "format": "sevenzip",
         "size": null,
         "integrity": {
           "algorithm": "sha256",
-          "value": "9ed45305f86cd823b41f81eb2e92b471d4363be29971dda19babd6228bfaf5db"
+          "value": "66ad211da049dce7696fbd6627911d47513e583bdc5fcaa27160b652cbc43410"
         },
         "urls": [
-          "https://download-installer.cdn.mozilla.net/pub/firefox/releases/160.0b5/win64/zh-CN/Firefox%20Setup%20160.0b5.exe"
+          "https://download-installer.cdn.mozilla.net/pub/firefox/releases/161.0b1/win64/zh-CN/Firefox%20Setup%20161.0b1.exe"
         ],
         "signatureUrl": null
       },
       "placement": "app",
       "innerArchive": null,
-      "source": "https://download-installer.cdn.mozilla.net/pub/firefox/releases/160.0b5/SHA256SUMS",
+      "source": "https://download-installer.cdn.mozilla.net/pub/firefox/releases/161.0b1/SHA256SUMS",
       "publishedAt": null
     },
     {
@@ -352,20 +352,20 @@
     },
     {
       "target": "sky_kakapo",
-      "version": "159.0.1",
+      "version": "160.0",
       "channel": "stable",
       "cpuBuild": "sse3",
       "provider": "sky_kakapo",
       "artifact": {
-        "fileName": "skykakapo-159.0.1-2026110319.en-US.win64-sse3-cspgo.7z",
+        "fileName": "skykakapo-160.0-2026110919.en-US.win64-sse3-cspgo.7z",
         "format": "sevenzip",
         "size": null,
         "integrity": {
           "algorithm": "sha256",
-          "value": "d0cf7a42ef47afb2ef7dda87480439e074656f1fe5bd55f4b23f8d3e9ca5f480"
+          "value": "5a6c217399216e78a7a089ab95d3899f256317c2645b3a5943e3501379d48019"
         },
         "urls": [
-          "https://sourceforge.net/projects/skykakapo/files/159.0.1/skykakapo-159.0.1-2026110319.en-US.win64-sse3-cspgo.7z/download"
+          "https://sourceforge.net/projects/skykakapo/files/160.0/skykakapo-160.0-2026110919.en-US.win64-sse3-cspgo.7z/download"
         ],
         "signatureUrl": null
       },
@@ -496,20 +496,20 @@
     },
     {
       "target": "turbo",
-      "version": "156.0.8078.82",
+      "version": "156.0.8078.83",
       "channel": "stable",
       "cpuBuild": "x64",
       "provider": "turbo",
       "artifact": {
-        "fileName": "Turbo_156.0.8078.82_portable.7z",
+        "fileName": "Turbo_156.0.8078.83_portable.7z",
         "format": "sevenzip",
-        "size": 127054156,
+        "size": 127077804,
         "integrity": {
           "algorithm": "sha256",
-          "value": "7f7ed66eb6195fde18f11d80e9b9b4587c421bc0b305a88dbfe6b875e9c09271"
+          "value": "17933adde688189bd49e7cbc49eda2225f5fdf29840f1a6f6d7569173946c022"
         },
         "urls": [
-          "https://dl.tbrowser.cn/download/Turbo_156.0.8078.82_portable.7z"
+          "https://dl.tbrowser.cn/download/Turbo_156.0.8078.83_portable.7z"
         ],
         "signatureUrl": null
       },
@@ -544,20 +544,20 @@
     },
     {
       "target": "vivaldi",
-      "version": "8.2.4133.96",
+      "version": "8.3.4191.26",
       "channel": "stable",
       "cpuBuild": "x64",
       "provider": "vivaldi",
       "artifact": {
-        "fileName": "Vivaldi.8.2.4133.96.x64.exe",
+        "fileName": "Vivaldi.8.3.4191.26.x64.exe",
         "format": "sevenzip",
-        "size": 156264872,
+        "size": 160049576,
         "integrity": {
           "algorithm": "sha256",
-          "value": "cd3374dbbffe20ccc8dd1f621c171831ae4e79548af1d41db4dadadf3decb034"
+          "value": "97c6e6b3d8d01351994ec88623ccfdc370317a1c5b89758746d615a60490363e"
         },
         "urls": [
-          "https://downloads.vivaldi.com/stable/Vivaldi.8.2.4133.96.x64.exe"
+          "https://downloads.vivaldi.com/stable/Vivaldi.8.3.4191.26.x64.exe"
         ],
         "signatureUrl": null
       },
@@ -592,30 +592,30 @@
     }
   ],
   "chromePlus": {
-    "version": "1.19.0",
+    "version": "1.20.0",
     "artifact": {
-      "fileName": "Chrome++_v1.19.0_x86_x64_arm64.7z",
+      "fileName": "Chrome++_v1.20.0_x86_x64_arm64.7z",
       "format": "sevenzip",
-      "size": 195408,
+      "size": 198331,
       "integrity": {
         "algorithm": "sha256",
-        "value": "090c192efd83637b495e37f4cf01bc89c508b74591ac9110843c30bec99c5a22"
+        "value": "483e0c78e99e4ae57556623445c01f69c9c872e549baf86750b0feb080388400"
       },
       "urls": [
-        "https://github.com/Bush2021/chrome_plus/releases/download/1.19.0/Chrome%2B%2B_v1.19.0_x86_x64_arm64.7z"
+        "https://github.com/Bush2021/chrome_plus/releases/download/1.20.0/Chrome%2B%2B_v1.20.0_x86_x64_arm64.7z"
       ],
       "signatureUrl": null
     },
     "setdllArtifact": {
       "fileName": "setdll.7z",
       "format": "sevenzip",
-      "size": 286313,
+      "size": 289060,
       "integrity": {
         "algorithm": "sha256",
-        "value": "9d6813564d2f54ca2d8dece4c4952143f5040fa00cd1d8462af444eda0fef7a9"
+        "value": "a42900049a0bbe757a024942bb56e8f50b9087e08d50d29a65d8da0fbbcb818b"
       },
       "urls": [
-        "https://github.com/Bush2021/chrome_plus/releases/download/1.19.0/setdll.7z"
+        "https://github.com/Bush2021/chrome_plus/releases/download/1.20.0/setdll.7z"
       ],
       "signatureUrl": null
     }
