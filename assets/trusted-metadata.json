@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": 1794362321,
+  "generatedAt": 1794389180,
   "expiresAt": 253402300799,
   "releases": [
     {
@@ -328,27 +328,27 @@
     },
     {
       "target": "libre_wolf",
-      "version": "159.0.1",
+      "version": "160.0",
       "channel": "stable",
       "cpuBuild": "x64",
       "provider": "libre_wolf",
       "artifact": {
-        "fileName": "librewolf-159.0.1-1-windows-x86_64-portable.zip",
+        "fileName": "librewolf-160.0-1-windows-x86_64-portable.zip",
         "format": "zip",
         "size": null,
         "integrity": {
           "algorithm": "sha256",
-          "value": "6b1f029a758ec03e124c879823f55f852486454cd3bc7cbc2461938f8ab60319"
+          "value": "2b3c8939501380300eb94a8f1de563eb4e910f13ae12d0edc97d4133b942cdf5"
         },
         "urls": [
-          "https://dl.librewolf.net/librewolf/159.0.1-1/librewolf-159.0.1-1-windows-x86_64-portable.zip"
+          "https://dl.librewolf.net/librewolf/160.0-1/librewolf-160.0-1-windows-x86_64-portable.zip"
         ],
-        "signatureUrl": "https://dl.librewolf.net/librewolf/159.0.1-1/librewolf-159.0.1-1-windows-x86_64-portable.zip.sig"
+        "signatureUrl": "https://dl.librewolf.net/librewolf/160.0-1/librewolf-160.0-1-windows-x86_64-portable.zip.sig"
       },
       "placement": "native_package",
       "innerArchive": null,
       "source": "https://librewolf.dev/api/v1/repos/librewolf/bsys6/releases?limit=1",
-      "publishedAt": "2026-11-04T00:48:54Z"
+      "publishedAt": "2026-11-11T02:28:59Z"
     },
     {
       "target": "sky_kakapo",
@@ -544,20 +544,20 @@
     },
     {
       "target": "vivaldi",
-      "version": "8.2.4133.96",
+      "version": "8.2.4133.94",
       "channel": "stable",
       "cpuBuild": "x64",
       "provider": "vivaldi",
       "artifact": {
-        "fileName": "Vivaldi.8.2.4133.96.x64.exe",
+        "fileName": "Vivaldi.8.2.4133.94.x64.exe",
         "format": "sevenzip",
-        "size": 156264872,
+        "size": 156217256,
         "integrity": {
           "algorithm": "sha256",
-          "value": "cd3374dbbffe20ccc8dd1f621c171831ae4e79548af1d41db4dadadf3decb034"
+          "value": "6f2eee78fd43c9cb5d04150487aa786625c3361c96c43e6032f753909850a893"
         },
         "urls": [
-          "https://downloads.vivaldi.com/stable/Vivaldi.8.2.4133.96.x64.exe"
+          "https://downloads.vivaldi.com/stable/Vivaldi.8.2.4133.94.x64.exe"
         ],
         "signatureUrl": null
       },
