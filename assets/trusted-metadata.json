@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": 1794389180,
+  "generatedAt": 1794418263,
   "expiresAt": 253402300799,
   "releases": [
     {
@@ -208,26 +208,26 @@
     },
     {
       "target": "firefox",
-      "version": "161.0b1",
+      "version": "161.0b2",
       "channel": "beta",
       "cpuBuild": "x64",
       "provider": "mozilla",
       "artifact": {
-        "fileName": "Firefox Setup 161.0b1.exe",
+        "fileName": "Firefox Setup 161.0b2.exe",
         "format": "sevenzip",
         "size": null,
         "integrity": {
           "algorithm": "sha256",
-          "value": "66ad211da049dce7696fbd6627911d47513e583bdc5fcaa27160b652cbc43410"
+          "value": "e57a34b1fb92fad9ba9357d7fabd9f2c4d7a67ed1fc4d5532401b78ad21b8710"
         },
         "urls": [
-          "https://download-installer.cdn.mozilla.net/pub/firefox/releases/161.0b1/win64/zh-CN/Firefox%20Setup%20161.0b1.exe"
+          "https://download-installer.cdn.mozilla.net/pub/firefox/releases/161.0b2/win64/zh-CN/Firefox%20Setup%20161.0b2.exe"
         ],
         "signatureUrl": null
       },
       "placement": "app",
       "innerArchive": null,
-      "source": "https://download-installer.cdn.mozilla.net/pub/firefox/releases/161.0b1/SHA256SUMS",
+      "source": "https://download-installer.cdn.mozilla.net/pub/firefox/releases/161.0b2/SHA256SUMS",
       "publishedAt": null
     },
     {
@@ -544,20 +544,20 @@
     },
     {
       "target": "vivaldi",
-      "version": "8.2.4133.94",
+      "version": "8.3.4191.35",
       "channel": "stable",
       "cpuBuild": "x64",
       "provider": "vivaldi",
       "artifact": {
-        "fileName": "Vivaldi.8.2.4133.94.x64.exe",
+        "fileName": "Vivaldi.8.3.4191.35.x64.exe",
         "format": "sevenzip",
-        "size": 156217256,
+        "size": 160153512,
         "integrity": {
           "algorithm": "sha256",
-          "value": "6f2eee78fd43c9cb5d04150487aa786625c3361c96c43e6032f753909850a893"
+          "value": "d9cd421314ff8fd0f5a8b2a7dbb6818ac1dfe26882426253b26b89f09a66afdc"
         },
         "urls": [
-          "https://downloads.vivaldi.com/stable/Vivaldi.8.2.4133.94.x64.exe"
+          "https://downloads.vivaldi.com/stable/Vivaldi.8.3.4191.35.x64.exe"
         ],
         "signatureUrl": null
       },
