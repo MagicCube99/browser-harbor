@@ -1,55 +1,55 @@
 {
   "schemaVersion": 1,
-  "generatedAt": 1794457257,
+  "generatedAt": 1794489594,
   "expiresAt": 253402300799,
   "releases": [
     {
       "target": "brave",
-      "version": "1.99.56",
+      "version": "1.99.57",
       "channel": "stable",
       "cpuBuild": "x64",
       "provider": "git_hub_release",
       "artifact": {
-        "fileName": "brave-v1.99.56-win32-x64.zip",
+        "fileName": "brave-v1.99.57-win32-x64.zip",
         "format": "zip",
-        "size": 255064631,
+        "size": 254461948,
         "integrity": {
           "algorithm": "sha256",
-          "value": "1f72b0ac331de0f5b1d10a94a4d88ad19e8126e0ee066b71b38be3f485bf98a8"
+          "value": "42ba3a5445f717b429fb3fe457e7e531cd1c208f06a2dc9315b1fa31c09bc8b9"
         },
         "urls": [
-          "https://github.com/brave/brave-browser/releases/download/v1.99.56/brave-v1.99.56-win32-x64.zip"
+          "https://github.com/brave/brave-browser/releases/download/v1.99.57/brave-v1.99.57-win32-x64.zip"
         ],
         "signatureUrl": null
       },
       "placement": "native_package",
       "innerArchive": null,
-      "source": "https://github.com/brave/brave-browser/releases/tag/v1.99.56",
-      "publishedAt": "2026-11-10T03:53:58Z"
+      "source": "https://github.com/brave/brave-browser/releases/tag/v1.99.57",
+      "publishedAt": "2026-11-12T04:08:44Z"
     },
     {
       "target": "brave",
-      "version": "1.100.52",
+      "version": "1.101.47",
       "channel": "beta",
       "cpuBuild": "x64",
       "provider": "git_hub_release",
       "artifact": {
-        "fileName": "brave-v1.100.52-win32-x64.zip",
+        "fileName": "brave-v1.101.47-win32-x64.zip",
         "format": "zip",
-        "size": 255122470,
+        "size": 261536107,
         "integrity": {
           "algorithm": "sha256",
-          "value": "3539345faa54d5588cc9c9ba66d54bfc22e1e25921193950eadce96f15730de2"
+          "value": "3726d39cf57e885e3510236c43e3cd4c29d3f3f2f49e5a05c07854cbc150f648"
         },
         "urls": [
-          "https://github.com/brave/brave-browser/releases/download/v1.100.52/brave-v1.100.52-win32-x64.zip"
+          "https://github.com/brave/brave-browser/releases/download/v1.101.47/brave-v1.101.47-win32-x64.zip"
         ],
         "signatureUrl": null
       },
       "placement": "native_package",
       "innerArchive": null,
-      "source": "https://github.com/brave/brave-browser/releases/tag/v1.100.52",
-      "publishedAt": "2026-11-10T05:16:27Z"
+      "source": "https://github.com/brave/brave-browser/releases/tag/v1.101.47",
+      "publishedAt": "2026-11-12T05:08:45Z"
     },
     {
       "target": "catsxp",
@@ -520,44 +520,44 @@
     },
     {
       "target": "ungoogled_chromium",
-      "version": "157.0.8103.38",
+      "version": "157.0.8103.50",
       "channel": "stable",
       "cpuBuild": "x64",
       "provider": "git_hub_release",
       "artifact": {
-        "fileName": "ungoogled-chromium_157.0.8103.38-1.1_windows_x64.zip",
+        "fileName": "ungoogled-chromium_157.0.8103.50-1.1_windows_x64.zip",
         "format": "zip",
-        "size": 203547113,
+        "size": 203570178,
         "integrity": {
           "algorithm": "sha256",
-          "value": "7aae503c42974753de7e2fa3910106b8594b027e7e567baf7e69016b2a4e6c74"
+          "value": "42a846b04e73f7d54a63e39964a7d5b73875507a2a205e6cdb32e88d7928e97d"
         },
         "urls": [
-          "https://github.com/ungoogled-software/ungoogled-chromium-windows/releases/download/157.0.8103.38-1.1/ungoogled-chromium_157.0.8103.38-1.1_windows_x64.zip"
+          "https://github.com/ungoogled-software/ungoogled-chromium-windows/releases/download/157.0.8103.50-1.1/ungoogled-chromium_157.0.8103.50-1.1_windows_x64.zip"
         ],
         "signatureUrl": null
       },
       "placement": "native_package",
       "innerArchive": null,
-      "source": "https://github.com/ungoogled-software/ungoogled-chromium-windows/releases/tag/157.0.8103.38-1.1",
-      "publishedAt": "2026-11-07T22:51:14Z"
+      "source": "https://github.com/ungoogled-software/ungoogled-chromium-windows/releases/tag/157.0.8103.50-1.1",
+      "publishedAt": "2026-11-12T06:23:30Z"
     },
     {
       "target": "vivaldi",
-      "version": "8.3.4191.35",
+      "version": "8.2.4133.96",
       "channel": "stable",
       "cpuBuild": "x64",
       "provider": "vivaldi",
       "artifact": {
-        "fileName": "Vivaldi.8.3.4191.35.x64.exe",
+        "fileName": "Vivaldi.8.2.4133.96.x64.exe",
         "format": "sevenzip",
-        "size": 160153512,
+        "size": 156264872,
         "integrity": {
           "algorithm": "sha256",
-          "value": "d9cd421314ff8fd0f5a8b2a7dbb6818ac1dfe26882426253b26b89f09a66afdc"
+          "value": "cd3374dbbffe20ccc8dd1f621c171831ae4e79548af1d41db4dadadf3decb034"
         },
         "urls": [
-          "https://downloads.vivaldi.com/stable/Vivaldi.8.3.4191.35.x64.exe"
+          "https://downloads.vivaldi.com/stable/Vivaldi.8.2.4133.96.x64.exe"
         ],
         "signatureUrl": null
       },
@@ -568,27 +568,27 @@
     },
     {
       "target": "zen",
-      "version": "1.24.1b",
+      "version": "1.24.2b",
       "channel": "stable",
       "cpuBuild": "x64",
       "provider": "git_hub_release",
       "artifact": {
         "fileName": "zen.installer.exe",
         "format": "sevenzip",
-        "size": 118933392,
+        "size": 119895240,
         "integrity": {
           "algorithm": "sha256",
-          "value": "ce649f801579fb40a02499bfceeb66f2c049f87988b4c2cef73046540c46e8a3"
+          "value": "bd53e63028b84fd77a4c734873d485d98b59921f4a6a6617cb654b2f9f1585bc"
         },
         "urls": [
-          "https://github.com/zen-browser/desktop/releases/download/1.24.1b/zen.installer.exe"
+          "https://github.com/zen-browser/desktop/releases/download/1.24.2b/zen.installer.exe"
         ],
         "signatureUrl": null
       },
       "placement": "native_package",
       "innerArchive": null,
-      "source": "https://github.com/zen-browser/desktop/releases/tag/1.24.1b",
-      "publishedAt": "2026-11-06T19:03:31Z"
+      "source": "https://github.com/zen-browser/desktop/releases/tag/1.24.2b",
+      "publishedAt": "2026-11-12T10:18:28Z"
     }
   ],
   "chromePlus": {
