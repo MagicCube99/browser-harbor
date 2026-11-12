@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": 1794489594,
+  "generatedAt": 1794517005,
   "expiresAt": 253402300799,
   "releases": [
     {
@@ -131,25 +131,25 @@
     },
     {
       "target": "chrome",
-      "version": "158.0.8127.18",
+      "version": "159.0.8154.6",
       "channel": "beta",
       "cpuBuild": "x64",
       "provider": "chrome_omaha",
       "artifact": {
-        "fileName": "158.0.8127.18_chrome_installer_uncompressed.exe",
+        "fileName": "159.0.8154.6_chrome_installer_uncompressed.exe",
         "format": "sevenzip",
-        "size": 537874344,
+        "size": 540564904,
         "integrity": {
           "algorithm": "sha256",
-          "value": "3be75521abf8151b44d1203ddb917eca61b3b72478d91dc52751b482b8702014"
+          "value": "c371bc684c218b6fba62cf7c1a1705e8804347a96e7917e57a85acf40bd127be"
         },
         "urls": [
-          "https://edgedl.me.gvt1.com/edgedl/release2/chrome/ad2odyb76k3dxk57tktayzbdakra_158.0.8127.18/158.0.8127.18_chrome_installer_uncompressed.exe",
-          "https://edgedl.me.gvt1.com/edgedl/release2/chrome/ad2odyb76k3dxk57tktayzbdakra_158.0.8127.18/158.0.8127.18_chrome_installer_uncompressed.exe",
-          "https://dl.google.com/release2/chrome/ad2odyb76k3dxk57tktayzbdakra_158.0.8127.18/158.0.8127.18_chrome_installer_uncompressed.exe",
-          "https://dl.google.com/release2/chrome/ad2odyb76k3dxk57tktayzbdakra_158.0.8127.18/158.0.8127.18_chrome_installer_uncompressed.exe",
-          "https://www.google.com/dl/release2/chrome/ad2odyb76k3dxk57tktayzbdakra_158.0.8127.18/158.0.8127.18_chrome_installer_uncompressed.exe",
-          "https://www.google.com/dl/release2/chrome/ad2odyb76k3dxk57tktayzbdakra_158.0.8127.18/158.0.8127.18_chrome_installer_uncompressed.exe"
+          "https://edgedl.me.gvt1.com/edgedl/release2/chrome/euzdlqd7llpoxyrbdxfubkcf7m_159.0.8154.6/159.0.8154.6_chrome_installer_uncompressed.exe",
+          "https://edgedl.me.gvt1.com/edgedl/release2/chrome/euzdlqd7llpoxyrbdxfubkcf7m_159.0.8154.6/159.0.8154.6_chrome_installer_uncompressed.exe",
+          "https://dl.google.com/release2/chrome/euzdlqd7llpoxyrbdxfubkcf7m_159.0.8154.6/159.0.8154.6_chrome_installer_uncompressed.exe",
+          "https://dl.google.com/release2/chrome/euzdlqd7llpoxyrbdxfubkcf7m_159.0.8154.6/159.0.8154.6_chrome_installer_uncompressed.exe",
+          "https://www.google.com/dl/release2/chrome/euzdlqd7llpoxyrbdxfubkcf7m_159.0.8154.6/159.0.8154.6_chrome_installer_uncompressed.exe",
+          "https://www.google.com/dl/release2/chrome/euzdlqd7llpoxyrbdxfubkcf7m_159.0.8154.6/159.0.8154.6_chrome_installer_uncompressed.exe"
         ],
         "signatureUrl": null
       },
@@ -496,20 +496,20 @@
     },
     {
       "target": "turbo",
-      "version": "156.0.8078.83",
+      "version": "156.0.8078.84",
       "channel": "stable",
       "cpuBuild": "x64",
       "provider": "turbo",
       "artifact": {
-        "fileName": "Turbo_156.0.8078.83_portable.7z",
+        "fileName": "Turbo_156.0.8078.84_portable.7z",
         "format": "sevenzip",
-        "size": 127077804,
+        "size": 127102583,
         "integrity": {
           "algorithm": "sha256",
-          "value": "17933adde688189bd49e7cbc49eda2225f5fdf29840f1a6f6d7569173946c022"
+          "value": "83629ad0fea165bdcae798f48ef04169cbb3ff226ef27f92415f1431f81f7d99"
         },
         "urls": [
-          "https://dl.tbrowser.cn/download/Turbo_156.0.8078.83_portable.7z"
+          "https://dl.tbrowser.cn/download/Turbo_156.0.8078.84_portable.7z"
         ],
         "signatureUrl": null
       },
@@ -544,20 +544,20 @@
     },
     {
       "target": "vivaldi",
-      "version": "8.2.4133.96",
+      "version": "8.1.4087.61",
       "channel": "stable",
       "cpuBuild": "x64",
       "provider": "vivaldi",
       "artifact": {
-        "fileName": "Vivaldi.8.2.4133.96.x64.exe",
+        "fileName": "Vivaldi.8.1.4087.61.x64.exe",
         "format": "sevenzip",
-        "size": 156264872,
+        "size": 146559912,
         "integrity": {
           "algorithm": "sha256",
-          "value": "cd3374dbbffe20ccc8dd1f621c171831ae4e79548af1d41db4dadadf3decb034"
+          "value": "5f897427cb9caee96751b8b4a08eefb83898008fb5d9ad7e5d1323a1b4b55179"
         },
         "urls": [
-          "https://downloads.vivaldi.com/stable/Vivaldi.8.2.4133.96.x64.exe"
+          "https://downloads.vivaldi.com/stable/Vivaldi.8.1.4087.61.x64.exe"
         ],
         "signatureUrl": null
       },
