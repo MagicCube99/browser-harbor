@@ -340,6 +340,16 @@ fn mismatched_browser_identity_requires_install_confirmation() {
 
 #[test]
 fn installed_channel_is_inferred_before_replacing_program_files() {
+    for (target, product) in [
+        (TargetId::Chrome, "Google Chrome Stable"),
+        (TargetId::Edge, "Microsoft Edge Stable"),
+        (TargetId::Brave, "Brave Stable"),
+    ] {
+        assert_eq!(
+            installed_channel_label(target, "157.0.1", product),
+            Some("Stable")
+        );
+    }
     assert_eq!(
         installed_channel_label(TargetId::Chrome, "158.0.1", "Google Chrome Beta"),
         Some("Beta")
@@ -376,6 +386,287 @@ fn installed_channel_is_inferred_before_replacing_program_files() {
         installed_channel_label(TargetId::Iceweasel, "159.0", "Iceweasel"),
         Some("Release")
     );
+}
+
+#[test]
+fn unmarked_chromium_product_names_do_not_prove_a_stable_channel() {
+    for (target, product) in [
+        (TargetId::Chrome, "Google Chrome"),
+        (TargetId::Edge, "Microsoft Edge"),
+        (TargetId::Brave, "Brave"),
+    ] {
+        assert_eq!(
+            installed_channel_label(target, "159.0.8154.6", product),
+            None,
+            "{product} without an explicit channel must not be classified as Stable"
+        );
+    }
+}
+
+#[test]
+fn chrome_with_generic_product_name_preserves_version_confirmations() {
+    for (channel, upstream_version, expected_chip) in [
+        (ReleaseChannel::Beta, None, "与上游版本相同"),
+        (ReleaseChannel::Stable, Some("0.0.1"), "本地版本较新"),
+    ] {
+        let directory = tempdir().unwrap();
+        let root = directory.path().join("Chrome");
+        let program = root.join("App");
+        fs::create_dir_all(&program).unwrap();
+        fs::copy(std::env::current_exe().unwrap(), program.join("chrome.exe")).unwrap();
+        let version =
+            crate::services::version_probe::probe_local_version(TargetId::Chrome, &program)
+                .unwrap()
+                .version;
+        let mut settings = Settings {
+            selected_browser: TargetId::Chrome,
+            auto_check_metadata: false,
+            ..Settings::default()
+        };
+        let config = settings.targets.get_mut(&TargetId::Chrome).unwrap();
+        config.browser_root = Some(root);
+        config.browser_directory = Some(program);
+        config.channel = channel;
+        let state = AppState::new(
+            settings,
+            ConfigStore::new(directory.path().join("BrowserHarbor.json")),
+        );
+        let mut harness = harness_for(BrowserHarborApp::new(state));
+        // Both Stable and Beta packages may expose the same generic ProductName.
+        harness.state_mut().program_identity = ProgramIdentity::Match {
+            product_name: "Google Chrome".to_owned(),
+        };
+        harness.state_mut().latest_versions.insert(
+            (TargetId::Chrome, channel, CpuBuild::X64),
+            UpstreamCheck {
+                version: upstream_version.unwrap_or(&version).to_owned(),
+                channel,
+                cpu_build: CpuBuild::X64,
+                source: MetadataSource::Official,
+                checked_at: 0,
+            },
+        );
+        harness.run();
+        assert!(harness.query_by_label("渠道不同").is_none());
+        harness.get_by_label(expected_chip);
+
+        harness.state_mut().request_install_action();
+        assert!(harness.state().channel_mismatch_prompt.is_none());
+        assert!(harness.state().same_version_prompt.is_some());
+        assert!(harness.state().operation.is_none());
+    }
+}
+
+#[test]
+fn verified_beta_receipt_survives_reload_and_selection_changes() {
+    let directory = tempdir().unwrap();
+    let root = directory.path().join("Chrome");
+    let program = root.join("App");
+    fs::create_dir_all(&program).unwrap();
+    fs::copy(std::env::current_exe().unwrap(), program.join("chrome.exe")).unwrap();
+    let version = crate::services::version_probe::probe_local_version(TargetId::Chrome, &program)
+        .unwrap()
+        .version;
+    fs::create_dir(program.join(&version)).unwrap();
+    fs::write(program.join(&version).join("chrome.dll"), b"beta core").unwrap();
+    let identity = crate::services::installed_channel::capture(
+        TargetId::Chrome,
+        &program,
+        &version,
+        ReleaseChannel::Beta,
+    )
+    .unwrap()
+    .unwrap();
+    let mut settings = Settings {
+        selected_browser: TargetId::Chrome,
+        auto_check_metadata: false,
+        ..Settings::default()
+    };
+    let config = settings.targets.get_mut(&TargetId::Chrome).unwrap();
+    config.browser_root = Some(root);
+    config.browser_directory = Some(program.clone());
+    config.channel = ReleaseChannel::Stable;
+    config.auto_create_shortcut = false;
+    let path = directory.path().join("BrowserHarbor.json");
+    let mut state = AppState::new(settings, ConfigStore::new(path.clone()));
+    state
+        .record_install_success(
+            TargetId::Chrome,
+            &crate::services::install::InstallReceipt {
+                version: version.clone(),
+                catsxp_build: None,
+                installed_channel: Some(identity),
+                browser_directory: program.clone(),
+                data_directory: directory.path().join("Profiles"),
+                profile_directory: directory.path().join("Profiles"),
+                cache_directory: None,
+                chrome_plus_version: None,
+                previous_chrome_plus_version: None,
+            },
+        )
+        .unwrap();
+    let settings = ConfigStore::new(path.clone()).load().unwrap();
+    assert_eq!(
+        settings.targets[&TargetId::Chrome]
+            .installed_channel
+            .as_ref()
+            .unwrap()
+            .channel,
+        ReleaseChannel::Beta
+    );
+    let mut harness = harness_for(BrowserHarborApp::new(AppState::new(
+        settings,
+        ConfigStore::new(path),
+    )));
+    harness.state_mut().program_identity = ProgramIdentity::Match {
+        product_name: "Google Chrome".into(),
+    };
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+    while harness
+        .state()
+        .current_channel_label(TargetId::Chrome, &version, "Google Chrome")
+        != Some("Beta")
+    {
+        harness.run();
+        assert!(
+            std::time::Instant::now() < deadline,
+            "persisted Beta record was not verified after restart"
+        );
+        std::thread::yield_now();
+    }
+    harness.state_mut().latest_versions.insert(
+        (TargetId::Chrome, ReleaseChannel::Stable, CpuBuild::X64),
+        UpstreamCheck {
+            version: "0.0.1".into(),
+            channel: ReleaseChannel::Stable,
+            cpu_build: CpuBuild::X64,
+            source: MetadataSource::Official,
+            checked_at: 0,
+        },
+    );
+    harness.run();
+    harness.get_by_label("渠道不同");
+    harness.get_by_label("使用 Stable 渠道安装").click();
+    harness.run();
+    harness.get_by_label_contains("当前安装：Chrome Beta");
+    harness.get_by_label("仍然替换").click();
+    harness.run();
+    assert!(
+        harness.state().same_version_prompt.is_some(),
+        "channel confirmation must not bypass downgrade confirmation"
+    );
+    assert!(
+        harness
+            .state()
+            .same_version_prompt
+            .as_ref()
+            .unwrap()
+            .channel_change_confirmed,
+        "downgrade prompt must retain prior channel consent"
+    );
+    assert!(harness.state().operation.is_none());
+    harness.get_by_label("保留当前版本").click();
+    harness.run();
+    harness.state_mut().state.update_draft(|settings| {
+        settings.targets.get_mut(&TargetId::Chrome).unwrap().channel = ReleaseChannel::Beta
+    });
+    harness.state_mut().latest_versions.insert(
+        (TargetId::Chrome, ReleaseChannel::Beta, CpuBuild::X64),
+        UpstreamCheck {
+            version: version.clone(),
+            channel: ReleaseChannel::Beta,
+            cpu_build: CpuBuild::X64,
+            source: MetadataSource::Official,
+            checked_at: 0,
+        },
+    );
+    harness.run();
+    harness.get_by_label("与上游版本相同");
+    assert!(harness.query_by_label("渠道不同").is_none());
+    fs::write(program.join(&version).join("chrome.dll"), b"different core").unwrap();
+    assert_eq!(
+        harness
+            .state()
+            .current_channel_label(TargetId::Chrome, &version, "Google Chrome"),
+        None
+    );
+}
+
+#[test]
+fn pending_channel_observation_is_retried_after_a_path_change() {
+    let directory = tempdir().unwrap();
+    let old_program = directory.path().join("old/App");
+    let new_program = directory.path().join("new/App");
+    fs::create_dir_all(&old_program).unwrap();
+    fs::copy(
+        std::env::current_exe().unwrap(),
+        old_program.join("chrome.exe"),
+    )
+    .unwrap();
+    let version =
+        crate::services::version_probe::probe_local_version(TargetId::Chrome, &old_program)
+            .unwrap()
+            .version;
+    fs::create_dir(old_program.join(&version)).unwrap();
+    fs::write(old_program.join(&version).join("chrome.dll"), b"beta core").unwrap();
+    let identity = crate::services::installed_channel::capture(
+        TargetId::Chrome,
+        &old_program,
+        &version,
+        ReleaseChannel::Beta,
+    )
+    .unwrap()
+    .unwrap();
+    let observation = crate::services::installed_channel::observe(
+        TargetId::Chrome,
+        &old_program,
+        Some(&identity),
+        &std::sync::atomic::AtomicBool::new(false),
+    )
+    .unwrap()
+    .unwrap();
+    fs::create_dir_all(&new_program).unwrap();
+    fs::copy(
+        old_program.join("chrome.exe"),
+        new_program.join("chrome.exe"),
+    )
+    .unwrap();
+    fs::create_dir(new_program.join(&version)).unwrap();
+    fs::write(new_program.join(&version).join("chrome.dll"), b"beta core").unwrap();
+    let mut harness = harness();
+    let (sender, receiver) = std::sync::mpsc::channel();
+    harness.state_mut().channel_receiver = Some((
+        TargetId::Chrome,
+        old_program.clone(),
+        identity.clone(),
+        receiver,
+    ));
+    harness.state_mut().state.update_draft(|settings| {
+        let config = settings.targets.get_mut(&TargetId::Chrome).unwrap();
+        config.installed_channel = Some(identity);
+        config.browser_directory = Some(new_program);
+    });
+    sender.send(Some(observation)).unwrap();
+    harness
+        .state_mut()
+        .start_channel_observation(TargetId::Chrome);
+    harness.state_mut().poll_channel_observation();
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+    loop {
+        harness.state_mut().poll_channel_observation();
+        if harness
+            .state()
+            .channel_observations
+            .contains_key(&TargetId::Chrome)
+        {
+            break;
+        }
+        assert!(
+            std::time::Instant::now() < deadline,
+            "new-path observation lost after stale result"
+        );
+        std::thread::yield_now();
+    }
 }
 
 #[test]
@@ -2778,6 +3069,7 @@ fn catsxp_downgrade_does_not_claim_an_equal_base_version() {
     harness.state_mut().state.select(TargetId::Catsxp);
     harness.state_mut().same_version_prompt = Some(super::SameVersionPrompt {
         current_version: "156.6.12.1".into(),
+        channel_change_confirmed: false,
         upstream: UpstreamCheck::fresh("156.6.11.1.3".into(), ReleaseChannel::Beta, CpuBuild::X64),
     });
     harness.run();

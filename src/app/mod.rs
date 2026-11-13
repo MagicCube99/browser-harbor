@@ -344,6 +344,7 @@ impl AppState {
             })?;
         config.installed_version = Some(receipt.version.clone());
         config.catsxp_build = receipt.catsxp_build.clone();
+        config.installed_channel = receipt.installed_channel.clone();
         config.browser_directory = Some(receipt.browser_directory.clone());
         config.data_directory = Some(receipt.data_directory.clone());
         config.profile_directory = Some(receipt.profile_directory.clone());
@@ -707,6 +708,7 @@ mod tests {
         let receipt = crate::services::install::InstallReceipt {
             version: "1.2.3".to_owned(),
             catsxp_build: None,
+            installed_channel: None,
             browser_directory: PathBuf::from(r"D:\Browsers\Chrome\APP"),
             data_directory: PathBuf::from(r"D:\Browsers\Chrome\Data"),
             profile_directory: PathBuf::from(r"D:\Browsers\Chrome\Data"),

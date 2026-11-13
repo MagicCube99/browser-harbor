@@ -8,6 +8,7 @@ pub mod health;
 pub mod http;
 pub mod install;
 mod install_transaction;
+pub mod installed_channel;
 pub mod trusted_metadata;
 pub mod update_check;
 pub mod version_probe;

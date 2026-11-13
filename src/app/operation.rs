@@ -50,6 +50,9 @@ pub enum OperationPhase {
     CatsxpIdentified {
         observation: Option<crate::services::catsxp::Observation>,
     },
+    ChannelIdentified {
+        observation: Option<crate::services::installed_channel::Observation>,
+    },
     ChannelMismatch {
         current_version: String,
         current_channel: ReleaseChannel,
@@ -73,6 +76,7 @@ pub enum OperationPhase {
         current_version: String,
         upstream: UpstreamCheck,
         release: ReleaseDescriptor,
+        channel_change_confirmed: bool,
     },
     Installed {
         receipt: InstallReceipt,
@@ -238,6 +242,7 @@ pub fn start_operation(request: StartOperationRequest) -> OperationController {
                 current_version,
                 upstream,
                 release,
+                channel_change_confirmed,
             }) => {
                 let _ = sender.send(OperationEvent::new(
                     target,
@@ -245,6 +250,7 @@ pub fn start_operation(request: StartOperationRequest) -> OperationController {
                         current_version,
                         upstream,
                         release,
+                        channel_change_confirmed,
                     },
                 ));
             }
@@ -382,7 +388,28 @@ async fn run_operation(
     }
     let provider = ProviderResolver::new(http.clone());
     let mut current_version = request.current_version.clone();
-    let mut catsxp_channel = None;
+    let mut installed_channel = None;
+    if matches!(target, TargetId::Chrome | TargetId::Edge | TargetId::Brave) {
+        let observation = if let Some(program) = request.target_config.browser_directory.as_deref()
+        {
+            match crate::services::installed_channel::observe(
+                target,
+                program,
+                request.target_config.installed_channel.as_ref(),
+                &cancellation,
+            ) {
+                Ok(value) => value,
+                Err(error) if error.kind() == std::io::ErrorKind::Interrupted => {
+                    return Err(Box::new(crate::services::ServiceError::Cancelled));
+                }
+                Err(_) => None,
+            }
+        } else {
+            None
+        };
+        installed_channel = observation.as_ref().map(|value| value.identity.channel);
+        emit(OperationPhase::ChannelIdentified { observation });
+    }
     if target == TargetId::Catsxp {
         let observation = if let Some(program) = request.target_config.browser_directory.as_deref()
         {
@@ -413,7 +440,7 @@ async fn run_operation(
                     })
                     .map(|probe| probe.version)
             });
-        catsxp_channel = observation.as_ref().map(|value| value.build.channel);
+        installed_channel = observation.as_ref().map(|value| value.build.channel);
         emit(OperationPhase::CatsxpIdentified { observation });
     }
     let mut metadata_source = MetadataSource::Official;
@@ -548,9 +575,8 @@ async fn run_operation(
         });
     }
     if !request.channel_change_confirmed
-        && !request.replace_same_version
         && let Some(current_channel) =
-            catsxp_channel.filter(|channel| *channel != descriptor.channel)
+            installed_channel.filter(|channel| *channel != descriptor.channel)
     {
         return Ok(OperationResult::ChannelMismatch {
             current_channel,
@@ -564,7 +590,7 @@ async fn run_operation(
             &descriptor.version,
         ) || (!request.replace_same_version
             && target == TargetId::Catsxp
-            && catsxp_channel.is_none()
+            && installed_channel.is_none()
             && crate::services::catsxp::base_version(&descriptor.version, descriptor.channel)
                 .as_deref()
                 == Some(current_version)))
@@ -573,6 +599,7 @@ async fn run_operation(
             current_version: current_version.to_owned(),
             upstream: check,
             release: descriptor,
+            channel_change_confirmed: request.channel_change_confirmed,
         });
     }
 
@@ -1057,6 +1084,7 @@ enum OperationResult {
         current_version: String,
         upstream: UpstreamCheck,
         release: ReleaseDescriptor,
+        channel_change_confirmed: bool,
     },
     Installed(InstallReceipt),
     ChromePlusChecked {
@@ -1892,6 +1920,7 @@ mod tests {
                     checked_at: 0,
                 },
                 release: descriptor(),
+                channel_change_confirmed: false,
             }
             .is_terminal()
         );
@@ -2057,6 +2086,87 @@ mod tests {
             result.is_err(),
             "an older signed release must not hide the newly discovered official release"
         );
+    }
+
+    #[tokio::test]
+    async fn verified_beta_record_blocks_stable_before_download_and_requires_downgrade_confirmation()
+     {
+        let directory = tempfile::tempdir().unwrap();
+        let target = crate::domain::target::TargetId::Chrome;
+        let root = directory.path().join("Chrome");
+        let program = root.join("App");
+        std::fs::create_dir_all(&program).unwrap();
+        std::fs::copy(std::env::current_exe().unwrap(), program.join("chrome.exe")).unwrap();
+        let version = crate::services::version_probe::probe_local_version(target, &program)
+            .unwrap()
+            .version;
+        std::fs::create_dir(program.join(&version)).unwrap();
+        std::fs::write(program.join(&version).join("chrome.dll"), b"beta core").unwrap();
+        let mut config = crate::domain::settings::TargetConfig::for_target(target);
+        config.browser_root = Some(root);
+        config.derive_paths_from_root(target);
+        config.installed_channel = crate::services::installed_channel::capture(
+            target,
+            &program,
+            &version,
+            ReleaseChannel::Beta,
+        )
+        .unwrap();
+        // A nonexistent local package proves confirmation happens before artifact access.
+        config.local_package = Some(directory.path().join("must-not-open.zip"));
+        let mut release = descriptor();
+        release.target = target;
+        release.channel = ReleaseChannel::Stable;
+        release.version = "0.0.1".into();
+        for (confirmed, replace_same_version) in [(false, false), (false, true), (true, false)] {
+            let (sender, receiver) = std::sync::mpsc::channel();
+            let result = super::run_operation(
+                super::StartOperationRequest {
+                    target,
+                    channel_change_confirmed: confirmed,
+                    mode: super::OperationMode::Install,
+                    target_config: config.clone(),
+                    network: Default::default(),
+                    cache_dir: directory.path().join("cache"),
+                    current_version: Some(version.clone()),
+                    chrome_plus_expected_version: None,
+                    replace_same_version,
+                    allow_local_package: true,
+                    allow_signed_metadata_cache: true,
+                    cached_release: Some(CachedReleaseMetadata {
+                        check: super::UpstreamCheck::fresh(
+                            "0.0.1".into(),
+                            ReleaseChannel::Stable,
+                            CpuBuild::X64,
+                        ),
+                        release: release.clone(),
+                        observed_at: unix_now(),
+                    }),
+                },
+                sender,
+                std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
+            )
+            .await
+            .unwrap();
+            if confirmed {
+                assert!(matches!(result, super::OperationResult::SameVersion { .. }));
+            } else {
+                assert!(matches!(
+                    result,
+                    super::OperationResult::ChannelMismatch {
+                        current_channel: ReleaseChannel::Beta,
+                        ..
+                    }
+                ));
+            }
+            assert!(receiver.try_iter().any(|event| matches!(
+                event.phase,
+                OperationPhase::ChannelIdentified {
+                    observation: Some(_)
+                }
+            )));
+            assert!(!directory.path().join("cache").exists());
+        }
     }
 
     #[tokio::test]

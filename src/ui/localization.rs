@@ -98,6 +98,7 @@ pub fn localize_widget_text(text: impl Into<WidgetText>) -> WidgetText {
 
 fn exact_translation(text: &str) -> Option<&'static str> {
     Some(match text {
+        "已核对安装渠道" => "Installed channel verified",
         "已核对 Catsxp 程序文件" => "Catsxp program files verified",
         "已核对 EXE 与核心 DLL；第五段为 Beta 修订号" => {
             "EXE and core DLL verified; the fifth component identifies the Beta revision"

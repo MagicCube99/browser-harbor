@@ -306,6 +306,13 @@ pub struct BrowserHarborApp {
     chrome_plus_ini_loaded: BTreeSet<TargetId>,
     local_versions: BTreeMap<TargetId, LocalVersionState>,
     catsxp_observation: Option<crate::services::catsxp::Observation>,
+    channel_observations: BTreeMap<TargetId, crate::services::installed_channel::Observation>,
+    channel_receiver: Option<(
+        TargetId,
+        PathBuf,
+        crate::domain::release::InstalledChannelIdentity,
+        std::sync::mpsc::Receiver<Option<crate::services::installed_channel::Observation>>,
+    )>,
     health_dialog: Option<HealthDialog>,
     same_version_prompt: Option<SameVersionPrompt>,
     chrome_plus_update_prompt: Option<ChromePlusUpdatePrompt>,
@@ -338,6 +345,7 @@ enum LocalVersionState {
 struct SameVersionPrompt {
     current_version: String,
     upstream: UpstreamCheck,
+    channel_change_confirmed: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -400,6 +408,8 @@ impl BrowserHarborApp {
             chrome_plus_ini_loaded: BTreeSet::new(),
             local_versions: BTreeMap::new(),
             catsxp_observation: None,
+            channel_observations: BTreeMap::new(),
+            channel_receiver: None,
             health_dialog: None,
             same_version_prompt: None,
             chrome_plus_update_prompt: None,
@@ -524,6 +534,112 @@ impl BrowserHarborApp {
             }
         };
         self.local_versions.insert(target, state);
+        self.start_channel_observation(target);
+    }
+
+    fn start_channel_observation(&mut self, target: TargetId) {
+        let Some(config) = self.state.draft().targets.get(&target) else {
+            return;
+        };
+        let Some(identity) = config.installed_channel.clone() else {
+            return;
+        };
+        let Some(program) = config
+            .browser_directory
+            .as_deref()
+            .and_then(|path| resolve_preview_path(self.state.tool_root(), path))
+        else {
+            return;
+        };
+        if self
+            .channel_observations
+            .get(&target)
+            .is_some_and(|observation| {
+                observation.identity == identity
+                    && observation.is_current(target, &program, &identity.version)
+            })
+        {
+            return;
+        }
+        if self
+            .channel_receiver
+            .as_ref()
+            .is_some_and(|(pending, path, record, _)| {
+                *pending == target && path == &program && record == &identity
+            })
+        {
+            return;
+        }
+        self.channel_observations.remove(&target);
+        let (sender, receiver) = std::sync::mpsc::channel();
+        let pending_program = program.clone();
+        let pending_identity = identity.clone();
+        std::thread::spawn(move || {
+            let result = crate::services::installed_channel::observe(
+                target,
+                &program,
+                Some(&identity),
+                &std::sync::atomic::AtomicBool::new(false),
+            )
+            .ok()
+            .flatten();
+            let _ = sender.send(result);
+        });
+        self.channel_receiver = Some((target, pending_program, pending_identity, receiver));
+    }
+
+    fn poll_channel_observation(&mut self) {
+        let Some((target, pending_program, pending_identity, receiver)) = &self.channel_receiver
+        else {
+            return;
+        };
+        let target = *target;
+        let result = match receiver.try_recv() {
+            Ok(result) => result,
+            Err(std::sync::mpsc::TryRecvError::Empty) => return,
+            Err(std::sync::mpsc::TryRecvError::Disconnected) => None,
+        };
+        let stale = self
+            .state
+            .draft()
+            .targets
+            .get(&target)
+            .is_some_and(|config| {
+                config.installed_channel.as_ref() != Some(pending_identity)
+                    || config
+                        .browser_directory
+                        .as_deref()
+                        .and_then(|path| resolve_preview_path(self.state.tool_root(), path))
+                        .as_ref()
+                        != Some(pending_program)
+            });
+        self.channel_receiver = None;
+        if let Some(observation) = result
+            && self
+                .state
+                .draft()
+                .targets
+                .get(&target)
+                .is_some_and(|config| {
+                    config.installed_channel.as_ref() == Some(&observation.identity)
+                        && config
+                            .browser_directory
+                            .as_deref()
+                            .and_then(|path| resolve_preview_path(self.state.tool_root(), path))
+                            .is_some_and(|program| {
+                                observation.is_current(
+                                    target,
+                                    &program,
+                                    &observation.identity.version,
+                                )
+                            })
+                })
+        {
+            self.channel_observations.insert(target, observation);
+        }
+        if stale {
+            self.start_channel_observation(target);
+        }
     }
 
     fn refresh_program_identity(&mut self, target: TargetId) {
@@ -568,6 +684,16 @@ impl BrowserHarborApp {
                 .as_ref()
                 .filter(|value| value.build.version == version)
                 .map(|value| value.build.channel.display_name());
+        }
+        if let Some(observation) = self.channel_observations.get(&target)
+            && let Some(config) = self.state.draft().targets.get(&target)
+            && let Some(program) = config
+                .browser_directory
+                .as_deref()
+                .and_then(|path| resolve_preview_path(self.state.tool_root(), path))
+            && observation.is_current(target, &program, version)
+        {
+            return Some(observation.identity.channel.display_name());
         }
         installed_channel_label(target, version, product_name)
     }
@@ -855,6 +981,7 @@ impl BrowserHarborApp {
             self.same_version_prompt = Some(SameVersionPrompt {
                 current_version: current.version,
                 upstream,
+                channel_change_confirmed: false,
             });
             return;
         }
@@ -983,6 +1110,7 @@ impl BrowserHarborApp {
             self.same_version_prompt = Some(SameVersionPrompt {
                 current_version: current.clone(),
                 upstream,
+                channel_change_confirmed,
             });
             self.status_message = Some(localized("降级需要确认，旧版可能无法读取现有用户数据"));
             return;
@@ -1076,6 +1204,14 @@ impl BrowserHarborApp {
                 self.operation = None;
             }
             match &event.phase {
+                OperationPhase::ChannelIdentified { observation } => {
+                    if let Some(observation) = observation {
+                        self.channel_observations
+                            .insert(event.target, observation.clone());
+                    } else {
+                        self.channel_observations.remove(&event.target);
+                    }
+                }
                 OperationPhase::CatsxpIdentified { observation } => {
                     self.catsxp_observation = observation.clone();
                     self.refresh_local_version(TargetId::Catsxp);
@@ -1113,12 +1249,14 @@ impl BrowserHarborApp {
                     current_version,
                     upstream,
                     release,
+                    channel_change_confirmed,
                 } => {
                     self.record_checked_release(event.target, upstream.clone(), release.clone());
                     self.status_message = Some("本地版本与上游版本相同，等待确认替换".to_owned());
                     self.same_version_prompt = Some(SameVersionPrompt {
                         current_version: current_version.clone(),
                         upstream: upstream.clone(),
+                        channel_change_confirmed: *channel_change_confirmed,
                     });
                 }
                 OperationPhase::Installed { receipt } => {
@@ -1178,6 +1316,16 @@ impl BrowserHarborApp {
                                 build,
                             )
                             .ok();
+                    }
+                    self.channel_observations.remove(&event.target);
+                    if let Some(identity) = receipt.installed_channel.clone()
+                        && let Ok(Some(observation)) =
+                            crate::services::installed_channel::Observation::from_installed(
+                                &receipt.browser_directory,
+                                identity,
+                            )
+                    {
+                        self.channel_observations.insert(event.target, observation);
                     }
                     self.refresh_local_version(event.target);
                 }
@@ -2273,6 +2421,7 @@ impl eframe::App for BrowserHarborApp {
         self.maybe_check_app_update();
         self.poll_app_update();
         self.poll_operation();
+        self.poll_channel_observation();
         self.handle_window_close(ui.ctx());
         let window_position = frame.winit_window().and_then(|window| {
             let position = window.outer_position().ok()?;
@@ -2283,7 +2432,7 @@ impl eframe::App for BrowserHarborApp {
             })
         });
         self.track_window_position(ui.ctx(), window_position);
-        if self.operation.is_some() {
+        if self.operation.is_some() || self.channel_receiver.is_some() {
             ui.ctx()
                 .request_repaint_after(std::time::Duration::from_millis(100));
         }
@@ -2786,33 +2935,47 @@ fn installed_channel_label(
     let product = product_name.to_ascii_lowercase();
     let version = version.to_ascii_lowercase();
     match target {
-        TargetId::Chrome if product.contains("chrome") => Some(if product.contains("canary") {
-            "Canary"
-        } else if product.contains("dev") {
-            "Dev"
-        } else if product.contains("beta") {
-            "Beta"
-        } else {
-            "Stable"
-        }),
-        TargetId::Edge if product.contains("edge") => Some(if product.contains("canary") {
-            "Canary"
-        } else if product.contains("dev") {
-            "Dev"
-        } else if product.contains("beta") {
-            "Beta"
-        } else {
-            "Stable"
-        }),
-        TargetId::Brave if product.contains("brave") => Some(if product.contains("nightly") {
-            "Nightly"
-        } else if product.contains("dev") {
-            "Dev"
-        } else if product.contains("beta") {
-            "Beta"
-        } else {
-            "Stable"
-        }),
+        // Generic Chromium ProductName resources are shared by multiple channels.
+        // Absence of a channel suffix is not evidence of a Stable installation.
+        TargetId::Chrome if product.contains("chrome") => {
+            if product.contains("canary") {
+                Some("Canary")
+            } else if product.contains("dev") {
+                Some("Dev")
+            } else if product.contains("beta") {
+                Some("Beta")
+            } else if product.contains("stable") {
+                Some("Stable")
+            } else {
+                None
+            }
+        }
+        TargetId::Edge if product.contains("edge") => {
+            if product.contains("canary") {
+                Some("Canary")
+            } else if product.contains("dev") {
+                Some("Dev")
+            } else if product.contains("beta") {
+                Some("Beta")
+            } else if product.contains("stable") {
+                Some("Stable")
+            } else {
+                None
+            }
+        }
+        TargetId::Brave if product.contains("brave") => {
+            if product.contains("nightly") {
+                Some("Nightly")
+            } else if product.contains("dev") {
+                Some("Dev")
+            } else if product.contains("beta") {
+                Some("Beta")
+            } else if product.contains("stable") {
+                Some("Stable")
+            } else {
+                None
+            }
+        }
         TargetId::Firefox => Some(if version.contains("esr") {
             "ESR"
         } else if version.contains('b') {
@@ -2915,6 +3078,7 @@ pub(super) fn resolve_preview_path(
 
 fn operation_status(phase: &OperationPhase) -> String {
     match phase {
+        OperationPhase::ChannelIdentified { .. } => "已核对安装渠道".to_owned(),
         OperationPhase::CatsxpIdentified { .. } => "已核对 Catsxp 程序文件".to_owned(),
         OperationPhase::ChannelMismatch { .. } => {
             "现有安装渠道与当前选择不一致，等待确认".to_owned()
@@ -2975,6 +3139,7 @@ fn operation_cancelable(phase: &OperationPhase) -> bool {
         phase,
         OperationPhase::Preparing
             | OperationPhase::CatsxpIdentified { .. }
+            | OperationPhase::ChannelIdentified { .. }
             | OperationPhase::Resolving
             | OperationPhase::Notice(_)
             | OperationPhase::Downloading { .. }

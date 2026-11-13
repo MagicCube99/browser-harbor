@@ -338,7 +338,13 @@ fn show_same_version_prompt(app: &mut BrowserHarborApp, ctx: &egui::Context) {
     }
     if confirm {
         app.same_version_prompt = None;
-        app.start_operation(OperationMode::Install, true);
+        app.start_operation_checked_with_expected(
+            OperationMode::Install,
+            true,
+            false,
+            None,
+            prompt.channel_change_confirmed,
+        );
     } else if cancel {
         app.same_version_prompt = None;
         app.operation_phase = None;
