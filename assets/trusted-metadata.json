@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": 1794610566,
+  "generatedAt": 1794612527,
   "expiresAt": 253402300799,
   "releases": [
     {
@@ -544,20 +544,20 @@
     },
     {
       "target": "vivaldi",
-      "version": "8.3.4191.26",
+      "version": "8.3.4191.35",
       "channel": "stable",
       "cpuBuild": "x64",
       "provider": "vivaldi",
       "artifact": {
-        "fileName": "Vivaldi.8.3.4191.26.x64.exe",
+        "fileName": "Vivaldi.8.3.4191.35.x64.exe",
         "format": "sevenzip",
-        "size": 160049576,
+        "size": 160153512,
         "integrity": {
           "algorithm": "sha256",
-          "value": "97c6e6b3d8d01351994ec88623ccfdc370317a1c5b89758746d615a60490363e"
+          "value": "d9cd421314ff8fd0f5a8b2a7dbb6818ac1dfe26882426253b26b89f09a66afdc"
         },
         "urls": [
-          "https://downloads.vivaldi.com/stable/Vivaldi.8.3.4191.26.x64.exe"
+          "https://downloads.vivaldi.com/stable/Vivaldi.8.3.4191.35.x64.exe"
         ],
         "signatureUrl": null
       },
