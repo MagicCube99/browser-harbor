@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": 1794526130,
+  "generatedAt": 1794562426,
   "expiresAt": 253402300799,
   "releases": [
     {
@@ -29,27 +29,27 @@
     },
     {
       "target": "brave",
-      "version": "1.101.47",
+      "version": "1.101.48",
       "channel": "beta",
       "cpuBuild": "x64",
       "provider": "git_hub_release",
       "artifact": {
-        "fileName": "brave-v1.101.47-win32-x64.zip",
+        "fileName": "brave-v1.101.48-win32-x64.zip",
         "format": "zip",
-        "size": 261536107,
+        "size": 261540194,
         "integrity": {
           "algorithm": "sha256",
-          "value": "3726d39cf57e885e3510236c43e3cd4c29d3f3f2f49e5a05c07854cbc150f648"
+          "value": "c3a099460f9bd7f19b9b7dfd453e6d605f4f75ec795b7ca9fb8d7ed366dc65c7"
         },
         "urls": [
-          "https://github.com/brave/brave-browser/releases/download/v1.101.47/brave-v1.101.47-win32-x64.zip"
+          "https://github.com/brave/brave-browser/releases/download/v1.101.48/brave-v1.101.48-win32-x64.zip"
         ],
         "signatureUrl": null
       },
       "placement": "native_package",
       "innerArchive": null,
-      "source": "https://github.com/brave/brave-browser/releases/tag/v1.101.47",
-      "publishedAt": "2026-11-12T05:08:45Z"
+      "source": "https://github.com/brave/brave-browser/releases/tag/v1.101.48",
+      "publishedAt": "2026-11-13T05:11:18Z"
     },
     {
       "target": "catsxp",
@@ -232,51 +232,51 @@
     },
     {
       "target": "floorp",
-      "version": "12.21.1",
+      "version": "12.21.2",
       "channel": "stable",
       "cpuBuild": "x64",
       "provider": "git_hub_release",
       "artifact": {
         "fileName": "floorp-windows-x86_64.portable.7z",
         "format": "sevenzip",
-        "size": 123153688,
+        "size": 124295381,
         "integrity": {
           "algorithm": "sha256",
-          "value": "886f81aebb631be15e16ae355c55b5f3730dcd900d490aa1602a373c6cbfa013"
+          "value": "89940221d3055f773b81444c83f0b9fa491056c9d5a14165cc2b614854d5b47b"
         },
         "urls": [
-          "https://github.com/Floorp-Projects/Floorp-Portable-v2/releases/download/v12.21.1/floorp-windows-x86_64.portable.7z"
+          "https://github.com/Floorp-Projects/Floorp-Portable-v2/releases/download/v12.21.2/floorp-windows-x86_64.portable.7z"
         ],
         "signatureUrl": null
       },
       "placement": "native_package",
       "innerArchive": null,
-      "source": "https://github.com/Floorp-Projects/Floorp-Portable-v2/releases/tag/v12.21.1",
-      "publishedAt": "2026-11-04T07:04:14Z"
+      "source": "https://github.com/Floorp-Projects/Floorp-Portable-v2/releases/tag/v12.21.2",
+      "publishedAt": "2026-11-13T04:20:12Z"
     },
     {
       "target": "helium",
-      "version": "0.21.2.1",
+      "version": "0.21.3.1",
       "channel": "stable",
       "cpuBuild": "x64",
       "provider": "git_hub_release",
       "artifact": {
-        "fileName": "helium_0.21.2.1_x64-windows.zip",
+        "fileName": "helium_0.21.3.1_x64-windows.zip",
         "format": "zip",
-        "size": 199496924,
+        "size": 198830535,
         "integrity": {
           "algorithm": "sha256",
-          "value": "1bcfe9f895bd43db4dfa1b121ca3dd6ce1a2561a89483e635aa6b1a4df96779c"
+          "value": "fc39b124116dcfbb446ff37f5bc948e73c73ddb442c7f6df731f298c514cf79e"
         },
         "urls": [
-          "https://github.com/imputnet/helium-windows/releases/download/0.21.2.1/helium_0.21.2.1_x64-windows.zip"
+          "https://github.com/imputnet/helium-windows/releases/download/0.21.3.1/helium_0.21.3.1_x64-windows.zip"
         ],
         "signatureUrl": null
       },
       "placement": "native_package",
       "innerArchive": null,
-      "source": "https://github.com/imputnet/helium-windows/releases/tag/0.21.2.1",
-      "publishedAt": "2026-11-10T08:09:48Z"
+      "source": "https://github.com/imputnet/helium-windows/releases/tag/0.21.3.1",
+      "publishedAt": "2026-11-12T18:48:26Z"
     },
     {
       "target": "iceweasel",
