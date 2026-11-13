@@ -36,6 +36,17 @@ pub struct CatsxpBuildIdentity {
     pub core_sha256: String,
 }
 
+/// Local receipt evidence, not a replacement for artifact verification.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct InstalledChannelIdentity {
+    pub target: TargetId,
+    pub version: String,
+    pub channel: ReleaseChannel,
+    pub executable_sha256: String,
+    pub core_sha256: String,
+}
+
 impl ReleaseChannel {
     pub const fn display_name(self) -> &'static str {
         match self {

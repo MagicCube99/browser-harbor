@@ -69,6 +69,7 @@ pub struct InstallRequest {
 pub struct InstallReceipt {
     pub version: String,
     pub catsxp_build: Option<crate::domain::release::CatsxpBuildIdentity>,
+    pub installed_channel: Option<crate::domain::release::InstalledChannelIdentity>,
     pub browser_directory: PathBuf,
     pub data_directory: PathBuf,
     pub profile_directory: PathBuf,
@@ -398,6 +399,7 @@ impl InstallService {
             ));
         }
         let executable = final_program.join(&executable_name);
+        let mut installed_channel = None;
         if let Err(error) = verify_installed(&executable, &final_program, request.release.target)
             .and_then(|()| {
                 verify_runtime_result(
@@ -405,6 +407,16 @@ impl InstallService {
                     prepared_hash.as_deref(),
                     chrome_plus_version.as_deref(),
                 )
+            })
+            .and_then(|()| {
+                installed_channel = super::installed_channel::capture(
+                    request.release.target,
+                    &final_program,
+                    &request.release.version,
+                    request.release.channel,
+                )
+                .map_err(|source| io_error(&final_program, source))?;
+                Ok(())
             })
         {
             return Err(rollback_error(&mut transaction, error, &backup));
@@ -414,6 +426,7 @@ impl InstallService {
         Ok(InstallReceipt {
             version: request.release.version,
             catsxp_build: None,
+            installed_channel,
             browser_directory: stored_browser_directory(
                 request.release.placement,
                 &commit_root,
@@ -736,6 +749,7 @@ fn install_native_package(
     )?;
     let installed_executable = destination.join(relative_executable);
     let mut catsxp_build = None;
+    let mut installed_channel = None;
     if let Err(error) = verify_installed(
         &installed_executable,
         &final_program,
@@ -757,6 +771,13 @@ fn install_native_package(
             )
             .map_err(|source| io_error(&final_program, source))?;
         }
+        installed_channel = super::installed_channel::capture(
+            request.release.target,
+            &final_program,
+            &request.release.version,
+            request.release.channel,
+        )
+        .map_err(|source| io_error(&final_program, source))?;
         Ok(())
     }) {
         return Err(recover_error(
@@ -770,6 +791,7 @@ fn install_native_package(
     Ok(InstallReceipt {
         version: request.release.version.clone(),
         catsxp_build,
+        installed_channel,
         browser_directory: final_program,
         data_directory: data_directory.to_path_buf(),
         profile_directory: profile_directory.to_path_buf(),
@@ -2388,6 +2410,58 @@ mod tests {
                     target.display_name()
                 );
             }
+        }
+    }
+
+    #[test]
+    fn verified_beta_install_records_the_channel_and_program_hashes() {
+        for placement in [ProgramPlacement::App, ProgramPlacement::NativePackage] {
+            let directory = tempdir().unwrap();
+            let root = directory.path().join("Chrome");
+            let executable = std::env::current_exe().unwrap();
+            let version =
+                crate::infra::windows::version_info::executable_product_version(&executable)
+                    .unwrap();
+            let archive = directory.path().join("chrome.zip");
+            let mut writer = ZipWriter::new(File::create(&archive).unwrap());
+            writer
+                .start_file("chrome.exe", SimpleFileOptions::default())
+                .unwrap();
+            writer.write_all(&fs::read(executable).unwrap()).unwrap();
+            writer
+                .start_file(
+                    format!("{version}/chrome.dll"),
+                    SimpleFileOptions::default(),
+                )
+                .unwrap();
+            writer.write_all(b"beta core fixture").unwrap();
+            writer.finish().unwrap();
+            let mut descriptor = release(&version, &archive);
+            descriptor.target = TargetId::Chrome;
+            descriptor.channel = ReleaseChannel::Beta;
+            descriptor.placement = placement;
+            let mut install = request(descriptor, &archive, &root);
+            install.chrome_plus_runtime = Some(chrome_plus_runtime(
+                &directory.path().join("runtime.7z"),
+                "1.18.3",
+            ));
+            let receipt = InstallService::install(install).unwrap();
+            let identity = receipt
+                .installed_channel
+                .as_ref()
+                .expect("verified install must record Beta identity");
+            assert_eq!(identity.channel, ReleaseChannel::Beta);
+            assert_eq!(identity.version, version);
+            assert!(
+                crate::services::installed_channel::observe(
+                    TargetId::Chrome,
+                    &receipt.browser_directory,
+                    Some(identity),
+                    &std::sync::atomic::AtomicBool::new(false),
+                )
+                .unwrap()
+                .is_some()
+            );
         }
     }
 

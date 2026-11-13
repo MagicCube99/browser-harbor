@@ -57,7 +57,9 @@ Browser Harbor checks the browser version and download integrity before changing
 
 Downgrading also requires confirmation: an older browser may be unable to read user data migrated by a newer version. Back up your data before proceeding.
 
-If the selected channel differs from the channel detected in the existing local executable, Browser Harbor asks before replacing the program directory.
+If the selected channel differs from the verified installed channel, Browser Harbor asks before replacing the program directory. Switching the channel selector does not change which channel is already installed; downgrades still require a separate confirmation.
+
+Chrome, Edge, and Brave channel records are checked against the installed program files. Older installations without a record cannot be reliably identified from a generic product name alone. Reinstall the desired channel once through Browser Harbor v0.9.3 or later to establish its record. External changes to the program files may invalidate that record.
 
 The browser page checks the selected target, channel, and build once per session. A manual check is still available. An installation started within ten minutes can reuse the verified upstream result.
 

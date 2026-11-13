@@ -5,7 +5,7 @@ use std::{collections::BTreeMap, path::PathBuf};
 use serde::{Deserialize, Serialize};
 
 use super::{
-    release::{CatsxpBuildIdentity, CpuBuild, ReleaseChannel},
+    release::{CatsxpBuildIdentity, CpuBuild, InstalledChannelIdentity, ReleaseChannel},
     runtime::ChromePlusConfig,
     target::TargetId,
 };
@@ -117,6 +117,8 @@ pub struct TargetConfig {
     pub installed_version: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub catsxp_build: Option<CatsxpBuildIdentity>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub installed_channel: Option<InstalledChannelIdentity>,
     pub local_package: Option<PathBuf>,
     pub chrome_plus: ChromePlusConfig,
     pub chrome_plus_version: Option<String>,
@@ -228,6 +230,7 @@ impl Default for TargetConfig {
             cpu_build: CpuBuild::X64,
             installed_version: None,
             catsxp_build: None,
+            installed_channel: None,
             local_package: None,
             chrome_plus: ChromePlusConfig::default(),
             chrome_plus_version: None,

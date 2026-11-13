@@ -2,6 +2,12 @@
 
 [简体中文](CHANGELOG.zh-CN.md) · English
 
+## v0.9.3 — 2026-11-13
+
+- Fixed Chrome Beta being incorrectly reported as Stable or showing a channel mismatch after installation; the same correction applies to Edge and Brave.
+- Switching the selected channel no longer changes the recorded installed channel. Channel-switch and downgrade confirmations remain separate.
+- For Chrome, Edge, or Brave installed with an older Browser Harbor version, reinstall the desired channel once using v0.9.3 to establish its channel record.
+
 ## v0.9.2 — 2026-11-08
 
 - When an installation or upgrade is blocked because the browser is still running, the message now lists the detected process names and PIDs (up to three), so you can see exactly what is holding the program files.
