@@ -136,7 +136,7 @@ The refresh control only checks upstream. When a newer version is available it b
 
 Chrome++ release artifacts are cached by SHA-256 under `%TEMP%\browser-harbor\cache`. Updating another target with the same version reuses the verified archive without downloading it again.
 
-Edge uses the matching `setdll` helper to add the `version.dll` import. Brave, Helium, and Ungoogled Chromium remain experimental.
+Edge uses the native launcher `Edge.exe` to lock data to the Profiles directory while keeping Microsoft's original code signature; Brave, Helium, and Ungoogled Chromium remain experimental.
 
 ## Firefox-family runtimes
 

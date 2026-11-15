@@ -18,6 +18,7 @@ pub enum RuntimeKind {
     CatsxpLauncher,
     TurboLauncher,
     VivaldiStandalone,
+    EdgeLauncher,
 }
 
 impl RuntimeKind {
@@ -27,6 +28,10 @@ impl RuntimeKind {
 
     pub const fn uses_libportable(self) -> bool {
         matches!(self, Self::Libportable)
+    }
+
+    pub const fn is_edge_launcher(self) -> bool {
+        matches!(self, Self::EdgeLauncher)
     }
 }
 

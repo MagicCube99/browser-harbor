@@ -241,7 +241,7 @@ pub fn inspect(target: TargetId, config: &TargetConfig) -> HealthReport {
         )),
     }
 
-    inspect_runtime(target, program, config, &mut items);
+    inspect_runtime(target, root, program, config, &mut items);
     inspect_directory(
         HealthAspect::Data,
         config.data_directory.as_deref(),
@@ -424,9 +424,6 @@ pub fn repair_chromeplus_paths(
     let ini_path = program.join("chrome++.ini");
     let backup_path = chromeplus::backup_ini(&ini_path, &root.join("backups"), "path-repair")?;
     chromeplus::update_portable_paths(&ini_path, &data_dir, &cache_dir)?;
-    if target == TargetId::Edge {
-        chromeplus::ensure_edge_compatibility(&ini_path)?;
-    }
     Ok(ChromePlusPathRepair {
         ini_path,
         backup_path,
@@ -437,6 +434,32 @@ pub fn repair_portable_paths(
     target: TargetId,
     config: &TargetConfig,
 ) -> Result<PortablePathRepair, RepairError> {
+    if target == TargetId::Edge {
+        let Some(root) = config.browser_root.as_deref() else {
+            return Err(RepairError::MissingPath);
+        };
+        let Some(configured_program) = config.browser_directory.as_deref() else {
+            return Err(RepairError::MissingPath);
+        };
+        let executable = locate_executable(target, configured_program)
+            .map_err(|_| RepairError::ExecutableNotFound(configured_program.to_path_buf()))?;
+        if is_process_running(&executable)? {
+            return Err(RepairError::BrowserRunning(executable));
+        }
+        let program = executable
+            .parent()
+            .ok_or_else(|| RepairError::ExecutableNotFound(configured_program.to_path_buf()))?;
+
+        crate::runtime::edge::deploy_launcher(&root.join("Edge.exe"))?;
+        crate::runtime::edge::deploy_launcher(&configured_program.join("msedge.exe"))?;
+        crate::runtime::edge::clean_legacy_injections(program)?;
+
+        return Ok(PortablePathRepair {
+            ini_path: root.join("Edge.exe"),
+            backup_path: root.join("Edge.exe"),
+        });
+    }
+
     if !matches!(
         target,
         TargetId::Firefox
@@ -508,6 +531,7 @@ fn chromeplus_runtime_path(program: &Path, target: &Path) -> Result<String, Repa
 
 fn inspect_runtime(
     target: TargetId,
+    root: &Path,
     program: &Path,
     config: &TargetConfig,
     items: &mut Vec<HealthItem>,
@@ -552,23 +576,28 @@ fn inspect_runtime(
         ));
     }
     if target == TargetId::Edge {
-        let executable = program.join("msedge.exe");
-        match crate::runtime::pe_imports_dll(&executable, "version.dll") {
-            Ok(true) => items.push(item(
+        let launcher = root.join("Edge.exe");
+        if launcher.is_file() {
+            items.push(item(
                 HealthAspect::Runtime,
                 HealthState::Healthy,
-                "msedge.exe imports version.dll".to_owned(),
-            )),
-            Ok(false) => items.push(item(
+                "Edge.exe 启动器已就绪".to_owned(),
+            ));
+        } else {
+            items.push(item(
                 HealthAspect::Runtime,
-                HealthState::Error,
-                "msedge.exe does not import version.dll".to_owned(),
-            )),
-            Err(error) => items.push(item(
-                HealthAspect::Runtime,
-                HealthState::Error,
-                error.to_string(),
-            )),
+                HealthState::Warning,
+                "浏览器根目录缺少 Edge.exe 启动器".to_owned(),
+            ));
+        }
+
+        let legacy_dll = program.join("version.dll");
+        if legacy_dll.is_file() {
+            items.push(item(
+                HealthAspect::PortableConfig,
+                HealthState::Warning,
+                "检测到旧版残留的 version.dll，可能导致 Edge 网页崩溃，建议修复清理".to_owned(),
+            ));
         }
     }
     match target.spec().runtime {
@@ -1305,7 +1334,7 @@ mod tests {
     }
 
     #[test]
-    fn edge_inspect_warns_when_missing_renderer_code_integrity_and_repair_adds_it() {
+    fn edge_inspect_checks_launcher_and_repair_deploys_it_and_cleans_legacy_dll() {
         let directory = tempdir().unwrap();
         let root = directory.path().join("Edge");
         let app = root.join(r"App\Microsoft\Edge\Application");
@@ -1322,40 +1351,39 @@ mod tests {
             version_dir.join("version.dll"),
         )
         .unwrap();
-        fs::write(
-            version_dir.join("chrome++.ini"),
-            "[general]\r\ndata_dir=%app%\\..\\..\\..\\..\\Profiles\r\ncache_dir=none\r\ncommand_line=\r\n",
-        )
-        .unwrap();
 
         let mut config = TargetConfig::for_target(TargetId::Edge);
         config.browser_root = Some(root.clone());
         config.browser_directory = Some(app);
+        config.data_directory = Some(root.join("Profiles"));
         config.profile_directory = Some(root.join("Profiles"));
 
         let report = inspect(TargetId::Edge, &config);
-        let warning_item = report
+        assert_eq!(report.state, HealthState::Warning);
+        let launcher_warning = report
+            .items
+            .iter()
+            .find(|item| {
+                item.aspect == super::HealthAspect::Runtime && item.state == HealthState::Warning
+            })
+            .expect("should warn on missing Edge.exe launcher");
+        assert!(launcher_warning.detail.contains("Edge.exe"));
+
+        let legacy_warning = report
             .items
             .iter()
             .find(|item| {
                 item.aspect == super::HealthAspect::PortableConfig
                     && item.state == HealthState::Warning
             })
-            .expect("should warn on missing RendererCodeIntegrity");
-        assert!(warning_item.detail.contains("RendererCodeIntegrity"));
+            .expect("should warn on legacy version.dll");
+        assert!(legacy_warning.detail.contains("version.dll"));
 
-        let repair = repair_chromeplus_paths(TargetId::Edge, &config).unwrap();
-        assert!(repair.backup_path.is_file());
-
-        let repaired_ini = fs::read_to_string(version_dir.join("chrome++.ini")).unwrap();
-        assert!(repaired_ini.contains("command_line=--disable-features=RendererCodeIntegrity"));
+        let _repair = repair_portable_paths(TargetId::Edge, &config).unwrap();
+        assert!(root.join("Edge.exe").is_file());
+        assert!(!version_dir.join("version.dll").is_file());
 
         let report_after = inspect(TargetId::Edge, &config);
-        assert!(
-            report_after
-                .items
-                .iter()
-                .all(|item| !item.detail.contains("RendererCodeIntegrity"))
-        );
+        assert_eq!(report_after.state, HealthState::Healthy);
     }
 }

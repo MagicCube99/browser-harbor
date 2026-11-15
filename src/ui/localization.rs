@@ -421,6 +421,16 @@ fn exact_translation(text: &str) -> Option<&'static str> {
         "修复便携配置" => "Repair portable configuration",
         "取消修复" => "Cancel repair",
         "确认修复" => "Confirm repair",
+        "Edge.exe 启动器已就绪" => "Edge.exe launcher is ready",
+        "浏览器根目录缺少 Edge.exe 启动器" => {
+            "Edge.exe launcher is missing in Browser Root"
+        }
+        "检测到旧版残留的 version.dll，可能导致 Edge 网页崩溃，建议修复清理" => {
+            "Detected obsolete version.dll which causes Edge renderer crashes; repair to clean up"
+        }
+        "将备份 Edge 启动配置 并只修复路径键。" => {
+            "Repair Edge launcher and clean legacy portable injection files."
+        }
         "chrome++.ini 缺少 --disable-features=RendererCodeIntegrity（Edge 网页可能报 STATUS_INVALID_IMAGE_HASH 崩溃）" => {
             "chrome++.ini is missing --disable-features=RendererCodeIntegrity (Edge web renderers may crash with STATUS_INVALID_IMAGE_HASH)"
         }

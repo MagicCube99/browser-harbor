@@ -160,7 +160,7 @@ const TARGET_SPECS: [TargetSpec; 15] = [
         family: BrowserFamily::Chromium,
         support_level: SupportLevel::Standard,
         provider: ProviderKind::EdgeEnterprise,
-        runtime: RuntimeKind::ChromePlusFull,
+        runtime: RuntimeKind::EdgeLauncher,
         default_channel: ReleaseChannel::Stable,
         channels: BETA,
         default_cpu_build: CpuBuild::X64,
@@ -174,8 +174,8 @@ const TARGET_SPECS: [TargetSpec; 15] = [
             cache: r"Profiles\Cache",
         },
         version_source: CHROMIUM_VERSION,
-        executable_candidates: &["msedge.exe"],
-        preserved_program_files: CHROME_PLUS_FILES,
+        executable_candidates: &["Edge.exe", "msedge.exe"],
+        preserved_program_files: &["Edge.exe", "msedge.exe"],
         display_beta: false,
         upstream_url: "https://www.microsoft.com/edge",
     },
@@ -566,12 +566,9 @@ impl TargetId {
 
     pub const fn chrome_plus_mode(self) -> ChromePlusMode {
         match self {
-            Self::Brave
-            | Self::Chrome
-            | Self::Edge
-            | Self::Helium
-            | Self::Thorium
-            | Self::UngoogledChromium => ChromePlusMode::Full,
+            Self::Brave | Self::Chrome | Self::Helium | Self::Thorium | Self::UngoogledChromium => {
+                ChromePlusMode::Full
+            }
             _ => ChromePlusMode::Disabled,
         }
     }

@@ -1,4 +1,5 @@
 pub mod chromeplus;
+pub mod edge;
 mod helper;
 pub mod libportable;
 pub mod native;
