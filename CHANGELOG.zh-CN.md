@@ -2,6 +2,12 @@
 
 [English](CHANGELOG.md) · 简体中文
 
+## v0.9.4 — 2026-11-15
+
+- 修复 Edge 便携版打开常规网页或设置时因 Windows 渲染器代码完整性保护触发 `STATUS_INVALID_IMAGE_HASH`（兼容性问题）崩溃的问题。
+- Edge 目标自动注入并维护 `--disable-features=RendererCodeIntegrity` 启动参数，覆盖全新安装、版本更新与配置保存。
+- “检查配置”增加针对 Edge 缺少该开关的诊断警告，并支持通过“修复 Chrome++ 路径”一键自动补全。
+
 ## v0.9.3 — 2026-11-13
 
 - 修复 Chrome Beta 安装后被误判为 Stable 或反复提示“渠道不同”的问题，同时修正 Edge、Brave 的同类识别逻辑。
