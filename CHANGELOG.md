@@ -2,6 +2,12 @@
 
 [简体中文](CHANGELOG.zh-CN.md) · English
 
+## v0.9.4 — 2026-11-15
+
+- Fixed Edge portable crashing with `STATUS_INVALID_IMAGE_HASH` ("Compatibility issue") when opening web pages or Settings due to Windows Renderer Code Integrity protection.
+- Automatically inject and preserve the `--disable-features=RendererCodeIntegrity` command-line flag for Edge portable across installations, updates, and configuration saves.
+- Added diagnostics in "Inspect configuration" for Edge installations missing the compatibility flag, with one-click automatic repair via "Repair Chrome++ paths".
+
 ## v0.9.3 — 2026-11-13
 
 - Fixed Chrome Beta being incorrectly reported as Stable or showing a channel mismatch after installation; the same correction applies to Edge and Brave.
