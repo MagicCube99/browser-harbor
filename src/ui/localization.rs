@@ -421,6 +421,9 @@ fn exact_translation(text: &str) -> Option<&'static str> {
         "修复便携配置" => "Repair portable configuration",
         "取消修复" => "Cancel repair",
         "确认修复" => "Confirm repair",
+        "chrome++.ini 缺少 --disable-features=RendererCodeIntegrity（Edge 网页可能报 STATUS_INVALID_IMAGE_HASH 崩溃）" => {
+            "chrome++.ini is missing --disable-features=RendererCodeIntegrity (Edge web renderers may crash with STATUS_INVALID_IMAGE_HASH)"
+        }
         "将备份 chrome++.ini 并只修复路径键。" => {
             "Back up chrome++.ini and repair only path keys."
         }

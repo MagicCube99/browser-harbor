@@ -132,6 +132,10 @@ impl TargetConfig {
             cpu_build: spec.default_cpu_build,
             ..Self::default()
         };
+        if target == TargetId::Edge {
+            config.chrome_plus.command_line =
+                super::runtime::EDGE_RENDERER_CODE_INTEGRITY_FLAG.to_owned();
+        }
         config.fill_default_paths(target);
         config
     }
@@ -373,6 +377,12 @@ mod tests {
         let thorium = TargetConfig::for_target(TargetId::Thorium);
         assert_eq!(thorium.browser_root, Some(r".\Thorium".into()));
         assert_eq!(thorium.browser_directory, Some(r".\Thorium\BIN".into()));
+
+        let edge = TargetConfig::for_target(TargetId::Edge);
+        assert_eq!(
+            edge.chrome_plus.command_line,
+            crate::domain::runtime::EDGE_RENDERER_CODE_INTEGRITY_FLAG
+        );
         assert_eq!(thorium.data_directory, Some(r".\Thorium\USER_DATA".into()));
         assert_eq!(
             thorium.profile_directory,
