@@ -122,6 +122,12 @@ pub fn prepare(
         .map(|path| chromeplus_portable_path(request.final_program, path));
     let portable_cache = portable_cache_dir.as_deref().unwrap_or(cache_dir);
 
+    let mut config_for_product = request.config.clone();
+    if request.product == TargetId::Edge {
+        config_for_product.command_line =
+            crate::domain::runtime::ensure_edge_command_line(&config_for_product.command_line);
+    }
+
     match request.mode {
         ChromePlusMode::DataOnly => {
             write_ini(
@@ -137,6 +143,9 @@ pub fn prepare(
                 .as_deref()
                 .ok_or(RuntimeError::MissingComponent)?;
             fs::copy(existing_ini, &target_ini).map_err(|source| io_error(&target_ini, source))?;
+            if request.product == TargetId::Edge {
+                ensure_edge_compatibility(&target_ini)?;
+            }
         }
         ChromePlusMode::Full => {
             if let Some(existing_ini) = existing_ini.as_deref().filter(|path| path.is_file()) {
@@ -151,7 +160,7 @@ pub fn prepare(
             let (template, encoding) = read_ini(&source_ini)?;
             let updated = apply_config(
                 &template,
-                request.config,
+                &config_for_product,
                 Some(&portable_data_dir),
                 Some(portable_cache),
             )?;
@@ -194,10 +203,42 @@ fn inject_edge_import(program_dir: &Path, setdll_root: Option<&Path>) -> Result<
     Ok(())
 }
 
-pub fn update_existing_ini(ini_path: &Path, config: &ChromePlusConfig) -> Result<(), RuntimeError> {
+pub fn update_existing_ini(
+    ini_path: &Path,
+    config: &ChromePlusConfig,
+    product: Option<TargetId>,
+) -> Result<(), RuntimeError> {
+    let mut effective_config = config.clone();
+    if product == Some(TargetId::Edge) {
+        effective_config.command_line =
+            crate::domain::runtime::ensure_edge_command_line(&effective_config.command_line);
+    }
     let (original, encoding) = read_ini(ini_path)?;
-    let updated = apply_config(&original, config, None, None)?;
+    let updated = apply_config(&original, &effective_config, None, None)?;
     write_ini_atomic(ini_path, &updated, encoding)
+}
+
+pub fn ensure_edge_compatibility(ini_path: &Path) -> Result<(), RuntimeError> {
+    let (original, encoding) = read_ini(ini_path)?;
+    let entries = ini_section_entries(&original, "general");
+    let current_cmd = entries
+        .iter()
+        .find(|(k, _)| k.eq_ignore_ascii_case("command_line"))
+        .map(|(_, v)| v.as_str())
+        .unwrap_or_default();
+    let needed = crate::domain::runtime::ensure_edge_command_line(current_cmd);
+    if needed != current_cmd {
+        let updated = update_ini(
+            &original,
+            &[IniUpdate {
+                section: "general",
+                key: "command_line",
+                value: &needed,
+            }],
+        );
+        write_ini_atomic(ini_path, &updated, encoding)?;
+    }
+    Ok(())
 }
 
 pub fn update_portable_paths(
@@ -534,8 +575,9 @@ fn safe_version(version: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::{
-        ChromePlusPrepareRequest, apply_config, backup_ini, data_only_ini, installed_version,
-        merge_config_from_ini, prepare, resolve_latest, restore_default_config,
+        ChromePlusPrepareRequest, apply_config, backup_ini, data_only_ini,
+        ensure_edge_compatibility, installed_version, merge_config_from_ini, prepare,
+        resolve_latest, restore_default_config, update_existing_ini,
     };
     use crate::{
         domain::{
@@ -895,6 +937,57 @@ mod tests {
         let version = installed_version(directory.path()).unwrap();
 
         assert!(!version.is_empty());
+    }
+
+    #[test]
+    fn edge_prepare_and_update_enforces_renderer_code_integrity() {
+        let directory = tempdir().unwrap();
+        let staging = directory.path().join("staging");
+        fs::create_dir_all(&staging).unwrap();
+
+        let edge_ini = staging.join("chrome++.ini");
+        write_ini(
+            &edge_ini,
+            "[general]\r\ndata_dir=default\r\ncommand_line=\r\n",
+            IniEncoding::Utf16Le,
+        )
+        .unwrap();
+
+        ensure_edge_compatibility(&edge_ini).unwrap();
+        let (repaired, _) = read_ini(&edge_ini).unwrap();
+        assert!(repaired.contains("command_line=--disable-features=RendererCodeIntegrity"));
+
+        update_existing_ini(
+            &edge_ini,
+            &ChromePlusConfig {
+                command_line: "--custom-flag".to_owned(),
+                ..ChromePlusConfig::default()
+            },
+            Some(TargetId::Edge),
+        )
+        .unwrap();
+        let (updated, _) = read_ini(&edge_ini).unwrap();
+        assert!(
+            updated.contains("command_line=--custom-flag --disable-features=RendererCodeIntegrity")
+        );
+
+        update_existing_ini(
+            &edge_ini,
+            &ChromePlusConfig {
+                command_line: "--custom-flag".to_owned(),
+                ..ChromePlusConfig::default()
+            },
+            Some(TargetId::Chrome),
+        )
+        .unwrap();
+        let (chrome_updated, _) = read_ini(&edge_ini).unwrap();
+        assert_eq!(
+            chrome_updated
+                .lines()
+                .find(|l| l.starts_with("command_line="))
+                .unwrap(),
+            "command_line=--custom-flag"
+        );
     }
 
     #[tokio::test]

@@ -424,6 +424,9 @@ pub fn repair_chromeplus_paths(
     let ini_path = program.join("chrome++.ini");
     let backup_path = chromeplus::backup_ini(&ini_path, &root.join("backups"), "path-repair")?;
     chromeplus::update_portable_paths(&ini_path, &data_dir, &cache_dir)?;
+    if target == TargetId::Edge {
+        chromeplus::ensure_edge_compatibility(&ini_path)?;
+    }
     Ok(ChromePlusPathRepair {
         ini_path,
         backup_path,
@@ -570,7 +573,7 @@ fn inspect_runtime(
     }
     match target.spec().runtime {
         RuntimeKind::ChromePlusFull | RuntimeKind::ChromePlusDataOnly => {
-            inspect_chrome_plus_config(program, config, items);
+            inspect_chrome_plus_config(target, program, config, items);
         }
         RuntimeKind::Libportable | RuntimeKind::IceweaselNative => {
             inspect_libportable_config(program, config, items);
@@ -582,7 +585,12 @@ fn inspect_runtime(
     }
 }
 
-fn inspect_chrome_plus_config(program: &Path, config: &TargetConfig, items: &mut Vec<HealthItem>) {
+fn inspect_chrome_plus_config(
+    target: TargetId,
+    program: &Path,
+    config: &TargetConfig,
+    items: &mut Vec<HealthItem>,
+) {
     let path = program.join("chrome++.ini");
     let (text, _) = match read_ini(&path) {
         Ok(ini) => ini,
@@ -651,6 +659,17 @@ fn inspect_chrome_plus_config(program: &Path, config: &TargetConfig, items: &mut
             config.cache_directory.as_deref(),
             items,
         );
+    }
+
+    if target == TargetId::Edge {
+        let cmd = ini_value(&entries, "command_line").unwrap_or_default();
+        if !crate::domain::runtime::has_edge_renderer_code_integrity(&cmd) {
+            items.push(item(
+                HealthAspect::PortableConfig,
+                HealthState::Warning,
+                "chrome++.ini 缺少 --disable-features=RendererCodeIntegrity（Edge 网页可能报 STATUS_INVALID_IMAGE_HASH 崩溃）".to_owned(),
+            ));
+        }
     }
 }
 
@@ -1282,6 +1301,61 @@ mod tests {
             program_item.detail.contains("ESET") || program_item.detail.contains("杀毒软件"),
             "detail: {}",
             program_item.detail
+        );
+    }
+
+    #[test]
+    fn edge_inspect_warns_when_missing_renderer_code_integrity_and_repair_adds_it() {
+        let directory = tempdir().unwrap();
+        let root = directory.path().join("Edge");
+        let app = root.join(r"App\Microsoft\Edge\Application");
+        let version_dir = app.join("157.0.4341.60");
+        fs::create_dir_all(&version_dir).unwrap();
+        fs::create_dir_all(root.join("Profiles")).unwrap();
+        fs::copy(
+            std::env::current_exe().unwrap(),
+            version_dir.join("msedge.exe"),
+        )
+        .unwrap();
+        fs::copy(
+            std::env::current_exe().unwrap(),
+            version_dir.join("version.dll"),
+        )
+        .unwrap();
+        fs::write(
+            version_dir.join("chrome++.ini"),
+            "[general]\r\ndata_dir=%app%\\..\\..\\..\\..\\Profiles\r\ncache_dir=none\r\ncommand_line=\r\n",
+        )
+        .unwrap();
+
+        let mut config = TargetConfig::for_target(TargetId::Edge);
+        config.browser_root = Some(root.clone());
+        config.browser_directory = Some(app);
+        config.profile_directory = Some(root.join("Profiles"));
+
+        let report = inspect(TargetId::Edge, &config);
+        let warning_item = report
+            .items
+            .iter()
+            .find(|item| {
+                item.aspect == super::HealthAspect::PortableConfig
+                    && item.state == HealthState::Warning
+            })
+            .expect("should warn on missing RendererCodeIntegrity");
+        assert!(warning_item.detail.contains("RendererCodeIntegrity"));
+
+        let repair = repair_chromeplus_paths(TargetId::Edge, &config).unwrap();
+        assert!(repair.backup_path.is_file());
+
+        let repaired_ini = fs::read_to_string(version_dir.join("chrome++.ini")).unwrap();
+        assert!(repaired_ini.contains("command_line=--disable-features=RendererCodeIntegrity"));
+
+        let report_after = inspect(TargetId::Edge, &config);
+        assert!(
+            report_after
+                .items
+                .iter()
+                .all(|item| !item.detail.contains("RendererCodeIntegrity"))
         );
     }
 }
