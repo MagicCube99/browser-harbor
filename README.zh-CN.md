@@ -7,7 +7,7 @@
 <p align="center">
   <b>便携浏览器，少折腾一点。</b><br>
   一个小型原生 Windows 工具，用于下载、校验、安装、更新和配置
-  15 个 Chromium 系与 Firefox 系浏览器。
+  14 个 Chromium 系与 Firefox 系浏览器。
 </p>
 
 <p align="center">

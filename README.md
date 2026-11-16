@@ -7,7 +7,7 @@
 <p align="center">
   <b>Portable browsers without the ritual sacrifice.</b><br>
   A small native Windows tool for downloading, verifying, installing, updating,
-  and configuring 15 Chromium- and Firefox-family browsers.
+  and configuring 14 Chromium- and Firefox-family browsers.
 </p>
 
 <p align="center">
