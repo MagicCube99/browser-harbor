@@ -2,11 +2,17 @@
 
 [简体中文](CHANGELOG.zh-CN.md) · English
 
-## v0.9.4 — 2026-11-15
+## v0.9.5 — 2026-11-16
 
-- Fixed Edge portable crashing with `STATUS_INVALID_IMAGE_HASH` ("Compatibility issue") when opening web pages or Settings due to Windows Renderer Code Integrity protection.
-- Automatically inject and preserve the `--disable-features=RendererCodeIntegrity` command-line flag for Edge portable across installations, updates, and configuration saves.
-- Added diagnostics in "Inspect configuration" for Edge installations missing the compatibility flag, with one-click automatic repair via "Repair Chrome++ paths".
+- Completely eliminated Edge portable's `STATUS_INVALID_IMAGE_HASH` ("Compatibility issue") crashes by replacing the legacy PE import injection (setdll/version.dll) with a native, zero-resident launcher (`Edge.exe`).
+- The native `Edge.exe` launcher embeds official full-resolution multi-frame Edge icons (up to 256x256 true color) and automatically binds user data to the portable `Profiles` directory.
+- Guaranteed full-scenario data isolation: launching directly, launching via shortcut, or being invoked by external apps (such as when configured as a default browser) always stays within `Profiles` without leaking data to the system C: drive.
+- Edge's core browser executable retains its 100% untouched Microsoft Authenticode digital signature, ensuring full compatibility with Windows Code Integrity Guard.
+- "Inspect configuration" adds launcher status checks and automatic cleanup of legacy injection DLLs via "Repair portable configuration".
+
+## v0.9.4 — 2026-11-15 (withdrawn)
+
+- Attempted to pass `--disable-features=RendererCodeIntegrity` to Edge; withdrawn because Microsoft Edge version 119+ completely ignores this command-line flag and policy, leaving the PE injection crash unresolved. Superseded by v0.9.5.
 
 ## v0.9.3 — 2026-11-13
 
