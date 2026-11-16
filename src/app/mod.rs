@@ -280,11 +280,9 @@ impl AppState {
             let backup =
                 crate::runtime::chromeplus::backup_ini(ini, &root.join("backups"), "pending-save")
                     .map_err(|error| ConfigError::ChromePlusSync(error.to_string()))?;
-            if let Err(error) = crate::runtime::chromeplus::update_existing_ini(
-                ini,
-                &config.chrome_plus,
-                Some(target),
-            ) {
+            if let Err(error) =
+                crate::runtime::chromeplus::update_existing_ini(ini, &config.chrome_plus)
+            {
                 return Err(ConfigError::ChromePlusSync(format!(
                     "{error}; original backup: {}",
                     backup.display()
@@ -459,10 +457,6 @@ impl AppState {
 
 fn normalize_settings_paths(settings: &mut Settings, tool_root: &Path) -> Result<(), ConfigError> {
     for (target, config) in &mut settings.targets {
-        if *target == TargetId::Edge {
-            config.chrome_plus.command_line =
-                crate::domain::runtime::ensure_edge_command_line(&config.chrome_plus.command_line);
-        }
         if !settings.show_local_package {
             config.local_package = None;
         }

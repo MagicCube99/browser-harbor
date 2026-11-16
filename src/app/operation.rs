@@ -1176,32 +1176,7 @@ async fn download_chrome_plus_runtime(
     };
     let path =
         download_artifact(downloader, &descriptor, &request.network, "Chrome++", emit).await?;
-    let setdll_archive = if request.target == TargetId::Edge {
-        let descriptor = ReleaseDescriptor {
-            target: request.target,
-            version: release.version.clone(),
-            channel: ReleaseChannel::Stable,
-            cpu_build: request.target_config.cpu_build,
-            provider: crate::domain::release::ProviderKind::GitHubRelease,
-            artifact: release.setdll_artifact.clone(),
-            placement: request.target.spec().placement,
-            inner_archive: None,
-            source: "Bush2021/chrome_plus setdll".to_owned(),
-            published_at: None,
-        };
-        Some(
-            download_artifact(
-                downloader,
-                &descriptor,
-                &request.network,
-                "Chrome++ setdll",
-                emit,
-            )
-            .await?,
-        )
-    } else {
-        None
-    };
+    let setdll_archive = None;
     Ok(RuntimeArchive {
         archive_path: path,
         version: release.version,

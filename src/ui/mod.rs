@@ -3049,6 +3049,17 @@ fn local_browser_executable(
     config: &crate::domain::settings::TargetConfig,
     tool_root: &Path,
 ) -> Option<PathBuf> {
+    if target == TargetId::Edge
+        && let Some(root) = config
+            .browser_root
+            .as_deref()
+            .and_then(|path| resolve_preview_path(tool_root, path))
+    {
+        let root_edge = root.join("Edge.exe");
+        if root_edge.is_file() {
+            return Some(root_edge);
+        }
+    }
     let program = config
         .browser_directory
         .as_deref()

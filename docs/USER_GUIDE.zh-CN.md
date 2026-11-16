@@ -128,7 +128,7 @@ Profile 中，不使用注册表。
 
 Chrome++ 制品按 SHA-256 缓存在 `%TEMP%\browser-harbor\cache`。更新另一个目标且版本相同时，会复用已验证的制品，不重复联网下载。
 
-Edge 会使用同版本 `setdll` 添加 `version.dll` 导入。Brave、Helium 和 Ungoogled Chromium 仍为实验性兼容。
+Edge 使用原生轻量启动器 `Edge.exe` 自动锁定 Profiles 目录并透明透传启动参数，核心程序保持微软官方原版签名；Brave、Helium 和 Ungoogled Chromium 仍为实验性兼容。
 
 ## Firefox 系运行时
 

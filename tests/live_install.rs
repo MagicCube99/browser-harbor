@@ -594,11 +594,10 @@ async fn installs_edge_from_official_setup_with_chrome_plus() {
     );
     let executable = locate_executable(TargetId::Edge, &receipt.browser_directory).unwrap();
     assert!(executable.is_file());
-    let program = executable.parent().unwrap();
+    let _program = executable.parent().unwrap();
     assert_eq!(receipt.data_directory, root.path().join("Edge/Profiles"));
-    assert!(program.join("version.dll").is_file());
-    let (ini, _) = read_ini(&program.join("chrome++.ini")).unwrap();
-    assert!(ini.contains(r"data_dir=%app%\..\..\..\..\..\Profiles"));
+    assert!(root.path().join("Edge/Edge.exe").is_file());
+    assert!(receipt.browser_directory.join("msedge.exe").is_file());
 }
 
 #[tokio::test]

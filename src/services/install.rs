@@ -328,6 +328,8 @@ impl InstallService {
         {
             let staged = work.path.join("edge-tree").join(&request.release.version);
             copy_tree(&staging_program, &staged)?;
+            crate::runtime::edge::deploy_launcher(&work.path.join("edge-tree").join("msedge.exe"))?;
+            crate::runtime::edge::clean_legacy_injections(&staged)?;
             staged
         } else {
             staging_program
@@ -397,6 +399,9 @@ impl InstallService {
                 io_error(&commit_root, source),
                 &backup,
             ));
+        }
+        if request.release.target == TargetId::Edge {
+            crate::runtime::edge::deploy_launcher(&browser_root.join("Edge.exe"))?;
         }
         let executable = final_program.join(&executable_name);
         let mut installed_channel = None;
@@ -492,37 +497,9 @@ impl ChromePlusUpdateService {
             crate::domain::release::ArchiveFormat::SevenZip,
             &runtime_root,
         )?;
-        let setdll_runtime_root = if target == TargetId::Edge {
-            let archive = request
-                .runtime
-                .setdll_archive
-                .as_ref()
-                .ok_or(InstallError::RuntimeMissing("Chrome++ setdll"))?;
-            let artifact = request
-                .runtime
-                .setdll_artifact
-                .as_ref()
-                .ok_or(InstallError::ArtifactIntegrityMissing)?;
-            verify_runtime_artifact(archive, artifact)?;
-            let root = work.path.join("chromeplus-setdll");
-            ArchiveService::extract(
-                archive,
-                crate::domain::release::ArchiveFormat::SevenZip,
-                &root,
-            )?;
-            Some(root)
-        } else {
-            None
-        };
-
         let staging_program = work.path.join("staging");
         fs::create_dir_all(&staging_program)
             .map_err(|source| io_error(&staging_program, source))?;
-        if target == TargetId::Edge {
-            let staged_executable = staging_program.join("msedge.exe");
-            fs::copy(&executable, &staged_executable)
-                .map_err(|source| io_error(&staged_executable, source))?;
-        }
         chromeplus::prepare(chromeplus::ChromePlusPrepareRequest {
             runtime_root: &runtime_root,
             staging_program: &staging_program,
@@ -535,7 +512,6 @@ impl ChromePlusUpdateService {
             mode: target.chrome_plus_mode(),
             version: &request.runtime.version,
             product: target,
-            setdll_runtime_root: setdll_runtime_root.as_deref(),
         })?;
         let prepared_hash = prepared_runtime_hash(&staging_program, target)?;
 
@@ -576,16 +552,13 @@ fn commit_chrome_plus_files(
     staging: &Path,
     destination: &Path,
     backup: &Path,
-    target: TargetId,
+    _target: TargetId,
 ) -> Result<(), InstallError> {
     fs::create_dir_all(backup).map_err(|source| io_error(backup, source))?;
-    let mut names = vec![
+    let names = [
         std::ffi::OsString::from("version.dll"),
         std::ffi::OsString::from("chrome++.ini"),
     ];
-    if target == TargetId::Edge {
-        names.insert(0, "msedge.exe".into());
-    }
 
     let mut transaction =
         FileTransaction::new(backup, destination).map_err(|source| io_error(backup, source))?;
@@ -1184,26 +1157,6 @@ fn prepare_runtime(
                 crate::domain::release::ArchiveFormat::SevenZip,
                 &runtime_root,
             )?;
-            let setdll_runtime_root = if request.release.target == TargetId::Edge {
-                let archive = runtime
-                    .setdll_archive
-                    .as_ref()
-                    .ok_or(InstallError::RuntimeMissing("Chrome++ setdll"))?;
-                let artifact = runtime
-                    .setdll_artifact
-                    .as_ref()
-                    .ok_or(InstallError::ArtifactIntegrityMissing)?;
-                verify_runtime_artifact(archive, artifact)?;
-                let root = work.join("chromeplus-setdll");
-                ArchiveService::extract(
-                    archive,
-                    crate::domain::release::ArchiveFormat::SevenZip,
-                    &root,
-                )?;
-                Some(root)
-            } else {
-                None
-            };
             chromeplus::prepare(chromeplus::ChromePlusPrepareRequest {
                 runtime_root: &runtime_root,
                 staging_program,
@@ -1219,9 +1172,12 @@ fn prepare_runtime(
                 },
                 version: &runtime.version,
                 product: request.release.target,
-                setdll_runtime_root: setdll_runtime_root.as_deref(),
             })?;
             Ok(Some(runtime.version.clone()))
+        }
+        crate::domain::runtime::RuntimeKind::EdgeLauncher => {
+            crate::runtime::edge::deploy_launcher(&request.browser_root.join("Edge.exe"))?;
+            Ok(None)
         }
         crate::domain::runtime::RuntimeKind::Libportable => {
             let runtime = request
@@ -1355,13 +1311,10 @@ fn verify_installed(
             if !program.join("version.dll").is_file() || !program.join("chrome++.ini").is_file() {
                 return Err(InstallError::RuntimeMissing("Chrome++"));
             }
-            if target == TargetId::Edge {
-                let executable = program.join("msedge.exe");
-                if !crate::runtime::pe_imports_dll(&executable, "version.dll")
-                    .map_err(|source| io_error(&executable, source))?
-                {
-                    return Err(InstallError::RuntimeMissing("Edge version.dll import"));
-                }
+        }
+        crate::domain::runtime::RuntimeKind::EdgeLauncher => {
+            if !program.join("msedge.exe").is_file() {
+                return Err(InstallError::RuntimeMissing("Edge"));
             }
         }
         crate::domain::runtime::RuntimeKind::Libportable => {
@@ -2202,26 +2155,20 @@ mod tests {
     }
 
     #[test]
-    fn edge_chromeplus_commit_includes_the_staged_patched_executable() {
+    fn chrome_plus_commit_includes_staged_runtime_files() {
         let directory = tempdir().unwrap();
         let staging = directory.path().join("staging");
         let destination = directory.path().join("destination");
         let backup = directory.path().join("backup");
         fs::create_dir_all(&staging).unwrap();
         fs::create_dir_all(&destination).unwrap();
-        fs::write(staging.join("msedge.exe"), b"new-edge").unwrap();
         fs::write(staging.join("version.dll"), b"new-dll").unwrap();
         fs::write(staging.join("chrome++.ini"), b"new-ini").unwrap();
-        fs::write(destination.join("msedge.exe"), b"old-edge").unwrap();
         fs::write(destination.join("version.dll"), b"old-dll").unwrap();
         fs::write(destination.join("chrome++.ini"), b"old-ini").unwrap();
 
-        commit_chrome_plus_files(&staging, &destination, &backup, TargetId::Edge).unwrap();
+        commit_chrome_plus_files(&staging, &destination, &backup, TargetId::Chrome).unwrap();
 
-        assert_eq!(
-            fs::read(destination.join("msedge.exe")).unwrap(),
-            b"new-edge"
-        );
         assert_eq!(
             fs::read(destination.join("version.dll")).unwrap(),
             b"new-dll"
