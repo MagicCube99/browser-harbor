@@ -117,27 +117,6 @@ pub fn locate_executable(
             return Ok(path);
         }
     }
-    if target == TargetId::Edge
-        && let Ok(entries) = std::fs::read_dir(program_directory)
-    {
-        let mut versions = entries
-            .filter_map(Result::ok)
-            .filter_map(|entry| {
-                let path = entry.path();
-                let name = entry.file_name().to_string_lossy().into_owned();
-                (path.is_dir() && is_version_directory_name(&name))
-                    .then(|| (version_directory_key(&name), path))
-            })
-            .collect::<Vec<_>>();
-        versions.sort_by(|left, right| right.0.cmp(&left.0));
-        for (_, directory) in versions {
-            for candidate in target.spec().executable_candidates {
-                if let Some(path) = case_insensitive_child(&directory, candidate) {
-                    return Ok(path);
-                }
-            }
-        }
-    }
     Err(VersionProbeError::ExecutableNotFound(
         program_directory.to_path_buf(),
     ))
@@ -159,20 +138,6 @@ pub(crate) fn case_insensitive_child(directory: &Path, name: &str) -> Option<Pat
                 && entry.path().is_file())
             .then(|| entry.path())
         })
-}
-
-fn is_version_directory_name(name: &str) -> bool {
-    !name.is_empty()
-        && name
-            .chars()
-            .all(|character| character.is_ascii_digit() || character == '.')
-        && name.chars().any(|character| character.is_ascii_digit())
-}
-
-fn version_directory_key(name: &str) -> Vec<u64> {
-    name.split('.')
-        .map(|part| part.parse().unwrap_or_default())
-        .collect()
 }
 
 fn application_ini_version(
@@ -315,25 +280,6 @@ mod tests {
         let error = probe_local_version(TargetId::Chrome, directory.path()).unwrap_err();
 
         assert!(matches!(error, VersionProbeError::ExecutableNotFound(_)));
-    }
-
-    #[test]
-    fn edge_application_parent_uses_the_newest_version_directory() {
-        let windows = std::env::var_os("WINDIR").unwrap_or_else(|| r"C:\Windows".into());
-        let source = Path::new(&windows).join(r"System32\notepad.exe");
-        let directory = tempdir().unwrap();
-        for version in ["155.0.1", "156.0.2"] {
-            let version_directory = directory.path().join(version);
-            fs::create_dir_all(&version_directory).unwrap();
-            fs::copy(&source, version_directory.join("msedge.exe")).unwrap();
-        }
-
-        let probe = probe_local_version(TargetId::Edge, directory.path()).unwrap();
-
-        assert_eq!(
-            probe.executable,
-            directory.path().join("156.0.2").join("msedge.exe")
-        );
     }
 
     #[test]

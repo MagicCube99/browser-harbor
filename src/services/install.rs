@@ -324,16 +324,7 @@ impl InstallService {
         if let Some(cache_directory) = &cache_directory {
             ensure_not_inside(cache_directory, &commit_root)?;
         }
-        let staged_program = if matches!(request.release.placement, ProgramPlacement::EdgeVersioned)
-        {
-            let staged = work.path.join("edge-tree").join(&request.release.version);
-            copy_tree(&staging_program, &staged)?;
-            crate::runtime::edge::deploy_launcher(&work.path.join("edge-tree").join("msedge.exe"))?;
-            crate::runtime::edge::clean_legacy_injections(&staged)?;
-            staged
-        } else {
-            staging_program
-        };
+        let staged_program = staging_program;
 
         let previous_program = existing_program(&commit_root, request.release.target);
         let previous_chrome_plus_version = previous_program
@@ -346,13 +337,11 @@ impl InstallService {
             return Err(InstallError::BrowserRunning(executable));
         }
 
-        if !matches!(request.release.placement, ProgramPlacement::EdgeVersioned) {
-            native::preserve_files(
-                previous_program.as_deref(),
-                &staged_program,
-                request.release.target.spec().preserved_program_files,
-            )?;
-        }
+        native::preserve_files(
+            previous_program.as_deref(),
+            &staged_program,
+            request.release.target.spec().preserved_program_files,
+        )?;
         native::configure_app_launcher(
             &staged_program,
             &final_program,
@@ -399,9 +388,6 @@ impl InstallService {
                 io_error(&commit_root, source),
                 &backup,
             ));
-        }
-        if request.release.target == TargetId::Edge {
-            crate::runtime::edge::deploy_launcher(&browser_root.join("Edge.exe"))?;
         }
         let executable = final_program.join(&executable_name);
         let mut installed_channel = None;
@@ -1175,10 +1161,6 @@ fn prepare_runtime(
             })?;
             Ok(Some(runtime.version.clone()))
         }
-        crate::domain::runtime::RuntimeKind::EdgeLauncher => {
-            crate::runtime::edge::deploy_launcher(&request.browser_root.join("Edge.exe"))?;
-            Ok(None)
-        }
         crate::domain::runtime::RuntimeKind::Libportable => {
             let runtime = request
                 .libportable_runtime
@@ -1234,67 +1216,22 @@ fn placement_paths(
             }
             Ok((target.clone(), target))
         }
-        ProgramPlacement::EdgeVersioned => {
-            let mut application = configured_program.map_or_else(
-                || {
-                    Ok(browser_root.join(
-                        release
-                            .target
-                            .spec()
-                            .layout
-                            .program
-                            .unwrap_or(r"App\Microsoft\Edge\Application"),
-                    ))
-                },
-                |path| absolute_path(browser_root, path.to_path_buf()),
-            )?;
-            if application.join("msedge.exe").is_file()
-                || is_edge_version_directory(&application, &release.version)
-            {
-                application = application
-                    .parent()
-                    .ok_or(InstallError::ProgramOutsideRoot)?
-                    .to_path_buf();
-            }
-            if !is_within(browser_root, &application) {
-                return Err(InstallError::ProgramOutsideRoot);
-            }
-            Ok((application.clone(), application.join(&release.version)))
-        }
         ProgramPlacement::NativePackage => Err(InstallError::ExecutableNotFound),
     }
 }
 
 fn stored_browser_directory(
-    placement: ProgramPlacement,
-    commit_root: &Path,
+    _placement: ProgramPlacement,
+    _commit_root: &Path,
     final_program: &Path,
 ) -> PathBuf {
-    if placement == ProgramPlacement::EdgeVersioned {
-        commit_root.to_path_buf()
-    } else {
-        final_program.to_path_buf()
-    }
+    final_program.to_path_buf()
 }
 
 fn existing_program(root: &Path, target: TargetId) -> Option<PathBuf> {
     super::version_probe::locate_executable(target, root)
         .ok()
         .and_then(|executable| executable.parent().map(Path::to_path_buf))
-}
-
-fn is_edge_version_directory(path: &Path, new_version: &str) -> bool {
-    let Some(name) = path.file_name().and_then(|name| name.to_str()) else {
-        return false;
-    };
-    (name == new_version
-        || name
-            .chars()
-            .all(|character| character.is_ascii_digit() || character == '.'))
-        && path
-            .parent()
-            .and_then(Path::file_name)
-            .is_some_and(|parent| parent.eq_ignore_ascii_case("Application"))
 }
 
 fn verify_installed(
@@ -1310,11 +1247,6 @@ fn verify_installed(
         | crate::domain::runtime::RuntimeKind::ChromePlusDataOnly => {
             if !program.join("version.dll").is_file() || !program.join("chrome++.ini").is_file() {
                 return Err(InstallError::RuntimeMissing("Chrome++"));
-            }
-        }
-        crate::domain::runtime::RuntimeKind::EdgeLauncher => {
-            if !program.join("msedge.exe").is_file() {
-                return Err(InstallError::RuntimeMissing("Edge"));
             }
         }
         crate::domain::runtime::RuntimeKind::Libportable => {
@@ -1575,7 +1507,6 @@ impl WorkDirectory {
     fn staged_root(&self, placement: ProgramPlacement) -> PathBuf {
         match placement {
             ProgramPlacement::App => self.path.join("program"),
-            ProgramPlacement::EdgeVersioned => self.path.join("edge-tree"),
             ProgramPlacement::NativePackage => self.path.join("native-package"),
         }
     }
@@ -1950,7 +1881,7 @@ mod tests {
     use super::{
         ChromePlusUpdateRequest, ChromePlusUpdateService, InstallError, InstallRequest,
         InstallService, RuntimeArchive, commit_chrome_plus_files, commit_native_package,
-        placement_paths, resolve_cache_directory, stored_browser_directory,
+        resolve_cache_directory,
     };
     use crate::domain::{
         release::{
@@ -2073,11 +2004,7 @@ mod tests {
         let root = directory.join("browser");
         let program = root.join("App");
         fs::create_dir_all(&program).unwrap();
-        let executable_name = if target == TargetId::Edge {
-            "msedge.exe"
-        } else {
-            "chrome.exe"
-        };
+        let executable_name = "chrome.exe";
         fs::write(program.join(executable_name), fake_x64_exe()).unwrap();
         fs::write(program.join("browser-marker.bin"), b"keep-browser").unwrap();
         fs::write(program.join("version.dll"), b"old-chromeplus-dll").unwrap();
@@ -2667,36 +2594,5 @@ mod tests {
         let startup = fs::read_to_string(root.join("App/StartupParm.txt")).unwrap();
         assert!(startup.contains("--user-data-dir="), "{startup}");
         assert!(startup.contains(r"\Profiles"), "{startup}");
-    }
-
-    #[test]
-    fn edge_version_tree_is_placed_below_app_and_reuses_the_parent_on_update() {
-        let directory = tempdir().unwrap();
-        let archive = directory.path().join("fixture.zip");
-        fs::write(&archive, b"fixture").unwrap();
-        let root = std::path::Path::new(r"D:\Browsers\Edge");
-        let mut descriptor = release("1.0", &archive);
-        descriptor.target = TargetId::Edge;
-        descriptor.placement = ProgramPlacement::EdgeVersioned;
-        descriptor.version = "156.0.1".to_owned();
-
-        let (base, version) = placement_paths(root, None, &descriptor).unwrap();
-        assert_eq!(base, root.join(r"App\Microsoft\Edge\Application"));
-        assert_eq!(
-            version,
-            root.join(r"App\Microsoft\Edge\Application\156.0.1")
-        );
-        assert_eq!(
-            stored_browser_directory(ProgramPlacement::EdgeVersioned, &base, &version),
-            base
-        );
-
-        let previous_version = root.join(r"App\Microsoft\Edge\Application\155.0.1");
-        let (base, version) = placement_paths(root, Some(&previous_version), &descriptor).unwrap();
-        assert_eq!(base, root.join(r"App\Microsoft\Edge\Application"));
-        assert_eq!(
-            version,
-            root.join(r"App\Microsoft\Edge\Application\156.0.1")
-        );
     }
 }

@@ -7,7 +7,7 @@
 <p align="center">
   <b>Portable browsers without the ritual sacrifice.</b><br>
   A small native Windows tool for downloading, verifying, installing, updating,
-  and configuring 15 Chromium- and Firefox-family browsers.
+  and configuring 14 Chromium- and Firefox-family browsers.
 </p>
 
 <p align="center">
@@ -71,8 +71,8 @@ the current desktop.
   Windows kernel file write locks before directory replacements; safely blocks
   replacements while browser executables or libraries are in use to prevent crashes.
 - **Handles Chromium’s awkward corners.** Check and update Chrome++ independently,
-  reuse one verified download across targets, keep other running browsers out of
-  the way, and patch Edge’s dynamic version directories and `version.dll` import.
+  reuse one verified download across targets, and keep other running browsers out of
+  the way.
 - **Makes every Firefox-family target directly portable.** Firefox, Floorp,
   LibreWolf, and Zen use Libportable; Iceweasel and SkyKakapo keep their native
   runtimes. Redundant Floorp/LibreWolf launchers are removed.
@@ -101,10 +101,10 @@ the current desktop.
 
 | Family | Browsers |
 |---|---|
-| **Chromium** | Brave, Catsxp, Chrome, Edge, Helium, Thorium, Turbo, Ungoogled Chromium, Vivaldi |
+| **Chromium** | Brave, Catsxp, Chrome, Helium, Thorium, Turbo, Ungoogled Chromium, Vivaldi |
 | **Firefox** | Firefox, Floorp, Iceweasel, LibreWolf, SkyKakapo, Zen |
 
-Chrome, Edge, Brave, and Catsxp support Stable and Beta; Firefox
+Chrome, Brave, and Catsxp support Stable and Beta; Firefox
 supports Stable, ESR, and Beta. Iceweasel supports ESR and Release. Thorium
 provides CPU-specific builds for SSE3, SSE4, AVX, AVX2, and AVX512.
 
@@ -134,11 +134,18 @@ running.
   their deeper Chrome++ compatibility remains experimental.
 - **SmartScreen warnings:** The binary is not Authenticode-signed yet. A warning
   is expected.
-- **Edge needs a live lookup:** Its download addresses expire, so installation requires a working connection to Microsoft. If the lookup fails, retry later or check your network settings.
 - **Manual orientation required:** Existing folders do not import themselves.
   Select the target, then use **Check configuration** or **Relocate…**.
 - **Windows x64 only:** Windows 10 22H2 or Windows 11. Older systems are not
   supported.
+
+## ⚠️ Unsupported Browsers: Microsoft Edge
+
+Support for **Microsoft Edge** has been removed (supported browser count is now 14). Rationale:
+
+1. **Kernel-level Code Integrity Guard (CIG) Rejection**: Microsoft Edge 119+ enforces hardcoded Code Integrity Guard (`BLOCK_NON_MICROSOFT_BINARIES_ALWAYS_ON`) on all sandboxed renderer processes. Non-Microsoft-signed portable DLLs are blocked by the Windows kernel, causing web renderers to crash with `0xC0000428 (STATUS_INVALID_IMAGE_HASH)`.
+2. **Bypass Switches Deprecated**: The Chromium `--disable-features=RendererCodeIntegrity` flag and related policies have been deprecated and ignored by Microsoft in modern Edge releases.
+3. **Architectural Parity**: Edge lacks native portable parameter support and frequently alters internal version directory layouts, making wrapper launchers fragile against upstream updates. To preserve a clean and reliable codebase, Edge support has been discontinued.
 
 ## 🙅 What it deliberately does not do
 

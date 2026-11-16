@@ -105,14 +105,6 @@ foreach ($property in $cache.PSObject.Properties) {
     $releases[$key] = $descriptor
 }
 
-# Edge MSI entries are obsolete: the Enterprise MSI is only a bootstrapper.
-# Keep the signed manifest free of a fallback that the portable installer cannot consume.
-@($releases.Keys | Where-Object { $_ -like "edge|*" }) | ForEach-Object {
-    $releases.Remove($_)
-}
-
-Write-Host "Edge Stable is resolved at install time through Microsoft's CDP API because its signed URL is short-lived."
-
 $iceReleases = Get-GitHubJson "https://api.github.com/repos/adonais/iceweasel/releases?per_page=30"
 $iceRelease = $iceReleases | Where-Object {
     -not $_.draft -and -not $_.prerelease -and $_.tag_name -match "esr"

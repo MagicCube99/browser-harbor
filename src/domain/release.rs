@@ -8,7 +8,6 @@ use super::target::TargetId;
 #[serde(rename_all = "snake_case")]
 pub enum ProviderKind {
     ChromeOmaha,
-    EdgeEnterprise,
     Mozilla,
     GitHubRelease,
     LibreWolf,
@@ -147,7 +146,6 @@ pub struct Artifact {
 #[serde(rename_all = "snake_case")]
 pub enum ProgramPlacement {
     App,
-    EdgeVersioned,
     NativePackage,
 }
 

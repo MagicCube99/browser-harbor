@@ -7,7 +7,7 @@
 <p align="center">
   <b>便携浏览器，少折腾一点。</b><br>
   一个小型原生 Windows 工具，用于下载、校验、安装、更新和配置
-  15 个 Chromium 系与 Firefox 系浏览器。
+  14 个 Chromium 系与 Firefox 系浏览器。
 </p>
 
 <p align="center">
@@ -50,7 +50,7 @@
 - **国内镜像优先与离线回退。** 签名校验信息优先从项目维护的 Gitee 国内镜像获取，网络受限时自动使用最近一次已验证签名快照；使用缓存绝不跳过签名、大小或摘要校验。
 - **目录互不打扰。** 程序、数据、Profile、可选缓存和自动创建的快捷方式都有固定位置。
 - **更新替换安全锁定。** 目录替换前执行进程扫描与内核级文件排他写锁探测，浏览器正在运行或文件被系统占用时自动阻止替换，防止目录重命名引发程序崩溃。
-- **处理 Chromium 系常见的兼容问题。** Chrome++ 可独立检查和更新；同一版本只下载一次，并可在多个目标间复用；其他浏览器继续运行不会误阻止当前目标，同时支持 Edge 动态版本目录和 `version.dll` 导入修复。
+- **处理 Chromium 系常见的兼容问题。** Chrome++ 可独立检查和更新；同一版本只下载一次，并可在多个目标间复用；其他浏览器继续运行不会误阻止当前目标。
 - **Firefox 系全部直接便携。** Firefox、Floorp、LibreWolf 和 Zen 使用 Libportable，Iceweasel 与 SkyKakapo 保留各自原生运行时；多余的 Floorp/LibreWolf 启动器会被删除。
 - **重定位先核对。** 选择新的 Browser Root 后再映射路径；已知属于其他浏览器的 `chrome.exe` 会被拒绝，未知自定义构建会先给出警告。
 - **检查只读，诊断排查。** “检查配置”不会修改文件；若检测到主程序缺失，会自动提示排查杀毒软件（如 ESET、Windows Defender）误报隔离；修复路径前需要确认、关闭浏览器并备份 INI。
@@ -66,10 +66,10 @@
 
 | 系列 | 浏览器 |
 |---|---|
-| **Chromium** | Brave、Catsxp、Chrome、Edge、Helium、Thorium、Turbo、Ungoogled Chromium、Vivaldi |
+| **Chromium** | Brave、Catsxp、Chrome、Helium、Thorium、Turbo、Ungoogled Chromium、Vivaldi |
 | **Firefox** | Firefox、Floorp、Iceweasel、LibreWolf、SkyKakapo、Zen |
 
-Chrome、Edge、Brave 和 Catsxp 提供 Stable 与 Beta；
+Chrome、Brave 和 Catsxp 提供 Stable 与 Beta；
 Firefox 提供 Stable、ESR 与 Beta；Iceweasel 提供 ESR 与 Release。
 Thorium 提供面向 SSE3、SSE4、AVX、AVX2 和 AVX512 的 CPU 构建。
 
@@ -93,10 +93,17 @@ Thorium 提供面向 SSE3、SSE4、AVX、AVX2 和 AVX512 的 CPU 构建。
 - **Vivaldi 官方限制：** 原生 Standalone 模式不支持仅靠复制目录把密码和扩展迁移到另一台电脑。建议提前使用 Vivaldi Sync；部分网站和扩展可能仍需重新登录。选中 Vivaldi 时，程序也会显示这一限制。
 - **远程桌面兼容性：** 部分显卡驱动与远程会话组合可能导致程序无法启动，请尝试在本地桌面运行。
 - **三个实验性目标：** Brave、Helium 和 Ungoogled Chromium 可以使用，但完整 Chrome++ 兼容性仍标记为实验性。
-- **Edge 需要联网查询：** 下载地址有时效，安装时必须能访问 Microsoft。查询失败时，请稍后重试或检查网络设置。
 - **可能被 SmartScreen 拦截：** EXE 尚未做 Authenticode 签名，出现提示属于预期情况。
 - **已有目录不会自动导入：** 选择目标后，使用 **检查配置** 或 **重新定位…**。
 - **仅支持 Windows x64：** 系统要求为 Windows 10 22H2 或 Windows 11。
+
+## 关于已终止支持的浏览器（Microsoft Edge）
+
+本项目已移除对 **Microsoft Edge** 浏览器的支持（受支持浏览器总数调整为 14 款）。说明如下：
+
+1. **内核级代码完整性保护（CIG）拦截**：Microsoft Edge 119+ 在沙盒渲染子进程（`--type=renderer`）上强制启用了内核级代码完整性保护（`BLOCK_NON_MICROSOFT_BINARIES_ALWAYS_ON`），非微软签名的第三方便携 DLL 均会被 Windows 内核拦截，导致标签页报 `0xC0000428 (STATUS_INVALID_IMAGE_HASH)` 崩溃。
+2. **官方防护开关失效**：Chromium 的 `--disable-features=RendererCodeIntegrity` 启动开关及相关组策略在现代 Edge 中已被微软官方废弃且忽略。
+3. **架构一致性**：由于 Edge 缺乏官方便携参数支持，且频繁变更版本子目录内部布局，维护外部包装启动器存在持续的脆弱性。为保持项目整体架构的纯粹与稳定，决定彻底停止对 Edge 的支持。
 
 ## 不在功能范围内
 

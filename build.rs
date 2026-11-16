@@ -1,6 +1,5 @@
 fn main() {
     println!("cargo:rerun-if-changed=assets/app-icon.ico");
-    println!("cargo:rerun-if-changed=assets/edge-icon.ico");
     println!("cargo:rerun-if-env-changed=CARGO_PKG_VERSION");
 
     #[cfg(windows)]

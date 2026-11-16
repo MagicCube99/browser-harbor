@@ -2,6 +2,12 @@
 
 [简体中文](CHANGELOG.zh-CN.md) · English
 
+## v0.9.6 — 2026-11-16
+
+- Microsoft Edge support has been discontinued; Browser Harbor now manages 14 browsers. The public README and user guide explain why Edge can no longer be made portable reliably.
+- If your configuration selected Edge, the next launch opens on Google Chrome instead. No browser files, profiles, or user data are deleted or modified by this change.
+- Edge-only launcher, installation and diagnostic handling has been removed, so every remaining browser keeps its own native portable layout without special cases.
+
 ## v0.9.5 — 2026-11-16
 
 - Completely eliminated Edge portable's `STATUS_INVALID_IMAGE_HASH` ("Compatibility issue") crashes by replacing the legacy PE import injection (setdll/version.dll) with a native, zero-resident launcher (`Edge.exe`).

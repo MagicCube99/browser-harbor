@@ -16,14 +16,14 @@ fn legacy_config_compacts_then_persists_a_target_switch() {
     let path = directory.path().join("BrowserHarbor.json");
     let mut settings = Settings {
         schema_version: 5,
-        selected_browser: TargetId::Edge,
+        selected_browser: TargetId::Chrome,
         ..Settings::default()
     };
     let mut value = serde_json::to_value(&settings).unwrap();
     value["targets"]
         .as_object_mut()
         .unwrap()
-        .retain(|target, _| target == "edge");
+        .retain(|target, _| target == "chrome");
     fs::write(&path, serde_json::to_vec_pretty(&value).unwrap()).unwrap();
 
     let store = ConfigStore::new(path.clone());

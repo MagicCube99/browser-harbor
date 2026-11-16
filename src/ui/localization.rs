@@ -193,9 +193,6 @@ fn exact_translation(text: &str) -> Option<&'static str> {
         "下载并升级" => "Download and upgrade",
         "检查并安装/升级" => "Check and install/upgrade",
         "下载上游版本" => "Download upstream",
-        "Edge 下载信息需从 Microsoft 实时获取，不能使用旧 MSI 签名记录；请检查网络后重试" => {
-            "Edge download information must be fetched live from Microsoft. An old MSI manifest entry cannot be used; check the network and try again."
-        }
         "重新下载并替换" => "Download again and replace",
         "选择当前版本包" => "Choose current release package",
         "更换当前版本包" => "Change current release package",
@@ -421,19 +418,6 @@ fn exact_translation(text: &str) -> Option<&'static str> {
         "修复便携配置" => "Repair portable configuration",
         "取消修复" => "Cancel repair",
         "确认修复" => "Confirm repair",
-        "Edge.exe 启动器已就绪" => "Edge.exe launcher is ready",
-        "浏览器根目录缺少 Edge.exe 启动器" => {
-            "Edge.exe launcher is missing in Browser Root"
-        }
-        "检测到旧版残留的 version.dll，可能导致 Edge 网页崩溃，建议修复清理" => {
-            "Detected obsolete version.dll which causes Edge renderer crashes; repair to clean up"
-        }
-        "将备份 Edge 启动配置 并只修复路径键。" => {
-            "Repair Edge launcher and clean legacy portable injection files."
-        }
-        "chrome++.ini 缺少 --disable-features=RendererCodeIntegrity（Edge 网页可能报 STATUS_INVALID_IMAGE_HASH 崩溃）" => {
-            "chrome++.ini is missing --disable-features=RendererCodeIntegrity (Edge web renderers may crash with STATUS_INVALID_IMAGE_HASH)"
-        }
         "将备份 chrome++.ini 并只修复路径键。" => {
             "Back up chrome++.ini and repair only path keys."
         }
@@ -914,24 +898,7 @@ mod tests {
         assert_eq!(translate("当前浏览器：Firefox"), "Current browser: Firefox");
         assert_eq!(translate("159.0（上次安装）"), "159.0 (last install)");
         assert_eq!(localized("检查更新"), "Check for updates");
-        assert_eq!(
-            localized(
-                "仅支持本次检查到的发布版本，本地安装包不匹配：应为 Edge Stable x64 / 156.0.4314.58 / Edge.exe；文件大小应为 10 字节，实际为 9 字节。"
-            ),
-            "Only the release found by this check is supported. Local package mismatch. Expected: Edge Stable x64 / 156.0.4314.58 / Edge.exe. Expected size: 10 bytes; actual size: 9 bytes."
-        );
-        assert_eq!(
-            localized(
-                "仅支持本次检查到的发布版本，本地安装包摘要不匹配：请选择 Edge Beta x64 / 157.0.4341.30 / Edge.exe。"
-            ),
-            "Only the release found by this check is supported. Local package digest mismatch. Choose Edge Beta x64 / 157.0.4341.30 / Edge.exe."
-        );
         assert_eq!(localized("本地版本较新"), "Local version is newer");
-        let edge_failure = localized(
-            "官方元数据不可用：timeout；签名发布清单也不可用：Edge 下载信息需从 Microsoft 实时获取，不能使用旧 MSI 签名记录；请检查网络后重试",
-        );
-        assert!(edge_failure.contains("fetched live from Microsoft"));
-        assert!(!edge_failure.contains("签名发布清单"));
         assert_eq!(localized("加速站前缀"), "Accelerator prefix");
         assert_eq!(localized("当前配置文件"), "Current config file");
         assert_eq!(

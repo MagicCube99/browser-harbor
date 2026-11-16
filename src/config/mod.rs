@@ -35,7 +35,7 @@ impl ConfigStore {
             }
         };
 
-        let value: serde_json::Value =
+        let mut value: serde_json::Value =
             serde_json::from_slice(&bytes).map_err(|source| ConfigError::InvalidJson {
                 path: self.path.clone(),
                 source,
@@ -52,6 +52,20 @@ impl ConfigStore {
                 found,
                 supported: CURRENT_SCHEMA_VERSION,
             });
+        }
+
+        if let Some(selected) = value
+            .get("selectedBrowser")
+            .and_then(serde_json::Value::as_str)
+            && selected.eq_ignore_ascii_case("edge")
+        {
+            value["selectedBrowser"] = serde_json::json!("chrome");
+        }
+        if let Some(targets) = value
+            .get_mut("targets")
+            .and_then(serde_json::Value::as_object_mut)
+        {
+            targets.remove("edge");
         }
 
         let mut settings: Settings =
@@ -173,13 +187,6 @@ impl ConfigStore {
         }
         if found < 8 {
             repair_known_cross_target_paths(&mut settings);
-        }
-        if found < 9
-            && let Some(config) = settings.targets.get_mut(&TargetId::Edge)
-            && let Some(program) = config.browser_directory.as_deref()
-            && let Some(application) = edge_application_parent(program)
-        {
-            config.browser_directory = Some(application);
         }
         if found < 11 {
             if let Some(config) = settings.targets.get_mut(&TargetId::Floorp)
@@ -387,22 +394,6 @@ fn same_path(path: Option<&Path>, root: &Path, suffix: Option<&str>) -> bool {
         path.to_string_lossy()
             .eq_ignore_ascii_case(&expected.to_string_lossy())
     })
-}
-
-fn edge_application_parent(program: &Path) -> Option<PathBuf> {
-    let version = program.file_name()?.to_str()?;
-    if !version
-        .chars()
-        .all(|character| character.is_ascii_digit() || character == '.')
-        || !version.chars().any(|character| character.is_ascii_digit())
-    {
-        return None;
-    }
-    let parent = program.parent()?;
-    parent
-        .file_name()
-        .is_some_and(|name| name.eq_ignore_ascii_case("Application"))
-        .then(|| parent.to_path_buf())
 }
 
 #[derive(Debug, Error)]
@@ -642,20 +633,20 @@ mod tests {
         let store = ConfigStore::new(path.clone());
         let mut value = serde_json::to_value(Settings::default()).unwrap();
         value["schemaVersion"] = serde_json::json!(5);
-        value["targets"]["edge"]["browserRoot"] = serde_json::json!(r".\Edge");
-        value["targets"]["edge"]["browserDirectory"] =
-            serde_json::json!(r"D:\Tools\Browser\Edge\App");
-        value["targets"]["edge"]["dataDirectory"] =
-            serde_json::json!(r"D:\Tools\Browser\Edge\Profiles");
-        value["targets"]["edge"]["profileDirectory"] =
-            serde_json::json!(r"D:\Tools\Browser\Edge\Profiles");
-        value["targets"]["edge"]["cacheDirectory"] =
-            serde_json::json!(r"D:\Tools\Browser\Edge\Profiles\Cache");
+        value["targets"]["chrome"]["browserRoot"] = serde_json::json!(r".\Chrome");
+        value["targets"]["chrome"]["browserDirectory"] =
+            serde_json::json!(r"D:\Tools\Browser\Chrome\App");
+        value["targets"]["chrome"]["dataDirectory"] =
+            serde_json::json!(r"D:\Tools\Browser\Chrome\Profiles");
+        value["targets"]["chrome"]["profileDirectory"] =
+            serde_json::json!(r"D:\Tools\Browser\Chrome\Profiles");
+        value["targets"]["chrome"]["cacheDirectory"] =
+            serde_json::json!(r"D:\Tools\Browser\Chrome\Profiles\Cache");
         fs::write(&path, serde_json::to_vec_pretty(&value).unwrap()).unwrap();
 
         let loaded = store.load().unwrap();
 
-        assert_eq!(loaded.targets[&TargetId::Edge].cache_directory, None);
+        assert_eq!(loaded.targets[&TargetId::Chrome].cache_directory, None);
     }
 
     #[test]
@@ -747,38 +738,35 @@ mod tests {
     }
 
     #[test]
-    fn schema_v8_moves_edge_version_directory_to_stable_application_root() {
+    fn legacy_config_with_edge_selected_migrates_to_chrome_and_purges_edge_target() {
         let directory = tempdir().unwrap();
         let path = temp_path(&directory);
         let store = ConfigStore::new(path.clone());
         let mut value = serde_json::to_value(Settings::default()).unwrap();
-        value["schemaVersion"] = serde_json::json!(8);
+        value["schemaVersion"] = serde_json::json!(13);
         value["selectedBrowser"] = serde_json::json!("edge");
-        value["targets"]
-            .as_object_mut()
-            .unwrap()
-            .retain(|target, _| target == "edge");
-        value["targets"]["edge"]["browserRoot"] = serde_json::json!(r"D:\Tools\Browser\Edge");
-        value["targets"]["edge"]["browserDirectory"] = serde_json::json!(
-            r"D:\Tools\Browser\Edge\App\Microsoft\Edge\Application\156.0.4314.42"
+        value["targets"].as_object_mut().unwrap().insert(
+            "edge".to_owned(),
+            serde_json::json!({
+                "browserRoot": r"D:\Tools\Browser\Edge",
+                "browserDirectory": r"D:\Tools\Browser\Edge\App\Microsoft\Edge\Application",
+                "dataDirectory": r"D:\Tools\Browser\Edge\Profiles",
+                "profileDirectory": r"D:\Tools\Browser\Edge\Profiles"
+            }),
         );
-        value["targets"]["edge"]["installedVersion"] = serde_json::json!("156.0.4314.42");
         fs::write(&path, serde_json::to_vec_pretty(&value).unwrap()).unwrap();
 
         let loaded = store.load().unwrap();
 
         assert_eq!(loaded.schema_version, 13);
-        let edge = &loaded.targets[&TargetId::Edge];
-        assert_eq!(
-            edge.browser_directory,
-            Some(std::path::PathBuf::from(
-                r"D:\Tools\Browser\Edge\App\Microsoft\Edge\Application"
-            ))
+        assert_eq!(loaded.selected_browser, TargetId::Chrome);
+        assert!(
+            !loaded
+                .targets
+                .keys()
+                .any(|target| target.sort_key() == "edge")
         );
-        assert_eq!(edge.installed_version.as_deref(), Some("156.0.4314.42"));
-        assert!(store.compact_if_needed(&loaded).unwrap());
-        let saved: serde_json::Value = serde_json::from_slice(&fs::read(path).unwrap()).unwrap();
-        assert_eq!(saved["schemaVersion"], 13);
+        assert_eq!(loaded.targets.len(), TargetId::ALL.len());
     }
 
     #[test]

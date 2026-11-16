@@ -873,7 +873,6 @@ impl BrowserHarborApp {
     ) -> Option<&UpstreamCheck> {
         self.latest_versions
             .get(&(target, config.channel, config.cpu_build))
-            .filter(|check| target != TargetId::Edge || check.source == MetadataSource::Official)
     }
 
     fn cached_release(
@@ -2950,19 +2949,6 @@ fn installed_channel_label(
                 None
             }
         }
-        TargetId::Edge if product.contains("edge") => {
-            if product.contains("canary") {
-                Some("Canary")
-            } else if product.contains("dev") {
-                Some("Dev")
-            } else if product.contains("beta") {
-                Some("Beta")
-            } else if product.contains("stable") {
-                Some("Stable")
-            } else {
-                None
-            }
-        }
         TargetId::Brave if product.contains("brave") => {
             if product.contains("nightly") {
                 Some("Nightly")
@@ -2995,7 +2981,6 @@ fn installed_channel_label(
 fn provider_label(provider: ProviderKind) -> &'static str {
     match provider {
         ProviderKind::ChromeOmaha => "Google Omaha",
-        ProviderKind::EdgeEnterprise => "Microsoft Edge Updates",
         ProviderKind::Mozilla => "Mozilla 官方",
         ProviderKind::GitHubRelease => "GitHub Release",
         ProviderKind::LibreWolf => "LibreWolf 官方",
@@ -3049,17 +3034,6 @@ fn local_browser_executable(
     config: &crate::domain::settings::TargetConfig,
     tool_root: &Path,
 ) -> Option<PathBuf> {
-    if target == TargetId::Edge
-        && let Some(root) = config
-            .browser_root
-            .as_deref()
-            .and_then(|path| resolve_preview_path(tool_root, path))
-    {
-        let root_edge = root.join("Edge.exe");
-        if root_edge.is_file() {
-            return Some(root_edge);
-        }
-    }
     let program = config
         .browser_directory
         .as_deref()

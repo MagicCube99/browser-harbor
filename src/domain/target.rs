@@ -84,7 +84,7 @@ const HELIUM_VERSION: VersionSource = VersionSource::ExecutableFileVersion;
 const BRAVE_VERSION: VersionSource = VersionSource::BraveProductVersion;
 const FIREFOX_VERSION: VersionSource = VersionSource::ApplicationIni;
 
-const TARGET_SPECS: [TargetSpec; 15] = [
+const TARGET_SPECS: [TargetSpec; 14] = [
     TargetSpec {
         target: TargetId::Brave,
         display_name: "Brave",
@@ -153,31 +153,6 @@ const TARGET_SPECS: [TargetSpec; 15] = [
         preserved_program_files: CHROME_PLUS_FILES,
         display_beta: false,
         upstream_url: "https://www.google.com/chrome/",
-    },
-    TargetSpec {
-        target: TargetId::Edge,
-        display_name: "Edge",
-        family: BrowserFamily::Chromium,
-        support_level: SupportLevel::Standard,
-        provider: ProviderKind::EdgeEnterprise,
-        runtime: RuntimeKind::EdgeLauncher,
-        default_channel: ReleaseChannel::Stable,
-        channels: BETA,
-        default_cpu_build: CpuBuild::X64,
-        cpu_builds: X64_ONLY,
-        placement: ProgramPlacement::EdgeVersioned,
-        layout: TargetLayout {
-            program: Some(r"App\Microsoft\Edge\Application"),
-            package_prefix: None,
-            data: "Profiles",
-            profile: "Profiles",
-            cache: r"Profiles\Cache",
-        },
-        version_source: CHROMIUM_VERSION,
-        executable_candidates: &["Edge.exe", "msedge.exe"],
-        preserved_program_files: &["Edge.exe", "msedge.exe"],
-        display_beta: false,
-        upstream_url: "https://www.microsoft.com/edge",
     },
     TargetSpec {
         target: TargetId::Firefox,
@@ -464,7 +439,6 @@ pub enum TargetId {
     Brave,
     Catsxp,
     Chrome,
-    Edge,
     Firefox,
     Floorp,
     Helium,
@@ -479,11 +453,10 @@ pub enum TargetId {
 }
 
 impl TargetId {
-    pub const ALL: [Self; 15] = [
+    pub const ALL: [Self; 14] = [
         Self::Brave,
         Self::Catsxp,
         Self::Chrome,
-        Self::Edge,
         Self::Firefox,
         Self::Floorp,
         Self::Helium,
@@ -502,7 +475,6 @@ impl TargetId {
             Self::Brave => "brave",
             Self::Catsxp => "catsxp",
             Self::Chrome => "chrome",
-            Self::Edge => "edge",
             Self::Firefox => "firefox",
             Self::Floorp => "floorp",
             Self::Helium => "helium",
@@ -522,7 +494,6 @@ impl TargetId {
             Self::Brave => "Brave",
             Self::Catsxp => "Catsxp",
             Self::Chrome => "Chrome",
-            Self::Edge => "Edge",
             Self::Firefox => "Firefox",
             Self::Floorp => "Floorp",
             Self::Helium => "Helium",
@@ -542,7 +513,6 @@ impl TargetId {
             Self::Brave
             | Self::Catsxp
             | Self::Chrome
-            | Self::Edge
             | Self::Helium
             | Self::Thorium
             | Self::Turbo
@@ -578,7 +548,6 @@ impl TargetId {
             self,
             Self::Brave
                 | Self::Chrome
-                | Self::Edge
                 | Self::Firefox
                 | Self::Floorp
                 | Self::Helium
@@ -604,18 +573,17 @@ impl TargetId {
             Self::Brave => 0,
             Self::Catsxp => 1,
             Self::Chrome => 2,
-            Self::Edge => 3,
-            Self::Firefox => 4,
-            Self::Floorp => 5,
-            Self::Helium => 6,
-            Self::Iceweasel => 7,
-            Self::LibreWolf => 8,
-            Self::SkyKakapo => 9,
-            Self::Thorium => 10,
-            Self::Turbo => 11,
-            Self::UngoogledChromium => 12,
-            Self::Vivaldi => 13,
-            Self::Zen => 14,
+            Self::Firefox => 3,
+            Self::Floorp => 4,
+            Self::Helium => 5,
+            Self::Iceweasel => 6,
+            Self::LibreWolf => 7,
+            Self::SkyKakapo => 8,
+            Self::Thorium => 9,
+            Self::Turbo => 10,
+            Self::UngoogledChromium => 11,
+            Self::Vivaldi => 12,
+            Self::Zen => 13,
         };
         &TARGET_SPECS[index]
     }
@@ -643,7 +611,6 @@ mod tests {
                 "brave",
                 "catsxp",
                 "chrome",
-                "edge",
                 "firefox",
                 "floorp",
                 "helium",
@@ -691,7 +658,6 @@ mod tests {
                 "brave",
                 "catsxp",
                 "chrome",
-                "edge",
                 "helium",
                 "thorium",
                 "turbo",
@@ -756,7 +722,6 @@ mod tests {
             [
                 "brave",
                 "chrome",
-                "edge",
                 "firefox",
                 "floorp",
                 "helium",
@@ -844,13 +809,6 @@ mod tests {
             (
                 TargetId::Chrome,
                 Some("App"),
-                "Profiles",
-                "Profiles",
-                r"Profiles\Cache",
-            ),
-            (
-                TargetId::Edge,
-                Some(r"App\Microsoft\Edge\Application"),
                 "Profiles",
                 "Profiles",
                 r"Profiles\Cache",
@@ -958,10 +916,6 @@ mod tests {
 
         assert_eq!(
             TargetId::Chrome.spec().channels,
-            &[ReleaseChannel::Stable, ReleaseChannel::Beta]
-        );
-        assert_eq!(
-            TargetId::Edge.spec().channels,
             &[ReleaseChannel::Stable, ReleaseChannel::Beta]
         );
         assert_eq!(

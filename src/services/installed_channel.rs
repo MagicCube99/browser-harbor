@@ -26,7 +26,6 @@ pub struct Observation {
 fn core_name(target: TargetId) -> Option<&'static str> {
     match target {
         TargetId::Chrome | TargetId::Brave => Some("chrome.dll"),
-        TargetId::Edge => Some("msedge.dll"),
         _ => None,
     }
 }
@@ -194,7 +193,7 @@ mod tests {
         assert!(observation.is_current(TargetId::Chrome, program, &version));
         assert!(!observation.is_current(TargetId::Chrome, program, "different version"));
         assert!(
-            observe(TargetId::Edge, program, Some(&identity), &cancellation)
+            observe(TargetId::Firefox, program, Some(&identity), &cancellation)
                 .unwrap()
                 .is_none()
         );
@@ -220,48 +219,36 @@ mod tests {
     }
 
     #[test]
-    fn edge_and_brave_channel_records_follow_the_actual_program_layout() {
-        for (target, executable, core, versioned) in [
-            (TargetId::Edge, "msedge.exe", "msedge.dll", true),
-            (TargetId::Brave, "brave.exe", "chrome.dll", false),
-        ] {
-            let directory = tempfile::tempdir().unwrap();
-            let version = crate::infra::windows::version_info::executable_product_version(
-                &std::env::current_exe().unwrap(),
-            )
-            .unwrap();
-            let program = if versioned {
-                directory.path().join(&version)
-            } else {
-                directory.path().to_path_buf()
-            };
-            std::fs::create_dir_all(&program).unwrap();
-            std::fs::copy(std::env::current_exe().unwrap(), program.join(executable)).unwrap();
-            let observed_version =
-                crate::services::version_probe::probe_local_version(target, &program)
-                    .unwrap()
-                    .version;
-            std::fs::write(program.join(core), b"beta core").unwrap();
-            let identity = capture(
-                target,
-                directory.path(),
-                &observed_version,
-                ReleaseChannel::Beta,
-            )
+    fn brave_channel_records_follow_the_actual_program_layout() {
+        let (target, executable, core) = (TargetId::Brave, "brave.exe", "chrome.dll");
+        let directory = tempfile::tempdir().unwrap();
+        let program = directory.path().to_path_buf();
+        std::fs::create_dir_all(&program).unwrap();
+        std::fs::copy(std::env::current_exe().unwrap(), program.join(executable)).unwrap();
+        let observed_version =
+            crate::services::version_probe::probe_local_version(target, &program)
+                .unwrap()
+                .version;
+        std::fs::write(program.join(core), b"beta core").unwrap();
+        let identity = capture(
+            target,
+            directory.path(),
+            &observed_version,
+            ReleaseChannel::Beta,
+        )
+        .unwrap()
+        .unwrap();
+        let cancellation = AtomicBool::new(false);
+        let observation = observe(target, directory.path(), Some(&identity), &cancellation)
             .unwrap()
             .unwrap();
-            let cancellation = AtomicBool::new(false);
-            let observation = observe(target, directory.path(), Some(&identity), &cancellation)
+        assert_eq!(observation.identity.channel, ReleaseChannel::Beta);
+        std::fs::write(program.join(core), b"external replacement").unwrap();
+        assert!(
+            observe(target, directory.path(), Some(&identity), &cancellation)
                 .unwrap()
-                .unwrap();
-            assert_eq!(observation.identity.channel, ReleaseChannel::Beta);
-            std::fs::write(program.join(core), b"external replacement").unwrap();
-            assert!(
-                observe(target, directory.path(), Some(&identity), &cancellation)
-                    .unwrap()
-                    .is_none()
-            );
-        }
+                .is_none()
+        );
     }
 
     #[test]

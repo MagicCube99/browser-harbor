@@ -1,9 +1,7 @@
 use std::collections::BTreeMap;
 
-use base64::{Engine, engine::general_purpose::STANDARD};
 use quick_xml::{Reader, XmlVersion, events::Event};
 use serde::Deserialize;
-use serde_json::Value;
 use url::Url;
 
 use super::ProviderError;
@@ -19,8 +17,6 @@ use crate::{
 };
 
 const CHROME_UPDATE_URL: &str = "https://tools.google.com/service/update2";
-const EDGE_CDP_UPDATE_URL: &str = "https://msedge.api.cdp.microsoft.com/api/v2/contents/Browser/namespaces/Default/names/{name}/versions/latest?action=select";
-const EDGE_CDP_DOWNLOAD_URL: &str = "https://msedge.api.cdp.microsoft.com/api/v1.1/internal/contents/Browser/namespaces/Default/names/{name}/versions/{version}/files?action=GenerateDownloadInfo";
 const FIREFOX_VERSIONS_URL: &str = "https://product-details.mozilla.org/1.0/firefox_versions.json";
 
 pub async fn resolve_chrome(
@@ -58,67 +54,6 @@ pub async fn resolve_chrome(
         inner_archive: None,
         source: CHROME_UPDATE_URL.to_owned(),
         published_at: None,
-    })
-}
-
-pub async fn resolve_edge(
-    http: &HttpClient,
-    channel: ReleaseChannel,
-    cpu_build: CpuBuild,
-) -> Result<ReleaseDescriptor, ProviderError> {
-    let cdp_name = match channel {
-        ReleaseChannel::Stable => "msedge-stable-win-x64",
-        ReleaseChannel::Beta => "msedge-beta-win-x64",
-        _ => return Err(ProviderError::UnsupportedSelection),
-    };
-    if cpu_build != CpuBuild::X64 {
-        return Err(ProviderError::UnsupportedSelection);
-    }
-    // Microsoft CDP publishes the complete self-extracting 7z payload.  The
-    // Enterprise MSI is a bootstrapper whose embedded installer layout changes
-    // independently and is not a portable browser payload.
-    let update_url = EDGE_CDP_UPDATE_URL.replace("{name}", cdp_name);
-    let update = http
-        .post_json::<Value>(
-            &update_url,
-            &serde_json::json!({
-                "targetingAttributes": {
-                    "IsInternalUser": true,
-                    "Updater": "MicrosoftEdgeUpdate",
-                    "UpdaterVersion": "1.3.183.29"
-                }
-            }),
-        )
-        .await?;
-    let version = update["ContentId"]["Version"]
-        .as_str()
-        .ok_or(ProviderError::NoCompatibleAsset)?
-        .to_owned();
-    let download_url = EDGE_CDP_DOWNLOAD_URL
-        .replace("{name}", cdp_name)
-        .replace("{version}", &version);
-    let items = http
-        .post_json::<Vec<Value>>(&download_url, &serde_json::json!({}))
-        .await?;
-    let parsed = parse_edge_cdp(&version, &items)?;
-    Ok(ReleaseDescriptor {
-        target: TargetId::Edge,
-        version: parsed.version,
-        channel,
-        cpu_build,
-        provider: ProviderKind::EdgeEnterprise,
-        artifact: Artifact {
-            file_name: parsed.file_name,
-            format: parsed.format,
-            size: Some(parsed.size),
-            integrity: Some(Integrity::Sha256(parsed.sha256)),
-            urls: vec![parsed.url],
-            signature_url: None,
-        },
-        placement: TargetId::Edge.spec().placement,
-        inner_archive: parsed.inner_archive,
-        source: parsed.source,
-        published_at: parsed.published_at,
     })
 }
 
@@ -281,56 +216,6 @@ fn parse_chrome_omaha(xml: &str) -> Result<ChromeArtifact, ProviderError> {
     })
 }
 
-#[derive(Debug)]
-struct EdgeArtifact {
-    version: String,
-    file_name: String,
-    size: u64,
-    sha256: String,
-    url: String,
-    published_at: Option<String>,
-    format: ArchiveFormat,
-    source: String,
-    inner_archive: Option<String>,
-}
-
-fn parse_edge_cdp(version: &str, items: &[Value]) -> Result<EdgeArtifact, ProviderError> {
-    let item = items
-        .iter()
-        .max_by_key(|item| item["SizeInBytes"].as_u64().unwrap_or(0))
-        .ok_or(ProviderError::NoCompatibleAsset)?;
-    let url = official_https(&string_field(item, "Url")?, is_microsoft_download)
-        .ok_or(ProviderError::NoCompatibleAsset)?;
-    if !is_microsoft_download(&url) {
-        return Err(ProviderError::NoCompatibleAsset);
-    }
-    let mut file_name = item["FileId"]
-        .as_str()
-        .filter(|value| !value.is_empty())
-        .unwrap_or("MicrosoftEdgeEnterpriseX64")
-        .to_owned();
-    if !file_name.to_ascii_lowercase().ends_with(".exe") {
-        file_name.push_str(".exe");
-    }
-    Ok(EdgeArtifact {
-        version: version.to_owned(),
-        file_name,
-        size: item["SizeInBytes"]
-            .as_u64()
-            .ok_or(ProviderError::NoCompatibleAsset)?,
-        sha256: normalize_sha256(
-            item["Hashes"]["Sha256"]
-                .as_str()
-                .ok_or(ProviderError::NoCompatibleAsset)?,
-        )?,
-        url,
-        published_at: None,
-        format: ArchiveFormat::SevenZip,
-        source: EDGE_CDP_UPDATE_URL.to_owned(),
-        inner_archive: Some("MSEDGE.7Z".to_owned()),
-    })
-}
-
 fn parse_sha256sums(text: &str, file_name: &str) -> Option<String> {
     for line in text.lines() {
         let Some((hash, name)) = line.split_once("  ") else {
@@ -341,13 +226,6 @@ fn parse_sha256sums(text: &str, file_name: &str) -> Option<String> {
         }
     }
     None
-}
-
-fn string_field(value: &Value, field: &str) -> Result<String, ProviderError> {
-    value[field]
-        .as_str()
-        .map(str::to_owned)
-        .ok_or(ProviderError::NoCompatibleAsset)
 }
 
 fn is_google_download(url: &str) -> bool {
@@ -364,52 +242,20 @@ fn is_google_download(url: &str) -> bool {
         .unwrap_or(false)
 }
 
-fn is_microsoft_download(url: &str) -> bool {
-    Url::parse(url)
-        .ok()
-        .and_then(|url| {
-            url.host_str().map(|host| {
-                host.ends_with(".microsoft.com")
-                    || host == "msedge.sb.tlu.dl.delivery.mp.microsoft.com"
-            })
-        })
-        .unwrap_or(false)
-}
-
 fn official_https(url: &str, trusted: impl Fn(&str) -> bool) -> Option<String> {
     if !trusted(url) {
         return None;
     }
     if let Some(rest) = url.strip_prefix("http://") {
-        let rest = rest.replace(
-            "msedge.b.tlu.dl.delivery.mp.microsoft.com",
-            "msedge.sb.tlu.dl.delivery.mp.microsoft.com",
-        );
         Some(format!("https://{rest}"))
     } else {
         Some(url.to_owned())
     }
 }
 
-fn normalize_sha256(value: &str) -> Result<String, ProviderError> {
-    if value.len() == 64 && value.bytes().all(|byte| byte.is_ascii_hexdigit()) {
-        return Ok(value.to_ascii_lowercase());
-    }
-    let bytes = STANDARD
-        .decode(value)
-        .map_err(|_| ProviderError::NoCompatibleAsset)?;
-    if bytes.len() != 32 {
-        return Err(ProviderError::NoCompatibleAsset);
-    }
-    Ok(hex::encode(bytes))
-}
-
 #[cfg(test)]
 mod tests {
-    use base64::Engine;
-    use serde_json::json;
-
-    use super::{chrome_omaha_request, parse_chrome_omaha, parse_edge_cdp, parse_sha256sums};
+    use super::{chrome_omaha_request, parse_chrome_omaha, parse_sha256sums};
 
     #[test]
     fn omaha_parser_extracts_version_size_hash_and_official_urls() {
@@ -422,24 +268,6 @@ mod tests {
         assert_eq!(parsed.sha256.len(), 64);
         assert_eq!(parsed.urls.len(), 1);
         assert!(chrome_omaha_request("x64-beta").contains(r#"ap="x64-beta""#));
-    }
-
-    #[test]
-    fn edge_cdp_parser_selects_complete_official_7z_payload() {
-        let hash = base64::engine::general_purpose::STANDARD.encode([0x42u8; 32]);
-        let items = vec![json!({
-            "FileId": "MicrosoftEdge_X64_156.0.4314.58.exe",
-            "Url": "https://msedge.sf.dl.delivery.mp.microsoft.com/file/setup",
-            "SizeInBytes": 180000000,
-            "Hashes": { "Sha256": hash }
-        })];
-        let parsed = parse_edge_cdp("156.0.4314.42", &items).unwrap();
-        assert_eq!(parsed.file_name, "MicrosoftEdge_X64_156.0.4314.58.exe");
-        assert_eq!(parsed.sha256, "42".repeat(32));
-        assert_eq!(
-            parsed.format,
-            crate::domain::release::ArchiveFormat::SevenZip
-        );
     }
 
     #[test]

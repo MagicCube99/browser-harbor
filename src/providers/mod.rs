@@ -51,9 +51,6 @@ impl ProviderResolver {
             ProviderKind::ChromeOmaha => {
                 official::resolve_chrome(&self.http, channel, cpu_build).await?
             }
-            ProviderKind::EdgeEnterprise => {
-                official::resolve_edge(&self.http, channel, cpu_build).await?
-            }
             ProviderKind::Mozilla => {
                 official::resolve_firefox(&self.http, channel, cpu_build).await?
             }
