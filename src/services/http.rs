@@ -204,33 +204,6 @@ impl HttpClient {
         .await
     }
 
-    pub async fn post_json<T: DeserializeOwned>(
-        &self,
-        url: &str,
-        body: &serde_json::Value,
-    ) -> Result<T, ServiceError> {
-        self.wait(async {
-            let parsed = Url::parse(url).map_err(|_| ServiceError::InvalidUrl)?;
-            let response = self
-                .client_for(&parsed)
-                .post(parsed.clone())
-                .header(
-                    reqwest::header::USER_AGENT,
-                    "Microsoft Edge Update/1.3.183.29;winhttp",
-                )
-                .json(body)
-                .send()
-                .await
-                .map_err(|error| transport_error(&parsed, error))?;
-            let bytes = ensure_success(response, &parsed)?
-                .bytes()
-                .await
-                .map_err(|error| transport_error(&parsed, error))?;
-            serde_json::from_slice(&bytes).map_err(ServiceError::InvalidResponse)
-        })
-        .await
-    }
-
     fn client_for(&self, url: &Url) -> &Client {
         if url_uses_accelerator(url, &self.direct_hosts) {
             &self.direct

@@ -16,7 +16,6 @@ cache/
 *.msi
 *.cab
 *.exe
-!assets/edge_launcher.exe
 
 # Tool and editor state
 .superpowers/

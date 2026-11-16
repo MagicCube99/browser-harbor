@@ -12,15 +12,12 @@ This project downloads third-party runtime components and browser distributions 
 
 The application must display the component version, source repository, and license link wherever installation or update is offered. If a future release bundles, mirrors, or redistributes Chrome++ instead of downloading it directly from the upstream release, the distribution must also provide the applicable GPL license text and corresponding source in compliance with GPL-3.0.
 
-## Chrome++ setdll
+## Chrome++ setdll (Historical)
 
-- Component: Chrome++ setdll (matching the Chrome++ version selected by the current Ed25519-verified metadata)
+- Component: Chrome++ setdll
 - Project: <https://github.com/Bush2021/chrome_plus>
 - License: GPL-3.0-only
-- Use: downloaded at runtime for Microsoft Edge only, then used in the staging directory to add a `version.dll` import to `msedge.exe`
-- Integration boundary: the project does not copy setdll or its source into this codebase
-
-setdll is obtained from the same verified GitHub Release as Chrome++. It modifies only the staged Edge executable; installation fails unless the resulting PE import table contains `version.dll`.
+- Status: Historically downloaded at runtime for Microsoft Edge in versions prior to v0.9.6. Following the deprecation of Microsoft Edge, setdll is no longer downloaded, bundled, or executed.
 
 ## Libportable
 

@@ -59,7 +59,7 @@ Downgrading also requires confirmation: an older browser may be unable to read u
 
 If the selected channel differs from the verified installed channel, Browser Harbor asks before replacing the program directory. Switching the channel selector does not change which channel is already installed; downgrades still require a separate confirmation.
 
-Chrome, Edge, and Brave channel records are checked against the installed program files. Older installations without a record cannot be reliably identified from a generic product name alone. Reinstall the desired channel once through Browser Harbor v0.9.3 or later to establish its record. External changes to the program files may invalidate that record.
+Chrome and Brave channel records are checked against the installed program files. Older installations without a record cannot be reliably identified from a generic product name alone. Reinstall the desired channel once through Browser Harbor v0.9.3 or later to establish its record. External changes to the program files may invalidate that record.
 
 The browser page checks the selected target, channel, and build once per session. A manual check is still available. An installation started within ten minutes can reuse the verified upstream result.
 
@@ -107,7 +107,6 @@ Input such as `.\Helium` is resolved from the Browser Harbor EXE folder. `Browse
 - browser identity when detectable;
 - local version availability;
 - required portable runtime files;
-- Edge `version.dll` import status;
 - Chrome++, Libportable, Iceweasel, and SkyKakapo path settings.
 
 If Chrome++ contains stale absolute paths, diagnostics can repair them after confirmation. The browser must be closed and the current INI is backed up first.
@@ -124,7 +123,7 @@ Paths inside the old Browser Root are remapped. Explicit paths outside it are pr
 
 ## Chrome++
 
-Chrome++ is available for Brave, Chrome, Edge, Helium, Thorium, and Ungoogled Chromium. The Chrome++ page shows the installed version, the integrated source/license link, and the complete public configuration set.
+Chrome++ is available for Brave, Chrome, Helium, Thorium, and Ungoogled Chromium. The Chrome++ page shows the installed version, the integrated source/license link, and the complete public configuration set.
 
 Browser installation or upgrade downloads, verifies, and installs Chrome++
 automatically; users do not need to download `version.dll` or
@@ -136,7 +135,7 @@ The refresh control only checks upstream. When a newer version is available it b
 
 Chrome++ release artifacts are cached by SHA-256 under `%TEMP%\browser-harbor\cache`. Updating another target with the same version reuses the verified archive without downloading it again.
 
-Edge uses the native launcher `Edge.exe` to lock data to the Profiles directory while keeping Microsoft's original code signature; Brave, Helium, and Ungoogled Chromium remain experimental.
+Brave, Helium, and Ungoogled Chromium remain experimental.
 
 ## Firefox-family runtimes
 
@@ -201,7 +200,7 @@ Use **Relocate…** and select its new Browser Root. If the program identity can
 
 ### Chrome++ does not load
 
-Confirm that `version.dll` and `chrome++.ini` are beside the browser executable. Edge also requires the import-table check shown in diagnostics.
+Confirm that `version.dll` and `chrome++.ini` are beside the browser executable.
 
 ### Windows warns about the EXE
 

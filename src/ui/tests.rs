@@ -171,7 +171,6 @@ fn browser_combo_uses_two_ordered_groups_with_sorted_members() {
         "Brave",
         "Catsxp",
         "Chrome",
-        "Edge",
         "Helium",
         "Thorium",
         "Turbo",
@@ -342,7 +341,6 @@ fn mismatched_browser_identity_requires_install_confirmation() {
 fn installed_channel_is_inferred_before_replacing_program_files() {
     for (target, product) in [
         (TargetId::Chrome, "Google Chrome Stable"),
-        (TargetId::Edge, "Microsoft Edge Stable"),
         (TargetId::Brave, "Brave Stable"),
     ] {
         assert_eq!(
@@ -352,10 +350,6 @@ fn installed_channel_is_inferred_before_replacing_program_files() {
     }
     assert_eq!(
         installed_channel_label(TargetId::Chrome, "158.0.1", "Google Chrome Beta"),
-        Some("Beta")
-    );
-    assert_eq!(
-        installed_channel_label(TargetId::Edge, "157.0.1", "Microsoft Edge Beta"),
         Some("Beta")
     );
     assert_eq!(
@@ -392,7 +386,6 @@ fn installed_channel_is_inferred_before_replacing_program_files() {
 fn unmarked_chromium_product_names_do_not_prove_a_stable_channel() {
     for (target, product) in [
         (TargetId::Chrome, "Google Chrome"),
-        (TargetId::Edge, "Microsoft Edge"),
         (TargetId::Brave, "Brave"),
     ] {
         assert_eq!(
@@ -816,7 +809,6 @@ fn beta_channels_are_exposed_for_selected_targets() {
         TargetId::Brave,
         TargetId::Catsxp,
         TargetId::Chrome,
-        TargetId::Edge,
         TargetId::Firefox,
     ] {
         harness
@@ -2228,32 +2220,10 @@ fn chrome_plus_update_button_reflects_the_last_check() {
 }
 
 #[test]
-fn edge_never_displays_a_signed_msi_record_as_current_upstream() {
-    let mut harness = harness();
-    let config = harness.state().state.draft().targets[&TargetId::Edge].clone();
-    harness.state_mut().latest_versions.insert(
-        (TargetId::Edge, config.channel, config.cpu_build),
-        UpstreamCheck {
-            version: "156.0.4314.50".to_owned(),
-            channel: config.channel,
-            cpu_build: config.cpu_build,
-            source: MetadataSource::SignedManifest,
-            checked_at: 0,
-        },
-    );
-    assert!(
-        harness
-            .state()
-            .latest_check(TargetId::Edge, &config)
-            .is_none()
-    );
-}
-
-#[test]
 fn manual_version_check_clears_previous_result_before_starting() {
     let directory = tempdir().unwrap();
     let mut settings = Settings {
-        selected_browser: TargetId::Edge,
+        selected_browser: TargetId::Chrome,
         ..Settings::default()
     };
     settings.network.proxy = Some("http://[".to_owned());
@@ -2262,15 +2232,15 @@ fn manual_version_check_clears_previous_result_before_starting() {
         ConfigStore::new(directory.path().join("BrowserHarbor.json")),
     );
     let mut app = BrowserHarborApp::new(state);
-    let config = app.state.draft().targets[&TargetId::Edge].clone();
+    let config = app.state.draft().targets[&TargetId::Chrome].clone();
     app.latest_versions.insert(
-        (TargetId::Edge, config.channel, config.cpu_build),
+        (TargetId::Chrome, config.channel, config.cpu_build),
         UpstreamCheck::fresh("156.0.4314.50".to_owned(), config.channel, config.cpu_build),
     );
 
     app.start_operation(crate::app::operation::OperationMode::Check, false);
 
-    assert!(app.latest_check(TargetId::Edge, &config).is_none());
+    assert!(app.latest_check(TargetId::Chrome, &config).is_none());
 }
 
 #[test]

@@ -130,11 +130,6 @@ pub struct CachedReleaseMetadata {
 impl CachedReleaseMetadata {
     pub fn is_fresh(&self) -> bool {
         unix_now().saturating_sub(self.observed_at) <= UPSTREAM_REUSE_SECONDS
-            && (self.release.target != TargetId::Edge
-                || (self.check.source == MetadataSource::Official
-                    && self.release.artifact.format
-                        == crate::domain::release::ArchiveFormat::SevenZip
-                    && self.release.inner_archive.as_deref() == Some("MSEDGE.7Z")))
     }
 }
 
@@ -389,7 +384,7 @@ async fn run_operation(
     let provider = ProviderResolver::new(http.clone());
     let mut current_version = request.current_version.clone();
     let mut installed_channel = None;
-    if matches!(target, TargetId::Chrome | TargetId::Edge | TargetId::Brave) {
+    if matches!(target, TargetId::Chrome | TargetId::Brave) {
         let observation = if let Some(program) = request.target_config.browser_directory.as_deref()
         {
             match crate::services::installed_channel::observe(
@@ -856,12 +851,6 @@ async fn load_trusted_metadata_for_release(
     expected_version: Option<&str>,
     policy: MetadataSelectionPolicy,
 ) -> Result<(TrustedMetadata, MetadataSource), Box<dyn std::error::Error + Send + Sync>> {
-    if target == TargetId::Edge {
-        return Err(
-            "Edge 下载信息需从 Microsoft 实时获取，不能使用旧 MSI 签名记录；请检查网络后重试"
-                .into(),
-        );
-    }
     let accepts_live = |metadata: &TrustedMetadata| {
         metadata
             .release(target, channel, cpu_build)
@@ -1791,58 +1780,6 @@ mod tests {
         );
     }
 
-    #[tokio::test]
-    async fn edge_rejects_historical_signed_msi_even_when_fetched_from_live_manifest() {
-        let mut cached =
-            crate::services::trusted_metadata::TrustedMetadata::load_embedded().unwrap();
-        let mut edge = descriptor();
-        edge.target = crate::domain::target::TargetId::Edge;
-        edge.artifact.format = ArchiveFormat::Msi;
-        cached.releases = vec![edge];
-        let selected = super::select_verified_metadata(
-            Some(cached.clone()),
-            true,
-            false,
-            |m| {
-                m.release(
-                    crate::domain::target::TargetId::Edge,
-                    ReleaseChannel::Stable,
-                    CpuBuild::X64,
-                )
-                .is_some_and(|r| r.artifact.format == ArchiveFormat::SevenZip)
-            },
-            async { Ok(cached) },
-        )
-        .await;
-        assert!(selected.is_err());
-    }
-
-    #[tokio::test]
-    async fn edge_official_failure_never_falls_back_to_cached_msi() {
-        let directory = tempfile::tempdir().unwrap();
-        let http = crate::services::http::HttpClient::new(
-            &crate::domain::settings::NetworkSettings::default(),
-        )
-        .unwrap();
-        let result = super::load_trusted_metadata_for_release(
-            &http,
-            &crate::domain::settings::NetworkSettings::default(),
-            directory.path(),
-            (
-                crate::domain::target::TargetId::Edge,
-                ReleaseChannel::Stable,
-                CpuBuild::X64,
-            ),
-            true,
-            None,
-            super::MetadataSelectionPolicy {
-                allow_signed_cache: true,
-            },
-        )
-        .await;
-        assert!(result.unwrap_err().to_string().contains("Microsoft"));
-    }
-
     #[test]
     fn local_package_mismatch_identifies_the_expected_target() {
         let directory = tempfile::tempdir().unwrap();
@@ -2313,28 +2250,6 @@ mod tests {
             ..cached
         };
         assert!(!stale.is_fresh());
-    }
-
-    #[test]
-    fn edge_install_cannot_reuse_an_msi_or_signed_fallback_check() {
-        let mut cached = CachedReleaseMetadata {
-            check: super::UpstreamCheck::fresh(
-                "156.0.4314.50".to_owned(),
-                ReleaseChannel::Stable,
-                CpuBuild::X64,
-            ),
-            release: descriptor(),
-            observed_at: unix_now(),
-        };
-        cached.release.target = crate::domain::target::TargetId::Edge;
-        cached.release.artifact.format = ArchiveFormat::Msi;
-        assert!(!cached.is_fresh());
-        cached.release.artifact.format = ArchiveFormat::SevenZip;
-        cached.release.inner_archive = Some("MSEDGE.7Z".to_owned());
-        cached.check.source = MetadataSource::SignedManifest;
-        assert!(!cached.is_fresh());
-        cached.check.source = MetadataSource::Official;
-        assert!(cached.is_fresh());
     }
 
     #[test]

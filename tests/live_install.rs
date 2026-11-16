@@ -300,17 +300,13 @@ async fn installs_new_release_channels() {
         .download(&chrome_plus.artifact, &network, |_| {})
         .await
         .unwrap();
-    let setdll_archive = runtime_downloader
-        .download(&chrome_plus.setdll_artifact, &network, |_| {})
-        .await
-        .unwrap();
     let libportable = runtime::libportable::resolve_latest(&http).await.unwrap();
     let libportable_archive = runtime_downloader
         .download(&libportable.artifact, &network, |_| {})
         .await
         .unwrap();
 
-    for target in [TargetId::Chrome, TargetId::Edge, TargetId::Brave] {
+    for target in [TargetId::Chrome, TargetId::Brave] {
         let release = resolver
             .resolve(
                 target,
@@ -337,9 +333,8 @@ async fn installs_new_release_channels() {
                 archive_path: chrome_plus_archive.clone(),
                 version: chrome_plus.version.clone(),
                 artifact: chrome_plus.artifact.clone(),
-                setdll_archive: (target == TargetId::Edge).then(|| setdll_archive.clone()),
-                setdll_artifact: (target == TargetId::Edge)
-                    .then(|| chrome_plus.setdll_artifact.clone()),
+                setdll_archive: None,
+                setdll_artifact: None,
             }),
             libportable_runtime: None,
         })
@@ -528,76 +523,6 @@ async fn installs_chrome_with_full_chrome_plus_runtime() {
     let (ini, _) = read_ini(&receipt.browser_directory.join("chrome++.ini")).unwrap();
     assert!(ini.contains(r"data_dir=%app%\..\Profiles"));
     assert_eq!(receipt.chrome_plus_version.as_deref(), Some("1.18.2"));
-}
-
-#[tokio::test]
-#[ignore = "downloads Edge and Chrome++, builds a portable Edge tree in a temporary directory"]
-async fn installs_edge_from_official_setup_with_chrome_plus() {
-    let network = NetworkSettings::default();
-    let http = HttpClient::new(&network).unwrap();
-    let root = tempdir().unwrap();
-    let browser_downloader = Downloader::new(
-        HttpClient::download_client(&network).unwrap(),
-        std::env::temp_dir().join("pbm-live-edge-cache"),
-        Arc::new(AtomicBool::new(false)),
-    );
-    let runtime_downloader = Downloader::new(
-        HttpClient::download_client(&network).unwrap(),
-        std::env::temp_dir().join("pbm-live-chromeplus-cache"),
-        Arc::new(AtomicBool::new(false)),
-    );
-    let release = ProviderResolver::new(http.clone())
-        .resolve(
-            TargetId::Edge,
-            TargetId::Edge.spec().default_channel,
-            TargetId::Edge.spec().default_cpu_build,
-        )
-        .await
-        .unwrap();
-    let browser_artifact = browser_downloader
-        .download(&release.artifact, &network, |_| {})
-        .await
-        .unwrap();
-    let chrome_plus = runtime::chromeplus::resolve_latest(&http).await.unwrap();
-    let runtime_artifact = runtime_downloader
-        .download(&chrome_plus.artifact, &network, |_| {})
-        .await
-        .unwrap();
-    let setdll_artifact = runtime_downloader
-        .download(&chrome_plus.setdll_artifact, &network, |_| {})
-        .await
-        .unwrap();
-
-    let receipt = InstallService::install(InstallRequest {
-        release,
-        browser_artifact,
-        browser_root: root.path().join("Edge"),
-        browser_directory: None,
-        data_directory: None,
-        profile_directory: None,
-        cache_directory: None,
-        chrome_plus_config: ChromePlusConfig::default(),
-        chrome_plus_runtime: Some(RuntimeArchive {
-            archive_path: runtime_artifact,
-            version: chrome_plus.version,
-            artifact: chrome_plus.artifact.clone(),
-            setdll_archive: Some(setdll_artifact),
-            setdll_artifact: Some(chrome_plus.setdll_artifact),
-        }),
-        libportable_runtime: None,
-    })
-    .unwrap();
-
-    assert_eq!(
-        receipt.browser_directory,
-        root.path().join(r"Edge\App\Microsoft\Edge\Application")
-    );
-    let executable = locate_executable(TargetId::Edge, &receipt.browser_directory).unwrap();
-    assert!(executable.is_file());
-    let _program = executable.parent().unwrap();
-    assert_eq!(receipt.data_directory, root.path().join("Edge/Profiles"));
-    assert!(root.path().join("Edge/Edge.exe").is_file());
-    assert!(receipt.browser_directory.join("msedge.exe").is_file());
 }
 
 #[tokio::test]

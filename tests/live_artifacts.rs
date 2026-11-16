@@ -89,54 +89,6 @@ fn contains_executable(root: &Path, names: &[&str]) -> bool {
 }
 
 #[tokio::test]
-#[ignore = "downloads and extracts the official Microsoft Edge CDP 7z payload"]
-async fn downloads_and_extracts_edge_cdp_payload() {
-    let http = HttpClient::new(&NetworkSettings::default()).unwrap();
-    let directory = tempdir().unwrap();
-    let downloader = Downloader::new(
-        HttpClient::download_client(&NetworkSettings::default()).unwrap(),
-        std::env::temp_dir().join("pbm-live-edge-cache"),
-        Arc::new(std::sync::atomic::AtomicBool::new(false)),
-    );
-    let release = ProviderResolver::new(http)
-        .resolve(
-            TargetId::Edge,
-            TargetId::Edge.spec().default_channel,
-            TargetId::Edge.spec().default_cpu_build,
-        )
-        .await
-        .unwrap();
-    let artifact = downloader
-        .download(&release.artifact, &NetworkSettings::default(), |_| {})
-        .await
-        .unwrap();
-    let output = directory.path().join("edge");
-    ArchiveService::extract(&artifact, release.artifact.format, &output).unwrap();
-    let inner = WalkDir::new(&output)
-        .max_depth(5)
-        .into_iter()
-        .filter_map(Result::ok)
-        .find(|entry| {
-            entry.file_type().is_file()
-                && entry
-                    .file_name()
-                    .to_string_lossy()
-                    .eq_ignore_ascii_case("MSEDGE.7Z")
-        })
-        .expect("MSEDGE.7Z")
-        .into_path();
-    let inner_output = directory.path().join("edge-inner");
-    ArchiveService::extract(
-        &inner,
-        browser_harbor::domain::release::ArchiveFormat::SevenZip,
-        &inner_output,
-    )
-    .unwrap();
-
-    assert!(contains_executable(&inner_output, &["msedge.exe"]));
-}
-
-#[tokio::test]
 #[ignore = "downloads and extracts the official Google Chrome offline installer"]
 async fn downloads_and_extracts_chrome_installer() {
     let http = HttpClient::new(&NetworkSettings::default()).unwrap();

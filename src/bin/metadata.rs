@@ -9,7 +9,7 @@ use std::{
 
 use browser_harbor::{
     domain::{
-        release::{ArchiveFormat, Artifact, Integrity, ReleaseDescriptor},
+        release::{Artifact, Integrity, ReleaseDescriptor},
         runtime::{ChromePlusRelease, LibportableRelease},
         settings::NetworkSettings,
         target::TargetId,
@@ -226,17 +226,6 @@ async fn refresh(
                     Err(error) => {
                         let reason = safe_refresh_error(error.as_ref());
                         if let Some(previous) = baseline.release(target, *channel, *cpu_build) {
-                            if target == TargetId::Edge
-                                && previous.artifact.format == ArchiveFormat::Msi
-                            {
-                                eprintln!(
-                                    "{} / {} / {} refresh failed; dropping stale MSI baseline: {reason}",
-                                    target.display_name(),
-                                    channel.display_name(),
-                                    cpu_build.display_name()
-                                );
-                                continue;
-                            }
                             eprintln!(
                                 "{} / {} / {} refresh failed; keeping baseline: {reason}",
                                 target.display_name(),
@@ -318,10 +307,6 @@ async fn probe(
     let mut changed = false;
 
     for target in TargetId::ALL {
-        if target == TargetId::Edge {
-            eprintln!("Probe skips Edge because its official URL is transient");
-            continue;
-        }
         let spec = target.spec();
         for channel in spec.channels {
             for cpu_build in spec.cpu_builds {

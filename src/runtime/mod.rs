@@ -1,5 +1,4 @@
 pub mod chromeplus;
-pub mod edge;
 mod helper;
 pub mod libportable;
 pub mod native;
@@ -244,8 +243,8 @@ mod tests {
         );
         assert_eq!(
             portable_relative_path(
-                Path::new(r"D:\Browsers\Edge\App\Microsoft\Edge\Application\156.0.0.0"),
-                Path::new(r"D:\Browsers\Edge\Profiles"),
+                Path::new(r"D:\Browsers\Chrome\App\Deep\Nested\Directory\156.0.0.0"),
+                Path::new(r"D:\Browsers\Chrome\Profiles"),
             ),
             Some(r"..\..\..\..\..\Profiles".to_owned())
         );

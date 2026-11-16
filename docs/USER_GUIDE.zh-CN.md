@@ -55,7 +55,7 @@ Browser Harbor 会在修改安装前检查浏览器版本和下载完整性。�
 
 如果所选渠道与已核验的安装渠道不同，Browser Harbor 会在替换程序目录前要求确认。切换渠道下拉框不会改变已经安装的渠道；涉及降级时仍需单独确认。
 
-Chrome、Edge 和 Brave 的渠道记录会与实际程序文件核对。旧安装没有渠道记录时，无法仅凭通用产品名称可靠识别；请使用 Browser Harbor v0.9.3 或更新版本重新安装所需渠道一次，以建立记录。外部替换程序文件后，原记录可能失效。
+Chrome 和 Brave 的渠道记录会与实际程序文件核对。旧安装没有渠道记录时，无法仅凭通用产品名称可靠识别；请使用 Browser Harbor v0.9.3 或更新版本重新安装所需渠道一次，以建立记录。外部替换程序文件后，原记录可能失效。
 
 进入浏览器页后，程序会对当前目标、渠道和构建自动检查一次；也可以手动刷新。十分钟内开始安装时会复用已验证的上游结果。
 
@@ -100,7 +100,6 @@ Catsxp 提供 Stable 和 Beta，默认选择 Stable。Beta 的不同修订可能
 - 可识别时的浏览器身份；
 - 本地版本是否可读取；
 - 必需便携运行时文件；
-- Edge 的 `version.dll` 导入状态；
 - Chrome++、Libportable、Iceweasel 和 SkyKakapo 的路径配置。
 
 Chrome++ 仍保存旧绝对路径时，可以在确认后修复。修复前会要求关闭浏览器并备份当前 INI。
@@ -117,7 +116,7 @@ Chrome++ 仍保存旧绝对路径时，可以在确认后修复。修复前会�
 
 ## Chrome++
 
-Chrome++ 支持 Brave、Chrome、Edge、Helium、Thorium 和 Ungoogled Chromium。Chrome++ 页面显示已安装版本、源码/GPL 许可证入口和全部公开配置。
+Chrome++ 支持 Brave、Chrome、Helium、Thorium 和 Ungoogled Chromium。Chrome++ 页面显示已安装版本、源码/GPL 许可证入口和全部公开配置。
 
 安装或升级浏览器时，Browser Harbor 会自动下载、校验并放置 Chrome++，
 不需要用户手工下载 `version.dll` 或 `chrome++.ini`。Chrome++ 自身设置保存
@@ -128,7 +127,7 @@ Profile 中，不使用注册表。
 
 Chrome++ 制品按 SHA-256 缓存在 `%TEMP%\browser-harbor\cache`。更新另一个目标且版本相同时，会复用已验证的制品，不重复联网下载。
 
-Edge 使用原生轻量启动器 `Edge.exe` 自动锁定 Profiles 目录并透明透传启动参数，核心程序保持微软官方原版签名；Brave、Helium 和 Ungoogled Chromium 仍为实验性兼容。
+Brave、Helium 和 Ungoogled Chromium 仍为实验性兼容。
 
 ## Firefox 系运行时
 
@@ -193,7 +192,7 @@ Vivaldi 采用官方原生 Standalone 隔离模式：
 
 ### Chrome++ 没有生效
 
-确认浏览器 EXE 同目录存在 `version.dll` 和 `chrome++.ini`。Edge 还需要通过诊断中的导入表检查。
+确认浏览器 EXE 同目录存在 `version.dll` 和 `chrome++.ini`。
 
 ### Windows 对 EXE 发出警告
 

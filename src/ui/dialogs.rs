@@ -124,11 +124,7 @@ fn show_health_dialog(app: &mut BrowserHarborApp, ctx: &egui::Context) {
                 Some("修复 Chrome++ 路径")
             } else if matches!(
                 dialog.target,
-                TargetId::Firefox
-                    | TargetId::Zen
-                    | TargetId::Iceweasel
-                    | TargetId::SkyKakapo
-                    | TargetId::Edge
+                TargetId::Firefox | TargetId::Zen | TargetId::Iceweasel | TargetId::SkyKakapo
             ) {
                 Some("修复便携配置")
             } else {
@@ -146,9 +142,7 @@ fn show_health_dialog(app: &mut BrowserHarborApp, ctx: &egui::Context) {
                 ui.localized_label(
                     RichText::new(format!(
                         "将备份 {} 并只修复路径键。",
-                        if dialog.target == TargetId::Edge {
-                            "Edge 启动配置"
-                        } else if dialog.target == TargetId::SkyKakapo {
+                        if dialog.target == TargetId::SkyKakapo {
                             "tmemutil.ini"
                         } else if repairing_portable {
                             "portable.ini"
