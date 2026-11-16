@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": 1794782600,
+  "generatedAt": 1794788803,
   "expiresAt": 253402300799,
   "releases": [
     {
@@ -520,27 +520,27 @@
     },
     {
       "target": "ungoogled_chromium",
-      "version": "157.0.8103.50",
+      "version": "157.0.8103.78",
       "channel": "stable",
       "cpuBuild": "x64",
       "provider": "git_hub_release",
       "artifact": {
-        "fileName": "ungoogled-chromium_157.0.8103.50-1.1_windows_x64.zip",
+        "fileName": "ungoogled-chromium_157.0.8103.78-1.1_windows_x64.zip",
         "format": "zip",
-        "size": 203570178,
+        "size": 202853365,
         "integrity": {
           "algorithm": "sha256",
-          "value": "42a846b04e73f7d54a63e39964a7d5b73875507a2a205e6cdb32e88d7928e97d"
+          "value": "2b1d113b055f827b573cd1fa2bc46511691c0aa427802397cfc05e52350ef212"
         },
         "urls": [
-          "https://github.com/ungoogled-software/ungoogled-chromium-windows/releases/download/157.0.8103.50-1.1/ungoogled-chromium_157.0.8103.50-1.1_windows_x64.zip"
+          "https://github.com/ungoogled-software/ungoogled-chromium-windows/releases/download/157.0.8103.78-1.1/ungoogled-chromium_157.0.8103.78-1.1_windows_x64.zip"
         ],
         "signatureUrl": null
       },
       "placement": "native_package",
       "innerArchive": null,
-      "source": "https://github.com/ungoogled-software/ungoogled-chromium-windows/releases/tag/157.0.8103.50-1.1",
-      "publishedAt": "2026-11-12T06:23:30Z"
+      "source": "https://github.com/ungoogled-software/ungoogled-chromium-windows/releases/tag/157.0.8103.78-1.1",
+      "publishedAt": "2026-11-15T23:58:18Z"
     },
     {
       "target": "vivaldi",
