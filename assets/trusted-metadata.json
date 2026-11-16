@@ -1,73 +1,73 @@
 {
   "schemaVersion": 1,
-  "generatedAt": 1793763448,
+  "generatedAt": 1794813671,
   "expiresAt": 253402300799,
   "releases": [
     {
       "target": "brave",
-      "version": "1.99.54",
+      "version": "1.100.56",
       "channel": "stable",
       "cpuBuild": "x64",
       "provider": "git_hub_release",
       "artifact": {
-        "fileName": "brave-v1.99.54-win32-x64.zip",
+        "fileName": "brave-v1.100.56-win32-x64.zip",
         "format": "zip",
-        "size": 255034907,
+        "size": 259472063,
         "integrity": {
           "algorithm": "sha256",
-          "value": "8f104d8eefbb652da318085c17878cd6c7622e03e6ecfb136cf648165cd9ebfb"
+          "value": "44a077a2a432e4256265c1145d0dfac8c836ff9f191e6954a1610d0e3804e783"
         },
         "urls": [
-          "https://github.com/brave/brave-browser/releases/download/v1.99.54/brave-v1.99.54-win32-x64.zip"
+          "https://github.com/brave/brave-browser/releases/download/v1.100.56/brave-v1.100.56-win32-x64.zip"
         ],
         "signatureUrl": null
       },
       "placement": "native_package",
       "innerArchive": null,
-      "source": "https://github.com/brave/brave-browser/releases/tag/v1.99.54",
-      "publishedAt": "2026-11-03T22:13:59Z"
+      "source": "https://github.com/brave/brave-browser/releases/tag/v1.100.56",
+      "publishedAt": "2026-11-13T09:48:59Z"
     },
     {
       "target": "brave",
-      "version": "1.100.47",
+      "version": "1.101.49",
       "channel": "beta",
       "cpuBuild": "x64",
       "provider": "git_hub_release",
       "artifact": {
-        "fileName": "brave-v1.100.47-win32-x64.zip",
+        "fileName": "brave-v1.101.49-win32-x64.zip",
         "format": "zip",
-        "size": 255098328,
+        "size": 260469603,
         "integrity": {
           "algorithm": "sha256",
-          "value": "1238a8972c0cbb3076fcc30bdad5b1b9ffa9e0a3d43d3483e4284423a430f60b"
+          "value": "001a33682a17fa25e79c82c9b6f3fa399f99a581babbbaf6741299d3e644fbac"
         },
         "urls": [
-          "https://github.com/brave/brave-browser/releases/download/v1.100.47/brave-v1.100.47-win32-x64.zip"
+          "https://github.com/brave/brave-browser/releases/download/v1.101.49/brave-v1.101.49-win32-x64.zip"
         ],
         "signatureUrl": null
       },
       "placement": "native_package",
       "innerArchive": null,
-      "source": "https://github.com/brave/brave-browser/releases/tag/v1.100.47",
-      "publishedAt": "2026-11-03T05:33:37Z"
+      "source": "https://github.com/brave/brave-browser/releases/tag/v1.101.49",
+      "publishedAt": "2026-11-16T05:04:58Z"
     },
     {
       "target": "catsxp",
-      "version": "156.6.10.5",
+      "version": "157.6.11.2",
       "channel": "stable",
       "cpuBuild": "x64",
       "provider": "catsxp",
       "artifact": {
-        "fileName": "portable_x64_release_156_6_10_5.zip",
+        "fileName": "portable_x64_release_157_6_11_2.zip",
         "format": "zip",
-        "size": null,
+        "size": 234918412,
         "integrity": {
           "algorithm": "sha256",
-          "value": "6276ecf305b329a3528d82be0d8969b0a4ccb321329871cbdb808676486d6c3e"
+          "value": "e220aee18814d41ba056819c0ed7430010c923b5fdacf130eb1752bf0e62b785"
         },
         "urls": [
-          "https://b2.catsxp.com/catsxp_portable/win_x64/portable_x64_release_156_6_10_5.zip",
-          "https://r2.catsxp.com/catsxp_portable/win_x64/portable_x64_release_156_6_10_5.zip"
+          "https://b2.catsxp.com/catsxp_portable/win_x64/portable_x64_release_157_6_11_2.zip",
+          "https://r2.catsxp.com/catsxp_portable/win_x64/portable_x64_release_157_6_11_2.zip"
         ],
         "signatureUrl": null
       },
@@ -78,20 +78,20 @@
     },
     {
       "target": "catsxp",
-      "version": "157.6.11.1.6",
+      "version": "158.6.11.3.6",
       "channel": "beta",
       "cpuBuild": "x64",
       "provider": "catsxp",
       "artifact": {
-        "fileName": "portable_x64_beta_157_6_11_1_6.zip",
+        "fileName": "portable_x64_beta_158_6_11_3_6.zip",
         "format": "zip",
-        "size": 234143530,
+        "size": 239636182,
         "integrity": {
           "algorithm": "sha256",
-          "value": "379164957330df69cee8fd9d0dcd9f557407e48bb931dffd74cf6008087f88a6"
+          "value": "1218880ee9e8c5e59fff54ea42f0cd42bf23bdbd3fc449a22720a17a4675a9d9"
         },
         "urls": [
-          "https://b2.catsxp.com/catsxp_portable/win_x64/portable_x64_beta_157_6_11_1_6.zip"
+          "https://b2.catsxp.com/catsxp_portable/win_x64/portable_x64_beta_158_6_11_3_6.zip"
         ],
         "signatureUrl": null
       },
@@ -102,25 +102,25 @@
     },
     {
       "target": "chrome",
-      "version": "157.0.8103.39",
+      "version": "157.0.8103.79",
       "channel": "stable",
       "cpuBuild": "x64",
       "provider": "chrome_omaha",
       "artifact": {
-        "fileName": "157.0.8103.39_chrome_installer_uncompressed.exe",
+        "fileName": "157.0.8103.79_chrome_installer_uncompressed.exe",
         "format": "sevenzip",
-        "size": 530228648,
+        "size": 528945064,
         "integrity": {
           "algorithm": "sha256",
-          "value": "389b9e21de9a520a6e24ba807ee8760409ccc837457bbcc460d2fdce0d5e8df5"
+          "value": "acb77d39d1759408ad6f9874081c25e68cd042f1de6145064bbc9c2be4ad733e"
         },
         "urls": [
-          "https://edgedl.me.gvt1.com/edgedl/release2/chrome/lzz46e6auim6sx75xrn7xp5hza_157.0.8103.39/157.0.8103.39_chrome_installer_uncompressed.exe",
-          "https://edgedl.me.gvt1.com/edgedl/release2/chrome/lzz46e6auim6sx75xrn7xp5hza_157.0.8103.39/157.0.8103.39_chrome_installer_uncompressed.exe",
-          "https://dl.google.com/release2/chrome/lzz46e6auim6sx75xrn7xp5hza_157.0.8103.39/157.0.8103.39_chrome_installer_uncompressed.exe",
-          "https://dl.google.com/release2/chrome/lzz46e6auim6sx75xrn7xp5hza_157.0.8103.39/157.0.8103.39_chrome_installer_uncompressed.exe",
-          "https://www.google.com/dl/release2/chrome/lzz46e6auim6sx75xrn7xp5hza_157.0.8103.39/157.0.8103.39_chrome_installer_uncompressed.exe",
-          "https://www.google.com/dl/release2/chrome/lzz46e6auim6sx75xrn7xp5hza_157.0.8103.39/157.0.8103.39_chrome_installer_uncompressed.exe"
+          "https://edgedl.me.gvt1.com/edgedl/release2/chrome/acab3swyzqgszbsf6npoanqbvgvq_157.0.8103.79/157.0.8103.79_chrome_installer_uncompressed.exe",
+          "https://edgedl.me.gvt1.com/edgedl/release2/chrome/acab3swyzqgszbsf6npoanqbvgvq_157.0.8103.79/157.0.8103.79_chrome_installer_uncompressed.exe",
+          "https://dl.google.com/release2/chrome/acab3swyzqgszbsf6npoanqbvgvq_157.0.8103.79/157.0.8103.79_chrome_installer_uncompressed.exe",
+          "https://dl.google.com/release2/chrome/acab3swyzqgszbsf6npoanqbvgvq_157.0.8103.79/157.0.8103.79_chrome_installer_uncompressed.exe",
+          "https://www.google.com/dl/release2/chrome/acab3swyzqgszbsf6npoanqbvgvq_157.0.8103.79/157.0.8103.79_chrome_installer_uncompressed.exe",
+          "https://www.google.com/dl/release2/chrome/acab3swyzqgszbsf6npoanqbvgvq_157.0.8103.79/157.0.8103.79_chrome_installer_uncompressed.exe"
         ],
         "signatureUrl": null
       },
@@ -131,25 +131,25 @@
     },
     {
       "target": "chrome",
-      "version": "158.0.8127.2",
+      "version": "159.0.8154.6",
       "channel": "beta",
       "cpuBuild": "x64",
       "provider": "chrome_omaha",
       "artifact": {
-        "fileName": "158.0.8127.2_chrome_installer_uncompressed.exe",
+        "fileName": "159.0.8154.6_chrome_installer_uncompressed.exe",
         "format": "sevenzip",
-        "size": 536485288,
+        "size": 540564904,
         "integrity": {
           "algorithm": "sha256",
-          "value": "0b23375926b9f6de49a0f009dd374d6d9a7b900a507b62cfc4bec31db2fd12ca"
+          "value": "c371bc684c218b6fba62cf7c1a1705e8804347a96e7917e57a85acf40bd127be"
         },
         "urls": [
-          "https://edgedl.me.gvt1.com/edgedl/release2/chrome/acluhgqwcv7bswtqy52a2zfdb72q_158.0.8127.2/158.0.8127.2_chrome_installer_uncompressed.exe",
-          "https://edgedl.me.gvt1.com/edgedl/release2/chrome/acluhgqwcv7bswtqy52a2zfdb72q_158.0.8127.2/158.0.8127.2_chrome_installer_uncompressed.exe",
-          "https://dl.google.com/release2/chrome/acluhgqwcv7bswtqy52a2zfdb72q_158.0.8127.2/158.0.8127.2_chrome_installer_uncompressed.exe",
-          "https://dl.google.com/release2/chrome/acluhgqwcv7bswtqy52a2zfdb72q_158.0.8127.2/158.0.8127.2_chrome_installer_uncompressed.exe",
-          "https://www.google.com/dl/release2/chrome/acluhgqwcv7bswtqy52a2zfdb72q_158.0.8127.2/158.0.8127.2_chrome_installer_uncompressed.exe",
-          "https://www.google.com/dl/release2/chrome/acluhgqwcv7bswtqy52a2zfdb72q_158.0.8127.2/158.0.8127.2_chrome_installer_uncompressed.exe"
+          "https://edgedl.me.gvt1.com/edgedl/release2/chrome/euzdlqd7llpoxyrbdxfubkcf7m_159.0.8154.6/159.0.8154.6_chrome_installer_uncompressed.exe",
+          "https://edgedl.me.gvt1.com/edgedl/release2/chrome/euzdlqd7llpoxyrbdxfubkcf7m_159.0.8154.6/159.0.8154.6_chrome_installer_uncompressed.exe",
+          "https://dl.google.com/release2/chrome/euzdlqd7llpoxyrbdxfubkcf7m_159.0.8154.6/159.0.8154.6_chrome_installer_uncompressed.exe",
+          "https://dl.google.com/release2/chrome/euzdlqd7llpoxyrbdxfubkcf7m_159.0.8154.6/159.0.8154.6_chrome_installer_uncompressed.exe",
+          "https://www.google.com/dl/release2/chrome/euzdlqd7llpoxyrbdxfubkcf7m_159.0.8154.6/159.0.8154.6_chrome_installer_uncompressed.exe",
+          "https://www.google.com/dl/release2/chrome/euzdlqd7llpoxyrbdxfubkcf7m_159.0.8154.6/159.0.8154.6_chrome_installer_uncompressed.exe"
         ],
         "signatureUrl": null
       },
@@ -160,212 +160,212 @@
     },
     {
       "target": "firefox",
-      "version": "159.0.1",
+      "version": "160.0",
       "channel": "stable",
       "cpuBuild": "x64",
       "provider": "mozilla",
       "artifact": {
-        "fileName": "Firefox Setup 159.0.1.exe",
+        "fileName": "Firefox Setup 160.0.exe",
         "format": "sevenzip",
         "size": null,
         "integrity": {
           "algorithm": "sha256",
-          "value": "26beb1bef5c59f24b64c8b47669566ccf16d5d7984ae1c20e81b6f4d3c580fa5"
+          "value": "729041e434a61bc7572a356297e4f43a71cdeec7c88b04aba5d4b95c2b285716"
         },
         "urls": [
-          "https://download-installer.cdn.mozilla.net/pub/firefox/releases/159.0.1/win64/zh-CN/Firefox%20Setup%20159.0.1.exe"
+          "https://download-installer.cdn.mozilla.net/pub/firefox/releases/160.0/win64/zh-CN/Firefox%20Setup%20160.0.exe"
         ],
         "signatureUrl": null
       },
       "placement": "app",
       "innerArchive": null,
-      "source": "https://download-installer.cdn.mozilla.net/pub/firefox/releases/159.0.1/SHA256SUMS",
+      "source": "https://download-installer.cdn.mozilla.net/pub/firefox/releases/160.0/SHA256SUMS",
       "publishedAt": null
     },
     {
       "target": "firefox",
-      "version": "153.6.0esr",
+      "version": "153.7.0esr",
       "channel": "esr",
       "cpuBuild": "x64",
       "provider": "mozilla",
       "artifact": {
-        "fileName": "Firefox Setup 153.6.0esr.exe",
+        "fileName": "Firefox Setup 153.7.0esr.exe",
         "format": "sevenzip",
         "size": null,
         "integrity": {
           "algorithm": "sha256",
-          "value": "bd8b93b0936c2c3505a4ff776bf5f2256e79b9b9c3a100fd0f5ddceafbce5b23"
+          "value": "0952ef41ffc816264b00871fd3eb7bd7204c3ea55ae91ad6566f1ef1fac578a9"
         },
         "urls": [
-          "https://download-installer.cdn.mozilla.net/pub/firefox/releases/153.6.0esr/win64/zh-CN/Firefox%20Setup%20153.6.0esr.exe"
+          "https://download-installer.cdn.mozilla.net/pub/firefox/releases/153.7.0esr/win64/zh-CN/Firefox%20Setup%20153.7.0esr.exe"
         ],
         "signatureUrl": null
       },
       "placement": "app",
       "innerArchive": null,
-      "source": "https://download-installer.cdn.mozilla.net/pub/firefox/releases/153.6.0esr/SHA256SUMS",
+      "source": "https://download-installer.cdn.mozilla.net/pub/firefox/releases/153.7.0esr/SHA256SUMS",
       "publishedAt": null
     },
     {
       "target": "firefox",
-      "version": "160.0b4",
+      "version": "161.0b3",
       "channel": "beta",
       "cpuBuild": "x64",
       "provider": "mozilla",
       "artifact": {
-        "fileName": "Firefox Setup 160.0b4.exe",
+        "fileName": "Firefox Setup 161.0b3.exe",
         "format": "sevenzip",
         "size": null,
         "integrity": {
           "algorithm": "sha256",
-          "value": "e9c6d63214a53215f30d4998e295fdcf7900fa67ac62a3aed9b730d55294860a"
+          "value": "d7e4f140b28e75bad886fe1e9ea15c8ea561daf055e1ec398149845f4d64ecc4"
         },
         "urls": [
-          "https://download-installer.cdn.mozilla.net/pub/firefox/releases/160.0b4/win64/zh-CN/Firefox%20Setup%20160.0b4.exe"
+          "https://download-installer.cdn.mozilla.net/pub/firefox/releases/161.0b3/win64/zh-CN/Firefox%20Setup%20161.0b3.exe"
         ],
         "signatureUrl": null
       },
       "placement": "app",
       "innerArchive": null,
-      "source": "https://download-installer.cdn.mozilla.net/pub/firefox/releases/160.0b4/SHA256SUMS",
+      "source": "https://download-installer.cdn.mozilla.net/pub/firefox/releases/161.0b3/SHA256SUMS",
       "publishedAt": null
     },
     {
       "target": "floorp",
-      "version": "12.21.0",
+      "version": "12.21.2",
       "channel": "stable",
       "cpuBuild": "x64",
       "provider": "git_hub_release",
       "artifact": {
         "fileName": "floorp-windows-x86_64.portable.7z",
         "format": "sevenzip",
-        "size": 123061591,
+        "size": 124295381,
         "integrity": {
           "algorithm": "sha256",
-          "value": "e944b86da99b5088cde1169e36b5e6c461d9739ad32cab738d118c12aa6c8486"
+          "value": "89940221d3055f773b81444c83f0b9fa491056c9d5a14165cc2b614854d5b47b"
         },
         "urls": [
-          "https://github.com/Floorp-Projects/Floorp-Portable-v2/releases/download/v12.21.0/floorp-windows-x86_64.portable.7z"
+          "https://github.com/Floorp-Projects/Floorp-Portable-v2/releases/download/v12.21.2/floorp-windows-x86_64.portable.7z"
         ],
         "signatureUrl": null
       },
       "placement": "native_package",
       "innerArchive": null,
-      "source": "https://github.com/Floorp-Projects/Floorp-Portable-v2/releases/tag/v12.21.0",
-      "publishedAt": "2026-10-27T15:43:45Z"
+      "source": "https://github.com/Floorp-Projects/Floorp-Portable-v2/releases/tag/v12.21.2",
+      "publishedAt": "2026-11-13T04:20:12Z"
     },
     {
       "target": "helium",
-      "version": "0.20.3.1",
+      "version": "0.21.3.1",
       "channel": "stable",
       "cpuBuild": "x64",
       "provider": "git_hub_release",
       "artifact": {
-        "fileName": "helium_0.20.3.1_x64-windows.zip",
+        "fileName": "helium_0.21.3.1_x64-windows.zip",
         "format": "zip",
-        "size": 195771721,
+        "size": 198830535,
         "integrity": {
           "algorithm": "sha256",
-          "value": "07f602a49fd2712dc13e1d9ce8793ccd1bb2c1a6b2b06b864e2b56e22970cc46"
+          "value": "fc39b124116dcfbb446ff37f5bc948e73c73ddb442c7f6df731f298c514cf79e"
         },
         "urls": [
-          "https://github.com/imputnet/helium-windows/releases/download/0.20.3.1/helium_0.20.3.1_x64-windows.zip"
+          "https://github.com/imputnet/helium-windows/releases/download/0.21.3.1/helium_0.21.3.1_x64-windows.zip"
         ],
         "signatureUrl": null
       },
       "placement": "native_package",
       "innerArchive": null,
-      "source": "https://github.com/imputnet/helium-windows/releases/tag/0.20.3.1",
-      "publishedAt": "2026-10-30T11:37:39Z"
+      "source": "https://github.com/imputnet/helium-windows/releases/tag/0.21.3.1",
+      "publishedAt": "2026-11-12T18:48:26Z"
     },
     {
       "target": "iceweasel",
-      "version": "115.44.0esr",
+      "version": "115.45.0esr",
       "channel": "esr",
       "cpuBuild": "x64",
       "provider": "git_hub_release",
       "artifact": {
-        "fileName": "Iceweasel-v115.44.0esr.l10n_win64_pgo.7z",
+        "fileName": "Iceweasel-v115.45.0esr.l10n_win64_pgo.7z",
         "format": "sevenzip",
-        "size": 59462037,
+        "size": 59453618,
         "integrity": {
           "algorithm": "sha256",
-          "value": "039e912b57470e1f9162e7d94d1a0f98e1ee586e15da1dcf01f84f72d877f6f1"
+          "value": "b14ef598d3c3d61bd376d0a68cc3f87e308ba2e704bb86cfa1b2b7337bc033a7"
         },
         "urls": [
-          "https://github.com/adonais/iceweasel/releases/download/v115.44.0esr/Iceweasel-v115.44.0esr.l10n_win64_pgo.7z"
+          "https://github.com/adonais/iceweasel/releases/download/v115.45.0esr/Iceweasel-v115.45.0esr.l10n_win64_pgo.7z"
         ],
         "signatureUrl": null
       },
       "placement": "native_package",
       "innerArchive": null,
-      "source": "https://github.com/adonais/iceweasel/releases/tag/v115.44.0esr",
-      "publishedAt": "2026-10-23T06:35:24Z"
+      "source": "https://github.com/adonais/iceweasel/releases/tag/v115.45.0esr",
+      "publishedAt": "2026-11-07T01:44:32Z"
     },
     {
       "target": "iceweasel",
-      "version": "159.0",
+      "version": "160.0",
       "channel": "release",
       "cpuBuild": "x64",
       "provider": "git_hub_release",
       "artifact": {
-        "fileName": "Iceweasel-v159.0.l10n_win64_pgo.7z",
+        "fileName": "Iceweasel-v160.0.l10n_win64_pgo.7z",
         "format": "sevenzip",
-        "size": 91649891,
+        "size": 92767659,
         "integrity": {
           "algorithm": "sha256",
-          "value": "2eae807dfea9290aaf4bfa2d7882082b761a4869200231b446513ec14a4634e8"
+          "value": "edec6d352020fafbed4fe78d7b83e38927366125b3289494e26b4b43b0f79337"
         },
         "urls": [
-          "https://github.com/adonais/iceweasel/releases/download/v159.0/Iceweasel-v159.0.l10n_win64_pgo.7z"
+          "https://github.com/adonais/iceweasel/releases/download/v160.0/Iceweasel-v160.0.l10n_win64_pgo.7z"
         ],
         "signatureUrl": null
       },
       "placement": "native_package",
       "innerArchive": null,
-      "source": "https://github.com/adonais/iceweasel/releases/tag/v159.0",
-      "publishedAt": "2026-10-24T17:47:55Z"
+      "source": "https://github.com/adonais/iceweasel/releases/tag/v160.0",
+      "publishedAt": "2026-11-08T10:17:20Z"
     },
     {
       "target": "libre_wolf",
-      "version": "159.0.1",
+      "version": "160.0",
       "channel": "stable",
       "cpuBuild": "x64",
       "provider": "libre_wolf",
       "artifact": {
-        "fileName": "librewolf-159.0.1-1-windows-x86_64-portable.zip",
+        "fileName": "librewolf-160.0-1-windows-x86_64-portable.zip",
         "format": "zip",
         "size": null,
         "integrity": {
           "algorithm": "sha256",
-          "value": "6b1f029a758ec03e124c879823f55f852486454cd3bc7cbc2461938f8ab60319"
+          "value": "2b3c8939501380300eb94a8f1de563eb4e910f13ae12d0edc97d4133b942cdf5"
         },
         "urls": [
-          "https://dl.librewolf.net/librewolf/159.0.1-1/librewolf-159.0.1-1-windows-x86_64-portable.zip"
+          "https://dl.librewolf.net/librewolf/160.0-1/librewolf-160.0-1-windows-x86_64-portable.zip"
         ],
-        "signatureUrl": "https://dl.librewolf.net/librewolf/159.0.1-1/librewolf-159.0.1-1-windows-x86_64-portable.zip.sig"
+        "signatureUrl": "https://dl.librewolf.net/librewolf/160.0-1/librewolf-160.0-1-windows-x86_64-portable.zip.sig"
       },
       "placement": "native_package",
       "innerArchive": null,
       "source": "https://librewolf.dev/api/v1/repos/librewolf/bsys6/releases?limit=1",
-      "publishedAt": "2026-11-04T00:48:54Z"
+      "publishedAt": "2026-11-11T02:28:59Z"
     },
     {
       "target": "sky_kakapo",
-      "version": "159.0.1",
+      "version": "160.0",
       "channel": "stable",
       "cpuBuild": "sse3",
       "provider": "sky_kakapo",
       "artifact": {
-        "fileName": "skykakapo-159.0.1-2026110319.en-US.win64-sse3-cspgo.7z",
+        "fileName": "skykakapo-160.0-2026110919.en-US.win64-sse3-cspgo.7z",
         "format": "sevenzip",
         "size": null,
         "integrity": {
           "algorithm": "sha256",
-          "value": "d0cf7a42ef47afb2ef7dda87480439e074656f1fe5bd55f4b23f8d3e9ca5f480"
+          "value": "5a6c217399216e78a7a089ab95d3899f256317c2645b3a5943e3501379d48019"
         },
         "urls": [
-          "https://sourceforge.net/projects/skykakapo/files/159.0.1/skykakapo-159.0.1-2026110319.en-US.win64-sse3-cspgo.7z/download"
+          "https://sourceforge.net/projects/skykakapo/files/160.0/skykakapo-160.0-2026110919.en-US.win64-sse3-cspgo.7z/download"
         ],
         "signatureUrl": null
       },
@@ -376,140 +376,140 @@
     },
     {
       "target": "thorium",
-      "version": "156.0.8078.28",
+      "version": "156.0.8078.80",
       "channel": "stable",
       "cpuBuild": "sse3",
       "provider": "git_hub_release",
       "artifact": {
-        "fileName": "Thorium_SSE3_156.0.8078.28.zip",
+        "fileName": "Thorium_SSE3_156.0.8078.80.zip",
         "format": "zip",
-        "size": 367623982,
+        "size": 381379027,
         "integrity": {
           "algorithm": "sha256",
-          "value": "9fc0a97c24f666a45686b8452a8b848c62fbb7557e4559643005b1943ff80083"
+          "value": "8e068c206e1724111147628e04b3e2c46da4abce1ff47517211a082caea6deb4"
         },
         "urls": [
-          "https://github.com/gz83/thorium/releases/download/M156.0.8078.28/Thorium_SSE3_156.0.8078.28.zip"
+          "https://github.com/gz83/thorium/releases/download/M156.0.8078.80/Thorium_SSE3_156.0.8078.80.zip"
         ],
         "signatureUrl": null
       },
       "placement": "native_package",
       "innerArchive": null,
-      "source": "https://github.com/gz83/thorium/releases/tag/M156.0.8078.28",
-      "publishedAt": "2026-10-11T14:32:01Z"
+      "source": "https://github.com/gz83/thorium/releases/tag/M156.0.8078.80",
+      "publishedAt": "2026-11-09T02:52:36Z"
     },
     {
       "target": "thorium",
-      "version": "156.0.8078.28",
+      "version": "156.0.8078.80",
       "channel": "stable",
       "cpuBuild": "sse4",
       "provider": "git_hub_release",
       "artifact": {
-        "fileName": "Thorium_SSE4_156.0.8078.28.zip",
+        "fileName": "Thorium_SSE4_156.0.8078.80.zip",
         "format": "zip",
-        "size": 367988263,
+        "size": 381793843,
         "integrity": {
           "algorithm": "sha256",
-          "value": "23940dd897d5780502a89cf17f73ff1ad6673d01ec34b5b45e6f16d304a23976"
+          "value": "6c71899f8033abc57cea77cfa8c5cc1bf2dca38feac46bd3112c3098771e9f21"
         },
         "urls": [
-          "https://github.com/gz83/thorium/releases/download/M156.0.8078.28/Thorium_SSE4_156.0.8078.28.zip"
+          "https://github.com/gz83/thorium/releases/download/M156.0.8078.80/Thorium_SSE4_156.0.8078.80.zip"
         ],
         "signatureUrl": null
       },
       "placement": "native_package",
       "innerArchive": null,
-      "source": "https://github.com/gz83/thorium/releases/tag/M156.0.8078.28",
-      "publishedAt": "2026-10-11T14:32:01Z"
+      "source": "https://github.com/gz83/thorium/releases/tag/M156.0.8078.80",
+      "publishedAt": "2026-11-09T02:52:36Z"
     },
     {
       "target": "thorium",
-      "version": "156.0.8078.28",
+      "version": "156.0.8078.80",
       "channel": "stable",
       "cpuBuild": "avx",
       "provider": "git_hub_release",
       "artifact": {
-        "fileName": "Thorium_AVX_156.0.8078.28.zip",
+        "fileName": "Thorium_AVX_156.0.8078.80.zip",
         "format": "zip",
-        "size": 368441339,
+        "size": 382228991,
         "integrity": {
           "algorithm": "sha256",
-          "value": "84409995b2ce3ae1a95055d772754f5b3267f1c6b2aa2f53e178445259ae51be"
+          "value": "9fbe7e047853a865358d06431c80f66f747c75a494f1c9f32c3ba7c84df7c936"
         },
         "urls": [
-          "https://github.com/gz83/thorium/releases/download/M156.0.8078.28/Thorium_AVX_156.0.8078.28.zip"
+          "https://github.com/gz83/thorium/releases/download/M156.0.8078.80/Thorium_AVX_156.0.8078.80.zip"
         ],
         "signatureUrl": null
       },
       "placement": "native_package",
       "innerArchive": null,
-      "source": "https://github.com/gz83/thorium/releases/tag/M156.0.8078.28",
-      "publishedAt": "2026-10-11T14:32:01Z"
+      "source": "https://github.com/gz83/thorium/releases/tag/M156.0.8078.80",
+      "publishedAt": "2026-11-09T02:52:36Z"
     },
     {
       "target": "thorium",
-      "version": "156.0.8078.28",
+      "version": "156.0.8078.80",
       "channel": "stable",
       "cpuBuild": "avx2",
       "provider": "git_hub_release",
       "artifact": {
-        "fileName": "Thorium_AVX2_156.0.8078.28.zip",
+        "fileName": "Thorium_AVX2_156.0.8078.80.zip",
         "format": "zip",
-        "size": 366655400,
+        "size": 380368826,
         "integrity": {
           "algorithm": "sha256",
-          "value": "cdd502a93ff21db45627a22e39c1a5ce9816f0f30fabc504fddf59a44d59d6d2"
+          "value": "cc8db207d195a01401332ecfb164cda62482e4d11afe0900ec41cdd9cf0b7ab1"
         },
         "urls": [
-          "https://github.com/gz83/thorium/releases/download/M156.0.8078.28/Thorium_AVX2_156.0.8078.28.zip"
+          "https://github.com/gz83/thorium/releases/download/M156.0.8078.80/Thorium_AVX2_156.0.8078.80.zip"
         ],
         "signatureUrl": null
       },
       "placement": "native_package",
       "innerArchive": null,
-      "source": "https://github.com/gz83/thorium/releases/tag/M156.0.8078.28",
-      "publishedAt": "2026-10-11T14:32:01Z"
+      "source": "https://github.com/gz83/thorium/releases/tag/M156.0.8078.80",
+      "publishedAt": "2026-11-09T02:52:36Z"
     },
     {
       "target": "thorium",
-      "version": "156.0.8078.28",
+      "version": "156.0.8078.80",
       "channel": "stable",
       "cpuBuild": "avx512",
       "provider": "git_hub_release",
       "artifact": {
-        "fileName": "Thorium_AVX512_156.0.8078.28.zip",
+        "fileName": "Thorium_AVX512_156.0.8078.80.zip",
         "format": "zip",
-        "size": 366369375,
+        "size": 380066445,
         "integrity": {
           "algorithm": "sha256",
-          "value": "072255e4e060ee4ddb3a44059268f5711e55861e175972be9613d0d7b9ea4380"
+          "value": "e2cfc7575f06f508a0972f8c4486204417bec13448e08609c43520a9aad23dd0"
         },
         "urls": [
-          "https://github.com/gz83/thorium/releases/download/M156.0.8078.28/Thorium_AVX512_156.0.8078.28.zip"
+          "https://github.com/gz83/thorium/releases/download/M156.0.8078.80/Thorium_AVX512_156.0.8078.80.zip"
         ],
         "signatureUrl": null
       },
       "placement": "native_package",
       "innerArchive": null,
-      "source": "https://github.com/gz83/thorium/releases/tag/M156.0.8078.28",
-      "publishedAt": "2026-10-11T14:32:01Z"
+      "source": "https://github.com/gz83/thorium/releases/tag/M156.0.8078.80",
+      "publishedAt": "2026-11-09T02:52:36Z"
     },
     {
       "target": "turbo",
-      "version": "156.0.8078.81",
+      "version": "156.0.8078.84",
       "channel": "stable",
       "cpuBuild": "x64",
       "provider": "turbo",
       "artifact": {
-        "fileName": "Turbo_156.0.8078.81_portable.7z",
+        "fileName": "Turbo_156.0.8078.84_portable.7z",
         "format": "sevenzip",
-        "size": 127067785,
+        "size": 127102583,
         "integrity": {
           "algorithm": "sha256",
-          "value": "068c1483b42487606089605a88663407b6800e6ec79a6261b0de86a9f6fbc242"
+          "value": "83629ad0fea165bdcae798f48ef04169cbb3ff226ef27f92415f1431f81f7d99"
         },
         "urls": [
-          "https://dl.tbrowser.cn/download/Turbo_156.0.8078.81_portable.7z"
+          "https://dl.tbrowser.cn/download/Turbo_156.0.8078.84_portable.7z"
         ],
         "signatureUrl": null
       },
@@ -520,27 +520,27 @@
     },
     {
       "target": "ungoogled_chromium",
-      "version": "156.0.8078.79",
+      "version": "157.0.8103.78",
       "channel": "stable",
       "cpuBuild": "x64",
       "provider": "git_hub_release",
       "artifact": {
-        "fileName": "ungoogled-chromium_156.0.8078.79-1.1_windows_x64.zip",
+        "fileName": "ungoogled-chromium_157.0.8103.78-1.1_windows_x64.zip",
         "format": "zip",
-        "size": 200807142,
+        "size": 202853365,
         "integrity": {
           "algorithm": "sha256",
-          "value": "a97c5378e16075967660f85cc34150444a9cfbc79733f048b9c6b42a851e4eb9"
+          "value": "2b1d113b055f827b573cd1fa2bc46511691c0aa427802397cfc05e52350ef212"
         },
         "urls": [
-          "https://github.com/ungoogled-software/ungoogled-chromium-windows/releases/download/156.0.8078.79-1.1/ungoogled-chromium_156.0.8078.79-1.1_windows_x64.zip"
+          "https://github.com/ungoogled-software/ungoogled-chromium-windows/releases/download/157.0.8103.78-1.1/ungoogled-chromium_157.0.8103.78-1.1_windows_x64.zip"
         ],
         "signatureUrl": null
       },
       "placement": "native_package",
       "innerArchive": null,
-      "source": "https://github.com/ungoogled-software/ungoogled-chromium-windows/releases/tag/156.0.8078.79-1.1",
-      "publishedAt": "2026-11-01T22:55:23Z"
+      "source": "https://github.com/ungoogled-software/ungoogled-chromium-windows/releases/tag/157.0.8103.78-1.1",
+      "publishedAt": "2026-11-15T23:58:18Z"
     },
     {
       "target": "vivaldi",
@@ -568,54 +568,54 @@
     },
     {
       "target": "zen",
-      "version": "1.24b",
+      "version": "1.24.2b",
       "channel": "stable",
       "cpuBuild": "x64",
       "provider": "git_hub_release",
       "artifact": {
         "fileName": "zen.installer.exe",
         "format": "sevenzip",
-        "size": 118588392,
+        "size": 119895240,
         "integrity": {
           "algorithm": "sha256",
-          "value": "2d55965f1952f2e5489dfaf954d613ebbf6361c5ca2bcad95ab8d3c0a481d6a4"
+          "value": "bd53e63028b84fd77a4c734873d485d98b59921f4a6a6617cb654b2f9f1585bc"
         },
         "urls": [
-          "https://github.com/zen-browser/desktop/releases/download/1.24b/zen.installer.exe"
+          "https://github.com/zen-browser/desktop/releases/download/1.24.2b/zen.installer.exe"
         ],
         "signatureUrl": null
       },
       "placement": "native_package",
       "innerArchive": null,
-      "source": "https://github.com/zen-browser/desktop/releases/tag/1.24b",
-      "publishedAt": "2026-10-29T21:28:59Z"
+      "source": "https://github.com/zen-browser/desktop/releases/tag/1.24.2b",
+      "publishedAt": "2026-11-12T10:18:28Z"
     }
   ],
   "chromePlus": {
-    "version": "1.19.0",
+    "version": "1.20.0",
     "artifact": {
-      "fileName": "Chrome++_v1.19.0_x86_x64_arm64.7z",
+      "fileName": "Chrome++_v1.20.0_x86_x64_arm64.7z",
       "format": "sevenzip",
-      "size": 195408,
+      "size": 198331,
       "integrity": {
         "algorithm": "sha256",
-        "value": "090c192efd83637b495e37f4cf01bc89c508b74591ac9110843c30bec99c5a22"
+        "value": "483e0c78e99e4ae57556623445c01f69c9c872e549baf86750b0feb080388400"
       },
       "urls": [
-        "https://github.com/Bush2021/chrome_plus/releases/download/1.19.0/Chrome%2B%2B_v1.19.0_x86_x64_arm64.7z"
+        "https://github.com/Bush2021/chrome_plus/releases/download/1.20.0/Chrome%2B%2B_v1.20.0_x86_x64_arm64.7z"
       ],
       "signatureUrl": null
     },
     "setdllArtifact": {
       "fileName": "setdll.7z",
       "format": "sevenzip",
-      "size": 286313,
+      "size": 289060,
       "integrity": {
         "algorithm": "sha256",
-        "value": "9d6813564d2f54ca2d8dece4c4952143f5040fa00cd1d8462af444eda0fef7a9"
+        "value": "a42900049a0bbe757a024942bb56e8f50b9087e08d50d29a65d8da0fbbcb818b"
       },
       "urls": [
-        "https://github.com/Bush2021/chrome_plus/releases/download/1.19.0/setdll.7z"
+        "https://github.com/Bush2021/chrome_plus/releases/download/1.20.0/setdll.7z"
       ],
       "signatureUrl": null
     }
