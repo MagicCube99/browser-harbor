@@ -1,31 +1,31 @@
 {
   "schemaVersion": 1,
-  "generatedAt": 1794906956,
+  "generatedAt": 1794940668,
   "expiresAt": 253402300799,
   "releases": [
     {
       "target": "brave",
-      "version": "1.100.56",
+      "version": "1.100.57",
       "channel": "stable",
       "cpuBuild": "x64",
       "provider": "git_hub_release",
       "artifact": {
-        "fileName": "brave-v1.100.56-win32-x64.zip",
+        "fileName": "brave-v1.100.57-win32-x64.zip",
         "format": "zip",
-        "size": 259472063,
+        "size": 259471213,
         "integrity": {
           "algorithm": "sha256",
-          "value": "44a077a2a432e4256265c1145d0dfac8c836ff9f191e6954a1610d0e3804e783"
+          "value": "9091887febc3a408c341ebefa1fc3a9b599cfb359d01cac292814f7fa4067574"
         },
         "urls": [
-          "https://github.com/brave/brave-browser/releases/download/v1.100.56/brave-v1.100.56-win32-x64.zip"
+          "https://github.com/brave/brave-browser/releases/download/v1.100.57/brave-v1.100.57-win32-x64.zip"
         ],
         "signatureUrl": null
       },
       "placement": "native_package",
       "innerArchive": null,
-      "source": "https://github.com/brave/brave-browser/releases/tag/v1.100.56",
-      "publishedAt": "2026-11-13T09:48:59Z"
+      "source": "https://github.com/brave/brave-browser/releases/tag/v1.100.57",
+      "publishedAt": "2026-11-17T07:59:35Z"
     },
     {
       "target": "brave",
@@ -78,20 +78,20 @@
     },
     {
       "target": "catsxp",
-      "version": "158.6.11.3.7",
+      "version": "158.6.11.3.8",
       "channel": "beta",
       "cpuBuild": "x64",
       "provider": "catsxp",
       "artifact": {
-        "fileName": "portable_x64_beta_158_6_11_3_7.zip",
+        "fileName": "portable_x64_beta_158_6_11_3_8.zip",
         "format": "zip",
-        "size": 239655267,
+        "size": 239715592,
         "integrity": {
           "algorithm": "sha256",
-          "value": "66c5490e047994c007b1bbecae0ff0e6226abcd6cdb5566f92ce9b6a8eba3a2f"
+          "value": "b03cef4dc7a11f18292ef07b33d14d2660b4fbcbd4e80082337cf62db708bfee"
         },
         "urls": [
-          "https://b2.catsxp.com/catsxp_portable/win_x64/portable_x64_beta_158_6_11_3_7.zip"
+          "https://b2.catsxp.com/catsxp_portable/win_x64/portable_x64_beta_158_6_11_3_8.zip"
         ],
         "signatureUrl": null
       },
@@ -160,26 +160,26 @@
     },
     {
       "target": "firefox",
-      "version": "160.0",
+      "version": "160.0.1",
       "channel": "stable",
       "cpuBuild": "x64",
       "provider": "mozilla",
       "artifact": {
-        "fileName": "Firefox Setup 160.0.exe",
+        "fileName": "Firefox Setup 160.0.1.exe",
         "format": "sevenzip",
         "size": null,
         "integrity": {
           "algorithm": "sha256",
-          "value": "729041e434a61bc7572a356297e4f43a71cdeec7c88b04aba5d4b95c2b285716"
+          "value": "77e8dc4d6f862b52313edc4eadf29f72db10fe3c4c0d3a2052d618eec8504b5e"
         },
         "urls": [
-          "https://download-installer.cdn.mozilla.net/pub/firefox/releases/160.0/win64/zh-CN/Firefox%20Setup%20160.0.exe"
+          "https://download-installer.cdn.mozilla.net/pub/firefox/releases/160.0.1/win64/zh-CN/Firefox%20Setup%20160.0.1.exe"
         ],
         "signatureUrl": null
       },
       "placement": "app",
       "innerArchive": null,
-      "source": "https://download-installer.cdn.mozilla.net/pub/firefox/releases/160.0/SHA256SUMS",
+      "source": "https://download-installer.cdn.mozilla.net/pub/firefox/releases/160.0.1/SHA256SUMS",
       "publishedAt": null
     },
     {
@@ -304,27 +304,27 @@
     },
     {
       "target": "iceweasel",
-      "version": "160.0",
+      "version": "160.0.1",
       "channel": "release",
       "cpuBuild": "x64",
       "provider": "git_hub_release",
       "artifact": {
-        "fileName": "Iceweasel-v160.0.l10n_win64_pgo.7z",
+        "fileName": "Iceweasel-v160.0.1.l10n_win64_pgo.7z",
         "format": "sevenzip",
-        "size": 92767659,
+        "size": 92678803,
         "integrity": {
           "algorithm": "sha256",
-          "value": "edec6d352020fafbed4fe78d7b83e38927366125b3289494e26b4b43b0f79337"
+          "value": "8d4a4260af3d8bfb3ffb345e138867b6d98200dcd021a63d57f821a872d1ff76"
         },
         "urls": [
-          "https://github.com/adonais/iceweasel/releases/download/v160.0/Iceweasel-v160.0.l10n_win64_pgo.7z"
+          "https://github.com/adonais/iceweasel/releases/download/v160.0.1/Iceweasel-v160.0.1.l10n_win64_pgo.7z"
         ],
         "signatureUrl": null
       },
       "placement": "native_package",
       "innerArchive": null,
-      "source": "https://github.com/adonais/iceweasel/releases/tag/v160.0",
-      "publishedAt": "2026-11-08T10:17:20Z"
+      "source": "https://github.com/adonais/iceweasel/releases/tag/v160.0.1",
+      "publishedAt": "2026-11-17T09:22:53Z"
     },
     {
       "target": "libre_wolf",
@@ -352,20 +352,20 @@
     },
     {
       "target": "sky_kakapo",
-      "version": "160.0",
+      "version": "160.0.1",
       "channel": "stable",
       "cpuBuild": "sse3",
       "provider": "sky_kakapo",
       "artifact": {
-        "fileName": "skykakapo-160.0-2026110919.en-US.win64-sse3-cspgo.7z",
+        "fileName": "skykakapo-160.0.1-2026111718.en-US.win64-sse3-cspgo.7z",
         "format": "sevenzip",
         "size": null,
         "integrity": {
           "algorithm": "sha256",
-          "value": "5a6c217399216e78a7a089ab95d3899f256317c2645b3a5943e3501379d48019"
+          "value": "8e2d408ede0159b83a42bb516d3f8f87b560386c14177d4ce94939d4eba2e003"
         },
         "urls": [
-          "https://sourceforge.net/projects/skykakapo/files/160.0/skykakapo-160.0-2026110919.en-US.win64-sse3-cspgo.7z/download"
+          "https://sourceforge.net/projects/skykakapo/files/160.0.1/skykakapo-160.0.1-2026111718.en-US.win64-sse3-cspgo.7z/download"
         ],
         "signatureUrl": null
       },
@@ -544,20 +544,20 @@
     },
     {
       "target": "vivaldi",
-      "version": "8.3.4191.26",
+      "version": "8.2.4133.94",
       "channel": "stable",
       "cpuBuild": "x64",
       "provider": "vivaldi",
       "artifact": {
-        "fileName": "Vivaldi.8.3.4191.26.x64.exe",
+        "fileName": "Vivaldi.8.2.4133.94.x64.exe",
         "format": "sevenzip",
-        "size": 160049576,
+        "size": 156217256,
         "integrity": {
           "algorithm": "sha256",
-          "value": "97c6e6b3d8d01351994ec88623ccfdc370317a1c5b89758746d615a60490363e"
+          "value": "6f2eee78fd43c9cb5d04150487aa786625c3361c96c43e6032f753909850a893"
         },
         "urls": [
-          "https://downloads.vivaldi.com/stable/Vivaldi.8.3.4191.26.x64.exe"
+          "https://downloads.vivaldi.com/stable/Vivaldi.8.2.4133.94.x64.exe"
         ],
         "signatureUrl": null
       },
