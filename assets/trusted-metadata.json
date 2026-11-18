@@ -1,55 +1,55 @@
 {
   "schemaVersion": 1,
-  "generatedAt": 1794963162,
+  "generatedAt": 1794993166,
   "expiresAt": 253402300799,
   "releases": [
     {
       "target": "brave",
-      "version": "1.100.57",
+      "version": "1.100.58",
       "channel": "stable",
       "cpuBuild": "x64",
       "provider": "git_hub_release",
       "artifact": {
-        "fileName": "brave-v1.100.57-win32-x64.zip",
+        "fileName": "brave-v1.100.58-win32-x64.zip",
         "format": "zip",
-        "size": 259471213,
+        "size": 259470571,
         "integrity": {
           "algorithm": "sha256",
-          "value": "9091887febc3a408c341ebefa1fc3a9b599cfb359d01cac292814f7fa4067574"
+          "value": "4da0032c59caeb76b5669aed562b399826bd7c2156c685855d461e169b8dd9c8"
         },
         "urls": [
-          "https://github.com/brave/brave-browser/releases/download/v1.100.57/brave-v1.100.57-win32-x64.zip"
+          "https://github.com/brave/brave-browser/releases/download/v1.100.58/brave-v1.100.58-win32-x64.zip"
         ],
         "signatureUrl": null
       },
       "placement": "native_package",
       "innerArchive": null,
-      "source": "https://github.com/brave/brave-browser/releases/tag/v1.100.57",
-      "publishedAt": "2026-11-17T07:59:35Z"
+      "source": "https://github.com/brave/brave-browser/releases/tag/v1.100.58",
+      "publishedAt": "2026-11-18T05:20:44Z"
     },
     {
       "target": "brave",
-      "version": "1.101.50",
+      "version": "1.101.51",
       "channel": "beta",
       "cpuBuild": "x64",
       "provider": "git_hub_release",
       "artifact": {
-        "fileName": "brave-v1.101.50-win32-x64.zip",
+        "fileName": "brave-v1.101.51-win32-x64.zip",
         "format": "zip",
-        "size": 260440746,
+        "size": 260440949,
         "integrity": {
           "algorithm": "sha256",
-          "value": "6313e1b9857743a6e87ad4e3ce0a477d1d29313b8a252a1ed23f928e64c0d7bb"
+          "value": "88bd101d4faa769d37a20e0cdb2da2d26ea121540ebfee1574b8aa1b468f159c"
         },
         "urls": [
-          "https://github.com/brave/brave-browser/releases/download/v1.101.50/brave-v1.101.50-win32-x64.zip"
+          "https://github.com/brave/brave-browser/releases/download/v1.101.51/brave-v1.101.51-win32-x64.zip"
         ],
         "signatureUrl": null
       },
       "placement": "native_package",
       "innerArchive": null,
-      "source": "https://github.com/brave/brave-browser/releases/tag/v1.101.50",
-      "publishedAt": "2026-11-17T05:09:21Z"
+      "source": "https://github.com/brave/brave-browser/releases/tag/v1.101.51",
+      "publishedAt": "2026-11-18T05:09:11Z"
     },
     {
       "target": "catsxp",
@@ -544,20 +544,20 @@
     },
     {
       "target": "vivaldi",
-      "version": "8.3.4191.44",
+      "version": "8.3.4191.35",
       "channel": "stable",
       "cpuBuild": "x64",
       "provider": "vivaldi",
       "artifact": {
-        "fileName": "Vivaldi.8.3.4191.44.x64.exe",
+        "fileName": "Vivaldi.8.3.4191.35.x64.exe",
         "format": "sevenzip",
-        "size": 160143272,
+        "size": 160153512,
         "integrity": {
           "algorithm": "sha256",
-          "value": "57e5be108058a121a62a3f0f8194f86b790ccc458ee4be3c7043d7bb07e6b596"
+          "value": "d9cd421314ff8fd0f5a8b2a7dbb6818ac1dfe26882426253b26b89f09a66afdc"
         },
         "urls": [
-          "https://downloads.vivaldi.com/stable/Vivaldi.8.3.4191.44.x64.exe"
+          "https://downloads.vivaldi.com/stable/Vivaldi.8.3.4191.35.x64.exe"
         ],
         "signatureUrl": null
       },
