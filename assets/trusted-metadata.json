@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": 1795047030,
+  "generatedAt": 1795075197,
   "expiresAt": 253402300799,
   "releases": [
     {
@@ -29,45 +29,45 @@
     },
     {
       "target": "brave",
-      "version": "1.101.51",
+      "version": "1.101.52",
       "channel": "beta",
       "cpuBuild": "x64",
       "provider": "git_hub_release",
       "artifact": {
-        "fileName": "brave-v1.101.51-win32-x64.zip",
+        "fileName": "brave-v1.101.52-win32-x64.zip",
         "format": "zip",
-        "size": 260440949,
+        "size": 260441434,
         "integrity": {
           "algorithm": "sha256",
-          "value": "88bd101d4faa769d37a20e0cdb2da2d26ea121540ebfee1574b8aa1b468f159c"
+          "value": "b46e77a4dfbbe15b2bc89dfbbfb435ce80a51eb427987abde07bc902b93e095d"
         },
         "urls": [
-          "https://github.com/brave/brave-browser/releases/download/v1.101.51/brave-v1.101.51-win32-x64.zip"
+          "https://github.com/brave/brave-browser/releases/download/v1.101.52/brave-v1.101.52-win32-x64.zip"
         ],
         "signatureUrl": null
       },
       "placement": "native_package",
       "innerArchive": null,
-      "source": "https://github.com/brave/brave-browser/releases/tag/v1.101.51",
-      "publishedAt": "2026-11-18T05:09:11Z"
+      "source": "https://github.com/brave/brave-browser/releases/tag/v1.101.52",
+      "publishedAt": "2026-11-19T05:08:21Z"
     },
     {
       "target": "catsxp",
-      "version": "157.6.11.2",
+      "version": "158.6.11.3",
       "channel": "stable",
       "cpuBuild": "x64",
       "provider": "catsxp",
       "artifact": {
-        "fileName": "portable_x64_release_157_6_11_2.zip",
+        "fileName": "portable_x64_release_158_6_11_3.zip",
         "format": "zip",
-        "size": 234918412,
+        "size": 239757119,
         "integrity": {
           "algorithm": "sha256",
-          "value": "e220aee18814d41ba056819c0ed7430010c923b5fdacf130eb1752bf0e62b785"
+          "value": "f0687ad39f796e31a0789b242388a1d3eacf686665a6ecafecf92fe479e7e155"
         },
         "urls": [
-          "https://b2.catsxp.com/catsxp_portable/win_x64/portable_x64_release_157_6_11_2.zip",
-          "https://r2.catsxp.com/catsxp_portable/win_x64/portable_x64_release_157_6_11_2.zip"
+          "https://b2.catsxp.com/catsxp_portable/win_x64/portable_x64_release_158_6_11_3.zip",
+          "https://r2.catsxp.com/catsxp_portable/win_x64/portable_x64_release_158_6_11_3.zip"
         ],
         "signatureUrl": null
       },
@@ -78,20 +78,20 @@
     },
     {
       "target": "catsxp",
-      "version": "158.6.11.3.9",
+      "version": "158.6.11.3.10",
       "channel": "beta",
       "cpuBuild": "x64",
       "provider": "catsxp",
       "artifact": {
-        "fileName": "portable_x64_beta_158_6_11_3_9.zip",
+        "fileName": "portable_x64_beta_158_6_11_3_10.zip",
         "format": "zip",
-        "size": 239749642,
+        "size": 239757119,
         "integrity": {
           "algorithm": "sha256",
-          "value": "6b0b3541c2f01f8a2e60ab5837560745445802c25f4bce15b00d7ccbed1c1660"
+          "value": "f0687ad39f796e31a0789b242388a1d3eacf686665a6ecafecf92fe479e7e155"
         },
         "urls": [
-          "https://b2.catsxp.com/catsxp_portable/win_x64/portable_x64_beta_158_6_11_3_9.zip"
+          "https://b2.catsxp.com/catsxp_portable/win_x64/portable_x64_beta_158_6_11_3_10.zip"
         ],
         "signatureUrl": null
       },
@@ -280,27 +280,27 @@
     },
     {
       "target": "iceweasel",
-      "version": "115.45.0esr",
+      "version": "115.46.0esr",
       "channel": "esr",
       "cpuBuild": "x64",
       "provider": "git_hub_release",
       "artifact": {
-        "fileName": "Iceweasel-v115.45.0esr.l10n_win64_pgo.7z",
+        "fileName": "Iceweasel-v115.46.0esr.l10n_win64_pgo.7z",
         "format": "sevenzip",
-        "size": 59453618,
+        "size": 59241033,
         "integrity": {
           "algorithm": "sha256",
-          "value": "b14ef598d3c3d61bd376d0a68cc3f87e308ba2e704bb86cfa1b2b7337bc033a7"
+          "value": "638b33b5ffd702a69d44ee452d29a3dc46274656023f7f353206c59eb3771e62"
         },
         "urls": [
-          "https://github.com/adonais/iceweasel/releases/download/v115.45.0esr/Iceweasel-v115.45.0esr.l10n_win64_pgo.7z"
+          "https://github.com/adonais/iceweasel/releases/download/v115.46.0esr/Iceweasel-v115.46.0esr.l10n_win64_pgo.7z"
         ],
         "signatureUrl": null
       },
       "placement": "native_package",
       "innerArchive": null,
-      "source": "https://github.com/adonais/iceweasel/releases/tag/v115.45.0esr",
-      "publishedAt": "2026-11-07T01:44:32Z"
+      "source": "https://github.com/adonais/iceweasel/releases/tag/v115.46.0esr",
+      "publishedAt": "2026-11-19T02:32:48Z"
     },
     {
       "target": "iceweasel",
@@ -544,20 +544,20 @@
     },
     {
       "target": "vivaldi",
-      "version": "8.3.4191.44",
+      "version": "8.1.4087.61",
       "channel": "stable",
       "cpuBuild": "x64",
       "provider": "vivaldi",
       "artifact": {
-        "fileName": "Vivaldi.8.3.4191.44.x64.exe",
+        "fileName": "Vivaldi.8.1.4087.61.x64.exe",
         "format": "sevenzip",
-        "size": 160143272,
+        "size": 146559912,
         "integrity": {
           "algorithm": "sha256",
-          "value": "57e5be108058a121a62a3f0f8194f86b790ccc458ee4be3c7043d7bb07e6b596"
+          "value": "5f897427cb9caee96751b8b4a08eefb83898008fb5d9ad7e5d1323a1b4b55179"
         },
         "urls": [
-          "https://downloads.vivaldi.com/stable/Vivaldi.8.3.4191.44.x64.exe"
+          "https://downloads.vivaldi.com/stable/Vivaldi.8.1.4087.61.x64.exe"
         ],
         "signatureUrl": null
       },
