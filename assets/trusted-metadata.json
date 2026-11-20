@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": 1795134785,
+  "generatedAt": 1795158953,
   "expiresAt": 253402300799,
   "releases": [
     {
@@ -29,27 +29,27 @@
     },
     {
       "target": "brave",
-      "version": "1.101.52",
+      "version": "1.101.53",
       "channel": "beta",
       "cpuBuild": "x64",
       "provider": "git_hub_release",
       "artifact": {
-        "fileName": "brave-v1.101.52-win32-x64.zip",
+        "fileName": "brave-v1.101.53-win32-x64.zip",
         "format": "zip",
-        "size": 260441434,
+        "size": 260443502,
         "integrity": {
           "algorithm": "sha256",
-          "value": "b46e77a4dfbbe15b2bc89dfbbfb435ce80a51eb427987abde07bc902b93e095d"
+          "value": "785eabc330c5c9095d3730cbfe5f86d4014c09ebeaffc9b9b3f8edc59963a31e"
         },
         "urls": [
-          "https://github.com/brave/brave-browser/releases/download/v1.101.52/brave-v1.101.52-win32-x64.zip"
+          "https://github.com/brave/brave-browser/releases/download/v1.101.53/brave-v1.101.53-win32-x64.zip"
         ],
         "signatureUrl": null
       },
       "placement": "native_package",
       "innerArchive": null,
-      "source": "https://github.com/brave/brave-browser/releases/tag/v1.101.52",
-      "publishedAt": "2026-11-19T05:08:21Z"
+      "source": "https://github.com/brave/brave-browser/releases/tag/v1.101.53",
+      "publishedAt": "2026-11-20T05:08:02Z"
     },
     {
       "target": "catsxp",
@@ -376,123 +376,123 @@
     },
     {
       "target": "thorium",
-      "version": "156.0.8078.80",
+      "version": "158.0.8127.41",
       "channel": "stable",
       "cpuBuild": "sse3",
       "provider": "git_hub_release",
       "artifact": {
-        "fileName": "Thorium_SSE3_156.0.8078.80.zip",
+        "fileName": "Thorium_SSE3_158.0.8127.41.zip",
         "format": "zip",
-        "size": 381379027,
+        "size": 396435600,
         "integrity": {
           "algorithm": "sha256",
-          "value": "8e068c206e1724111147628e04b3e2c46da4abce1ff47517211a082caea6deb4"
+          "value": "9cada5e6eddb242ef09e54dfeecd483dedad3c81b8a6a26a24b06fe31a83de2e"
         },
         "urls": [
-          "https://github.com/gz83/thorium/releases/download/M156.0.8078.80/Thorium_SSE3_156.0.8078.80.zip"
+          "https://github.com/gz83/thorium/releases/download/M158.0.8127.41/Thorium_SSE3_158.0.8127.41.zip"
         ],
         "signatureUrl": null
       },
       "placement": "native_package",
       "innerArchive": null,
-      "source": "https://github.com/gz83/thorium/releases/tag/M156.0.8078.80",
-      "publishedAt": "2026-11-09T02:52:36Z"
+      "source": "https://github.com/gz83/thorium/releases/tag/M158.0.8127.41",
+      "publishedAt": "2026-11-19T09:21:02Z"
     },
     {
       "target": "thorium",
-      "version": "156.0.8078.80",
+      "version": "158.0.8127.41",
       "channel": "stable",
       "cpuBuild": "sse4",
       "provider": "git_hub_release",
       "artifact": {
-        "fileName": "Thorium_SSE4_156.0.8078.80.zip",
+        "fileName": "Thorium_SSE4_158.0.8127.41.zip",
         "format": "zip",
-        "size": 381793843,
+        "size": 396905242,
         "integrity": {
           "algorithm": "sha256",
-          "value": "6c71899f8033abc57cea77cfa8c5cc1bf2dca38feac46bd3112c3098771e9f21"
+          "value": "a22e1f225cfcbdbcc109dd88f8e00769d38f6873926e91d1787bbb86abc4d5ff"
         },
         "urls": [
-          "https://github.com/gz83/thorium/releases/download/M156.0.8078.80/Thorium_SSE4_156.0.8078.80.zip"
+          "https://github.com/gz83/thorium/releases/download/M158.0.8127.41/Thorium_SSE4_158.0.8127.41.zip"
         ],
         "signatureUrl": null
       },
       "placement": "native_package",
       "innerArchive": null,
-      "source": "https://github.com/gz83/thorium/releases/tag/M156.0.8078.80",
-      "publishedAt": "2026-11-09T02:52:36Z"
+      "source": "https://github.com/gz83/thorium/releases/tag/M158.0.8127.41",
+      "publishedAt": "2026-11-19T09:21:02Z"
     },
     {
       "target": "thorium",
-      "version": "156.0.8078.80",
+      "version": "158.0.8127.41",
       "channel": "stable",
       "cpuBuild": "avx",
       "provider": "git_hub_release",
       "artifact": {
-        "fileName": "Thorium_AVX_156.0.8078.80.zip",
+        "fileName": "Thorium_AVX_158.0.8127.41.zip",
         "format": "zip",
-        "size": 382228991,
+        "size": 397219709,
         "integrity": {
           "algorithm": "sha256",
-          "value": "9fbe7e047853a865358d06431c80f66f747c75a494f1c9f32c3ba7c84df7c936"
+          "value": "056b852c23894e10600a4cb2286401fc4a49b34984e3957759175bf151799154"
         },
         "urls": [
-          "https://github.com/gz83/thorium/releases/download/M156.0.8078.80/Thorium_AVX_156.0.8078.80.zip"
+          "https://github.com/gz83/thorium/releases/download/M158.0.8127.41/Thorium_AVX_158.0.8127.41.zip"
         ],
         "signatureUrl": null
       },
       "placement": "native_package",
       "innerArchive": null,
-      "source": "https://github.com/gz83/thorium/releases/tag/M156.0.8078.80",
-      "publishedAt": "2026-11-09T02:52:36Z"
+      "source": "https://github.com/gz83/thorium/releases/tag/M158.0.8127.41",
+      "publishedAt": "2026-11-19T09:21:02Z"
     },
     {
       "target": "thorium",
-      "version": "156.0.8078.80",
+      "version": "158.0.8127.41",
       "channel": "stable",
       "cpuBuild": "avx2",
       "provider": "git_hub_release",
       "artifact": {
-        "fileName": "Thorium_AVX2_156.0.8078.80.zip",
+        "fileName": "Thorium_AVX2_158.0.8127.41.zip",
         "format": "zip",
-        "size": 380368826,
+        "size": 404433361,
         "integrity": {
           "algorithm": "sha256",
-          "value": "cc8db207d195a01401332ecfb164cda62482e4d11afe0900ec41cdd9cf0b7ab1"
+          "value": "e61ac87b3791c2658559a31bc51f937ac0e5ccb4551482de5698ef51137bef27"
         },
         "urls": [
-          "https://github.com/gz83/thorium/releases/download/M156.0.8078.80/Thorium_AVX2_156.0.8078.80.zip"
+          "https://github.com/gz83/thorium/releases/download/M158.0.8127.41/Thorium_AVX2_158.0.8127.41.zip"
         ],
         "signatureUrl": null
       },
       "placement": "native_package",
       "innerArchive": null,
-      "source": "https://github.com/gz83/thorium/releases/tag/M156.0.8078.80",
-      "publishedAt": "2026-11-09T02:52:36Z"
+      "source": "https://github.com/gz83/thorium/releases/tag/M158.0.8127.41",
+      "publishedAt": "2026-11-19T09:21:02Z"
     },
     {
       "target": "thorium",
-      "version": "156.0.8078.80",
+      "version": "158.0.8127.41",
       "channel": "stable",
       "cpuBuild": "avx512",
       "provider": "git_hub_release",
       "artifact": {
-        "fileName": "Thorium_AVX512_156.0.8078.80.zip",
+        "fileName": "Thorium_AVX512_158.0.8127.41.zip",
         "format": "zip",
-        "size": 380066445,
+        "size": 395271090,
         "integrity": {
           "algorithm": "sha256",
-          "value": "e2cfc7575f06f508a0972f8c4486204417bec13448e08609c43520a9aad23dd0"
+          "value": "ce11639f3f828fe8496ebab25b565705ddc9084378d4f6bc0893dbcbf828ece6"
         },
         "urls": [
-          "https://github.com/gz83/thorium/releases/download/M156.0.8078.80/Thorium_AVX512_156.0.8078.80.zip"
+          "https://github.com/gz83/thorium/releases/download/M158.0.8127.41/Thorium_AVX512_158.0.8127.41.zip"
         ],
         "signatureUrl": null
       },
       "placement": "native_package",
       "innerArchive": null,
-      "source": "https://github.com/gz83/thorium/releases/tag/M156.0.8078.80",
-      "publishedAt": "2026-11-09T02:52:36Z"
+      "source": "https://github.com/gz83/thorium/releases/tag/M158.0.8127.41",
+      "publishedAt": "2026-11-19T09:21:02Z"
     },
     {
       "target": "turbo",
@@ -544,20 +544,20 @@
     },
     {
       "target": "vivaldi",
-      "version": "8.2.4133.94",
+      "version": "8.3.4191.45",
       "channel": "stable",
       "cpuBuild": "x64",
       "provider": "vivaldi",
       "artifact": {
-        "fileName": "Vivaldi.8.2.4133.94.x64.exe",
+        "fileName": "Vivaldi.8.3.4191.45.x64.exe",
         "format": "sevenzip",
-        "size": 156217256,
+        "size": 160154352,
         "integrity": {
           "algorithm": "sha256",
-          "value": "6f2eee78fd43c9cb5d04150487aa786625c3361c96c43e6032f753909850a893"
+          "value": "cbe5ea26a0e2c1d5cdc17ccc0bc754c036ea6606dc4eeb4536cba697faba8ba7"
         },
         "urls": [
-          "https://downloads.vivaldi.com/stable/Vivaldi.8.2.4133.94.x64.exe"
+          "https://downloads.vivaldi.com/stable/Vivaldi.8.3.4191.45.x64.exe"
         ],
         "signatureUrl": null
       },
