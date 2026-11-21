@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": 1795218922,
+  "generatedAt": 1795231999,
   "expiresAt": 253402300799,
   "releases": [
     {
@@ -78,20 +78,20 @@
     },
     {
       "target": "catsxp",
-      "version": "158.6.11.4.1",
+      "version": "158.6.11.4.2",
       "channel": "beta",
       "cpuBuild": "x64",
       "provider": "catsxp",
       "artifact": {
-        "fileName": "portable_x64_beta_158_6_11_4_1.zip",
+        "fileName": "portable_x64_beta_158_6_11_4_2.zip",
         "format": "zip",
-        "size": 241484859,
+        "size": 241498124,
         "integrity": {
           "algorithm": "sha256",
-          "value": "dae9ce0480a230dead2dd6a0d445f8a62b2fddfb3dae3e8f0fba62aaa59953e6"
+          "value": "2d06256f4fa1322609944f10efcf2d399bffbc154dc996c476572f195ae6ee1d"
         },
         "urls": [
-          "https://b2.catsxp.com/catsxp_portable/win_x64/portable_x64_beta_158_6_11_4_1.zip"
+          "https://b2.catsxp.com/catsxp_portable/win_x64/portable_x64_beta_158_6_11_4_2.zip"
         ],
         "signatureUrl": null
       },
@@ -544,20 +544,20 @@
     },
     {
       "target": "vivaldi",
-      "version": "8.1.4087.61",
+      "version": "8.3.4191.35",
       "channel": "stable",
       "cpuBuild": "x64",
       "provider": "vivaldi",
       "artifact": {
-        "fileName": "Vivaldi.8.1.4087.61.x64.exe",
+        "fileName": "Vivaldi.8.3.4191.35.x64.exe",
         "format": "sevenzip",
-        "size": 146559912,
+        "size": 160153512,
         "integrity": {
           "algorithm": "sha256",
-          "value": "5f897427cb9caee96751b8b4a08eefb83898008fb5d9ad7e5d1323a1b4b55179"
+          "value": "d9cd421314ff8fd0f5a8b2a7dbb6818ac1dfe26882426253b26b89f09a66afdc"
         },
         "urls": [
-          "https://downloads.vivaldi.com/stable/Vivaldi.8.1.4087.61.x64.exe"
+          "https://downloads.vivaldi.com/stable/Vivaldi.8.3.4191.35.x64.exe"
         ],
         "signatureUrl": null
       },
