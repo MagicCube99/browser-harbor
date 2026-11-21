@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": 1795288599,
+  "generatedAt": 1795302048,
   "expiresAt": 253402300799,
   "releases": [
     {
@@ -256,27 +256,27 @@
     },
     {
       "target": "helium",
-      "version": "0.22.1.1",
+      "version": "0.22.2.1",
       "channel": "stable",
       "cpuBuild": "x64",
       "provider": "git_hub_release",
       "artifact": {
-        "fileName": "helium_0.22.1.1_x64-windows.zip",
+        "fileName": "helium_0.22.2.1_x64-windows.zip",
         "format": "zip",
-        "size": 203028982,
+        "size": 204195326,
         "integrity": {
           "algorithm": "sha256",
-          "value": "19fd4fa19eee86a5efb6f9daf7f95eef68292db33c1e0c5ec1f83eefa1c7e189"
+          "value": "6fcd651becff2e8573ff283bc0c3d27a2a1297dd0414f5125792a5a3d21e23c3"
         },
         "urls": [
-          "https://github.com/imputnet/helium-windows/releases/download/0.22.1.1/helium_0.22.1.1_x64-windows.zip"
+          "https://github.com/imputnet/helium-windows/releases/download/0.22.2.1/helium_0.22.2.1_x64-windows.zip"
         ],
         "signatureUrl": null
       },
       "placement": "native_package",
       "innerArchive": null,
-      "source": "https://github.com/imputnet/helium-windows/releases/tag/0.22.1.1",
-      "publishedAt": "2026-11-18T16:56:17Z"
+      "source": "https://github.com/imputnet/helium-windows/releases/tag/0.22.2.1",
+      "publishedAt": "2026-11-21T00:07:07Z"
     },
     {
       "target": "iceweasel",
@@ -544,20 +544,20 @@
     },
     {
       "target": "vivaldi",
-      "version": "8.3.4191.45",
+      "version": "8.2.4133.94",
       "channel": "stable",
       "cpuBuild": "x64",
       "provider": "vivaldi",
       "artifact": {
-        "fileName": "Vivaldi.8.3.4191.45.x64.exe",
+        "fileName": "Vivaldi.8.2.4133.94.x64.exe",
         "format": "sevenzip",
-        "size": 160154352,
+        "size": 156217256,
         "integrity": {
           "algorithm": "sha256",
-          "value": "cbe5ea26a0e2c1d5cdc17ccc0bc754c036ea6606dc4eeb4536cba697faba8ba7"
+          "value": "6f2eee78fd43c9cb5d04150487aa786625c3361c96c43e6032f753909850a893"
         },
         "urls": [
-          "https://downloads.vivaldi.com/stable/Vivaldi.8.3.4191.45.x64.exe"
+          "https://downloads.vivaldi.com/stable/Vivaldi.8.2.4133.94.x64.exe"
         ],
         "signatureUrl": null
       },
