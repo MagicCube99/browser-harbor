@@ -1,55 +1,55 @@
 {
   "schemaVersion": 1,
-  "generatedAt": 1795492681,
+  "generatedAt": 1795542265,
   "expiresAt": 253402300799,
   "releases": [
     {
       "target": "brave",
-      "version": "1.100.58",
+      "version": "1.100.59",
       "channel": "stable",
       "cpuBuild": "x64",
       "provider": "git_hub_release",
       "artifact": {
-        "fileName": "brave-v1.100.58-win32-x64.zip",
+        "fileName": "brave-v1.100.59-win32-x64.zip",
         "format": "zip",
-        "size": 259470571,
+        "size": 259444090,
         "integrity": {
           "algorithm": "sha256",
-          "value": "4da0032c59caeb76b5669aed562b399826bd7c2156c685855d461e169b8dd9c8"
+          "value": "902781a8defb5331a15fdc2bdc062af00302bd90047171e7377d07208830d44e"
         },
         "urls": [
-          "https://github.com/brave/brave-browser/releases/download/v1.100.58/brave-v1.100.58-win32-x64.zip"
+          "https://github.com/brave/brave-browser/releases/download/v1.100.59/brave-v1.100.59-win32-x64.zip"
         ],
         "signatureUrl": null
       },
       "placement": "native_package",
       "innerArchive": null,
-      "source": "https://github.com/brave/brave-browser/releases/tag/v1.100.58",
-      "publishedAt": "2026-11-18T05:20:44Z"
+      "source": "https://github.com/brave/brave-browser/releases/tag/v1.100.59",
+      "publishedAt": "2026-11-24T07:26:03Z"
     },
     {
       "target": "brave",
-      "version": "1.101.54",
+      "version": "1.101.55",
       "channel": "beta",
       "cpuBuild": "x64",
       "provider": "git_hub_release",
       "artifact": {
-        "fileName": "brave-v1.101.54-win32-x64.zip",
+        "fileName": "brave-v1.101.55-win32-x64.zip",
         "format": "zip",
-        "size": 260444562,
+        "size": 260440397,
         "integrity": {
           "algorithm": "sha256",
-          "value": "acb256c26a7598185e5c903d6f4f6847bfa374952a5e9cdc3e1acbc9fd9290d1"
+          "value": "aa1384bab897ffc5244488ab7cc40fba2758ddf8bff9bc4a08cfaf3f445ec5b0"
         },
         "urls": [
-          "https://github.com/brave/brave-browser/releases/download/v1.101.54/brave-v1.101.54-win32-x64.zip"
+          "https://github.com/brave/brave-browser/releases/download/v1.101.55/brave-v1.101.55-win32-x64.zip"
         ],
         "signatureUrl": null
       },
       "placement": "native_package",
       "innerArchive": null,
-      "source": "https://github.com/brave/brave-browser/releases/tag/v1.101.54",
-      "publishedAt": "2026-11-23T05:08:17Z"
+      "source": "https://github.com/brave/brave-browser/releases/tag/v1.101.55",
+      "publishedAt": "2026-11-24T05:11:14Z"
     },
     {
       "target": "catsxp",
@@ -78,20 +78,20 @@
     },
     {
       "target": "catsxp",
-      "version": "159.6.12.1.1",
+      "version": "159.6.12.1.2",
       "channel": "beta",
       "cpuBuild": "x64",
       "provider": "catsxp",
       "artifact": {
-        "fileName": "portable_x64_beta_159_6_12_1_1.zip",
+        "fileName": "portable_x64_beta_159_6_12_1_2.zip",
         "format": "zip",
-        "size": 242982138,
+        "size": 243019096,
         "integrity": {
           "algorithm": "sha256",
-          "value": "ff277b6894d1a4eb04eed6f3d91e230b862a17a495a68c4777b97ba186a81959"
+          "value": "e5c84bed9ec298941a3399cb018c5ac79358874ef2d2093aeed5664cce9ad403"
         },
         "urls": [
-          "https://b2.catsxp.com/catsxp_portable/win_x64/portable_x64_beta_159_6_12_1_1.zip"
+          "https://b2.catsxp.com/catsxp_portable/win_x64/portable_x64_beta_159_6_12_1_2.zip"
         ],
         "signatureUrl": null
       },
@@ -160,50 +160,50 @@
     },
     {
       "target": "firefox",
-      "version": "160.0.1",
+      "version": "161.0",
       "channel": "stable",
       "cpuBuild": "x64",
       "provider": "mozilla",
       "artifact": {
-        "fileName": "Firefox Setup 160.0.1.exe",
+        "fileName": "Firefox Setup 161.0.exe",
         "format": "sevenzip",
         "size": null,
         "integrity": {
           "algorithm": "sha256",
-          "value": "77e8dc4d6f862b52313edc4eadf29f72db10fe3c4c0d3a2052d618eec8504b5e"
+          "value": "78efa4e17321970721504cdec36a4b430a1d9fb6b07887ea3d74835b0e32786c"
         },
         "urls": [
-          "https://download-installer.cdn.mozilla.net/pub/firefox/releases/160.0.1/win64/zh-CN/Firefox%20Setup%20160.0.1.exe"
+          "https://download-installer.cdn.mozilla.net/pub/firefox/releases/161.0/win64/zh-CN/Firefox%20Setup%20161.0.exe"
         ],
         "signatureUrl": null
       },
       "placement": "app",
       "innerArchive": null,
-      "source": "https://download-installer.cdn.mozilla.net/pub/firefox/releases/160.0.1/SHA256SUMS",
+      "source": "https://download-installer.cdn.mozilla.net/pub/firefox/releases/161.0/SHA256SUMS",
       "publishedAt": null
     },
     {
       "target": "firefox",
-      "version": "153.7.0esr",
+      "version": "153.8.0esr",
       "channel": "esr",
       "cpuBuild": "x64",
       "provider": "mozilla",
       "artifact": {
-        "fileName": "Firefox Setup 153.7.0esr.exe",
+        "fileName": "Firefox Setup 153.8.0esr.exe",
         "format": "sevenzip",
         "size": null,
         "integrity": {
           "algorithm": "sha256",
-          "value": "0952ef41ffc816264b00871fd3eb7bd7204c3ea55ae91ad6566f1ef1fac578a9"
+          "value": "448d01dc711aa758989aa7af75be67d26ca8146639f76214595bfe3266d5d6c9"
         },
         "urls": [
-          "https://download-installer.cdn.mozilla.net/pub/firefox/releases/153.7.0esr/win64/zh-CN/Firefox%20Setup%20153.7.0esr.exe"
+          "https://download-installer.cdn.mozilla.net/pub/firefox/releases/153.8.0esr/win64/zh-CN/Firefox%20Setup%20153.8.0esr.exe"
         ],
         "signatureUrl": null
       },
       "placement": "app",
       "innerArchive": null,
-      "source": "https://download-installer.cdn.mozilla.net/pub/firefox/releases/153.7.0esr/SHA256SUMS",
+      "source": "https://download-installer.cdn.mozilla.net/pub/firefox/releases/153.8.0esr/SHA256SUMS",
       "publishedAt": null
     },
     {
@@ -544,20 +544,20 @@
     },
     {
       "target": "vivaldi",
-      "version": "8.3.4191.45",
+      "version": "8.1.4087.61",
       "channel": "stable",
       "cpuBuild": "x64",
       "provider": "vivaldi",
       "artifact": {
-        "fileName": "Vivaldi.8.3.4191.45.x64.exe",
+        "fileName": "Vivaldi.8.1.4087.61.x64.exe",
         "format": "sevenzip",
-        "size": 160154352,
+        "size": 146559912,
         "integrity": {
           "algorithm": "sha256",
-          "value": "cbe5ea26a0e2c1d5cdc17ccc0bc754c036ea6606dc4eeb4536cba697faba8ba7"
+          "value": "5f897427cb9caee96751b8b4a08eefb83898008fb5d9ad7e5d1323a1b4b55179"
         },
         "urls": [
-          "https://downloads.vivaldi.com/stable/Vivaldi.8.3.4191.45.x64.exe"
+          "https://downloads.vivaldi.com/stable/Vivaldi.8.1.4087.61.x64.exe"
         ],
         "signatureUrl": null
       },
