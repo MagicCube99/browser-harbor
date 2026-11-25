@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": 1795542265,
+  "generatedAt": 1795570764,
   "expiresAt": 253402300799,
   "releases": [
     {
@@ -78,20 +78,20 @@
     },
     {
       "target": "catsxp",
-      "version": "159.6.12.1.2",
+      "version": "159.6.12.1.3",
       "channel": "beta",
       "cpuBuild": "x64",
       "provider": "catsxp",
       "artifact": {
-        "fileName": "portable_x64_beta_159_6_12_1_2.zip",
+        "fileName": "portable_x64_beta_159_6_12_1_3.zip",
         "format": "zip",
-        "size": 243019096,
+        "size": 243035241,
         "integrity": {
           "algorithm": "sha256",
-          "value": "e5c84bed9ec298941a3399cb018c5ac79358874ef2d2093aeed5664cce9ad403"
+          "value": "bf7e314289f06ca6e90d854aaca407699a106cd4e927bd795de0b979c2ce8845"
         },
         "urls": [
-          "https://b2.catsxp.com/catsxp_portable/win_x64/portable_x64_beta_159_6_12_1_2.zip"
+          "https://b2.catsxp.com/catsxp_portable/win_x64/portable_x64_beta_159_6_12_1_3.zip"
         ],
         "signatureUrl": null
       },
@@ -131,25 +131,25 @@
     },
     {
       "target": "chrome",
-      "version": "159.0.8154.13",
+      "version": "159.0.8154.33",
       "channel": "beta",
       "cpuBuild": "x64",
       "provider": "chrome_omaha",
       "artifact": {
-        "fileName": "159.0.8154.13_chrome_installer_uncompressed.exe",
+        "fileName": "159.0.8154.33_chrome_installer_uncompressed.exe",
         "format": "sevenzip",
-        "size": 540940200,
+        "size": 540949416,
         "integrity": {
           "algorithm": "sha256",
-          "value": "e385dd4b817e191d7c7cc8e6aff203b11d95698ef692448463a760dc926855e5"
+          "value": "278ce6c0656bb487aebaf062157bd9d80c41e32e01225991f8f2a1c8e5fdfce0"
         },
         "urls": [
-          "https://edgedl.me.gvt1.com/edgedl/release2/chrome/aytyefba6joidr4xig4g4ao5r4_159.0.8154.13/159.0.8154.13_chrome_installer_uncompressed.exe",
-          "https://edgedl.me.gvt1.com/edgedl/release2/chrome/aytyefba6joidr4xig4g4ao5r4_159.0.8154.13/159.0.8154.13_chrome_installer_uncompressed.exe",
-          "https://dl.google.com/release2/chrome/aytyefba6joidr4xig4g4ao5r4_159.0.8154.13/159.0.8154.13_chrome_installer_uncompressed.exe",
-          "https://dl.google.com/release2/chrome/aytyefba6joidr4xig4g4ao5r4_159.0.8154.13/159.0.8154.13_chrome_installer_uncompressed.exe",
-          "https://www.google.com/dl/release2/chrome/aytyefba6joidr4xig4g4ao5r4_159.0.8154.13/159.0.8154.13_chrome_installer_uncompressed.exe",
-          "https://www.google.com/dl/release2/chrome/aytyefba6joidr4xig4g4ao5r4_159.0.8154.13/159.0.8154.13_chrome_installer_uncompressed.exe"
+          "https://edgedl.me.gvt1.com/edgedl/release2/chrome/ad5qleimopvibikppaxug4hqzqyq_159.0.8154.33/159.0.8154.33_chrome_installer_uncompressed.exe",
+          "https://edgedl.me.gvt1.com/edgedl/release2/chrome/ad5qleimopvibikppaxug4hqzqyq_159.0.8154.33/159.0.8154.33_chrome_installer_uncompressed.exe",
+          "https://dl.google.com/release2/chrome/ad5qleimopvibikppaxug4hqzqyq_159.0.8154.33/159.0.8154.33_chrome_installer_uncompressed.exe",
+          "https://dl.google.com/release2/chrome/ad5qleimopvibikppaxug4hqzqyq_159.0.8154.33/159.0.8154.33_chrome_installer_uncompressed.exe",
+          "https://www.google.com/dl/release2/chrome/ad5qleimopvibikppaxug4hqzqyq_159.0.8154.33/159.0.8154.33_chrome_installer_uncompressed.exe",
+          "https://www.google.com/dl/release2/chrome/ad5qleimopvibikppaxug4hqzqyq_159.0.8154.33/159.0.8154.33_chrome_installer_uncompressed.exe"
         ],
         "signatureUrl": null
       },
@@ -256,27 +256,27 @@
     },
     {
       "target": "helium",
-      "version": "0.22.2.1",
+      "version": "0.22.4.1",
       "channel": "stable",
       "cpuBuild": "x64",
       "provider": "git_hub_release",
       "artifact": {
-        "fileName": "helium_0.22.2.1_x64-windows.zip",
+        "fileName": "helium_0.22.4.1_x64-windows.zip",
         "format": "zip",
-        "size": 204195326,
+        "size": 204297840,
         "integrity": {
           "algorithm": "sha256",
-          "value": "6fcd651becff2e8573ff283bc0c3d27a2a1297dd0414f5125792a5a3d21e23c3"
+          "value": "87def49d21224ac1776688540e8c783be09969581f8c7c157236478b87ff5be1"
         },
         "urls": [
-          "https://github.com/imputnet/helium-windows/releases/download/0.22.2.1/helium_0.22.2.1_x64-windows.zip"
+          "https://github.com/imputnet/helium-windows/releases/download/0.22.4.1/helium_0.22.4.1_x64-windows.zip"
         ],
         "signatureUrl": null
       },
       "placement": "native_package",
       "innerArchive": null,
-      "source": "https://github.com/imputnet/helium-windows/releases/tag/0.22.2.1",
-      "publishedAt": "2026-11-21T00:07:07Z"
+      "source": "https://github.com/imputnet/helium-windows/releases/tag/0.22.4.1",
+      "publishedAt": "2026-11-24T17:54:41Z"
     },
     {
       "target": "iceweasel",
@@ -544,20 +544,20 @@
     },
     {
       "target": "vivaldi",
-      "version": "8.1.4087.61",
+      "version": "8.3.4191.47",
       "channel": "stable",
       "cpuBuild": "x64",
       "provider": "vivaldi",
       "artifact": {
-        "fileName": "Vivaldi.8.1.4087.61.x64.exe",
+        "fileName": "Vivaldi.8.3.4191.47.x64.exe",
         "format": "sevenzip",
-        "size": 146559912,
+        "size": 160099240,
         "integrity": {
           "algorithm": "sha256",
-          "value": "5f897427cb9caee96751b8b4a08eefb83898008fb5d9ad7e5d1323a1b4b55179"
+          "value": "be76967567c83ee3c1bbc54b93369fb4a3f9f1c50f4d647fc690cba88f59c6d2"
         },
         "urls": [
-          "https://downloads.vivaldi.com/stable/Vivaldi.8.1.4087.61.x64.exe"
+          "https://downloads.vivaldi.com/stable/Vivaldi.8.3.4191.47.x64.exe"
         ],
         "signatureUrl": null
       },
