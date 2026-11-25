@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": 1795572627,
+  "generatedAt": 1795602819,
   "expiresAt": 253402300799,
   "releases": [
     {
@@ -29,27 +29,27 @@
     },
     {
       "target": "brave",
-      "version": "1.101.55",
+      "version": "1.101.56",
       "channel": "beta",
       "cpuBuild": "x64",
       "provider": "git_hub_release",
       "artifact": {
-        "fileName": "brave-v1.101.55-win32-x64.zip",
+        "fileName": "brave-v1.101.56-win32-x64.zip",
         "format": "zip",
-        "size": 260440397,
+        "size": 262756213,
         "integrity": {
           "algorithm": "sha256",
-          "value": "aa1384bab897ffc5244488ab7cc40fba2758ddf8bff9bc4a08cfaf3f445ec5b0"
+          "value": "d1871d4637453bc2e5662a467b1660d3df426c4379a6b7e3158af872834ed0eb"
         },
         "urls": [
-          "https://github.com/brave/brave-browser/releases/download/v1.101.55/brave-v1.101.55-win32-x64.zip"
+          "https://github.com/brave/brave-browser/releases/download/v1.101.56/brave-v1.101.56-win32-x64.zip"
         ],
         "signatureUrl": null
       },
       "placement": "native_package",
       "innerArchive": null,
-      "source": "https://github.com/brave/brave-browser/releases/tag/v1.101.55",
-      "publishedAt": "2026-11-24T05:11:14Z"
+      "source": "https://github.com/brave/brave-browser/releases/tag/v1.101.56",
+      "publishedAt": "2026-11-25T05:15:52Z"
     },
     {
       "target": "catsxp",
@@ -328,27 +328,27 @@
     },
     {
       "target": "libre_wolf",
-      "version": "160.0.1",
+      "version": "161.0",
       "channel": "stable",
       "cpuBuild": "x64",
       "provider": "libre_wolf",
       "artifact": {
-        "fileName": "librewolf-160.0.1-1-windows-x86_64-portable.zip",
+        "fileName": "librewolf-161.0-1-windows-x86_64-portable.zip",
         "format": "zip",
         "size": null,
         "integrity": {
           "algorithm": "sha256",
-          "value": "661746505ca6aeebbd6525b90fdaa5bec0dc2f65b04bd1aa1efd3d5dbb3e1dd3"
+          "value": "b035e5d10beb6291fe7033e4479d8e6c79a8281c29c5904ec9fbe6fab3d83c0a"
         },
         "urls": [
-          "https://dl.librewolf.net/librewolf/160.0.1-1/librewolf-160.0.1-1-windows-x86_64-portable.zip"
+          "https://dl.librewolf.net/librewolf/161.0-1/librewolf-161.0-1-windows-x86_64-portable.zip"
         ],
-        "signatureUrl": "https://dl.librewolf.net/librewolf/160.0.1-1/librewolf-160.0.1-1-windows-x86_64-portable.zip.sig"
+        "signatureUrl": "https://dl.librewolf.net/librewolf/161.0-1/librewolf-161.0-1-windows-x86_64-portable.zip.sig"
       },
       "placement": "native_package",
       "innerArchive": null,
       "source": "https://librewolf.dev/api/v1/repos/librewolf/bsys6/releases?limit=1",
-      "publishedAt": "2026-11-18T14:48:28Z"
+      "publishedAt": "2026-11-25T05:12:59Z"
     },
     {
       "target": "sky_kakapo",
@@ -544,20 +544,20 @@
     },
     {
       "target": "vivaldi",
-      "version": "8.1.4087.61",
+      "version": "8.2.4133.94",
       "channel": "stable",
       "cpuBuild": "x64",
       "provider": "vivaldi",
       "artifact": {
-        "fileName": "Vivaldi.8.1.4087.61.x64.exe",
+        "fileName": "Vivaldi.8.2.4133.94.x64.exe",
         "format": "sevenzip",
-        "size": 146559912,
+        "size": 156217256,
         "integrity": {
           "algorithm": "sha256",
-          "value": "5f897427cb9caee96751b8b4a08eefb83898008fb5d9ad7e5d1323a1b4b55179"
+          "value": "6f2eee78fd43c9cb5d04150487aa786625c3361c96c43e6032f753909850a893"
         },
         "urls": [
-          "https://downloads.vivaldi.com/stable/Vivaldi.8.1.4087.61.x64.exe"
+          "https://downloads.vivaldi.com/stable/Vivaldi.8.2.4133.94.x64.exe"
         ],
         "signatureUrl": null
       },
