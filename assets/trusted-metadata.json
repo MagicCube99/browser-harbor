@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": 1795602819,
+  "generatedAt": 1795637765,
   "expiresAt": 253402300799,
   "releases": [
     {
@@ -78,20 +78,20 @@
     },
     {
       "target": "catsxp",
-      "version": "159.6.12.1.3",
+      "version": "159.6.12.1.4",
       "channel": "beta",
       "cpuBuild": "x64",
       "provider": "catsxp",
       "artifact": {
-        "fileName": "portable_x64_beta_159_6_12_1_3.zip",
+        "fileName": "portable_x64_beta_159_6_12_1_4.zip",
         "format": "zip",
-        "size": 243035241,
+        "size": 243059924,
         "integrity": {
           "algorithm": "sha256",
-          "value": "bf7e314289f06ca6e90d854aaca407699a106cd4e927bd795de0b979c2ce8845"
+          "value": "ec34788da14df7a17f53ec6c317a90f83f962a4e81c7bc71d3431aaf4a3af2d1"
         },
         "urls": [
-          "https://b2.catsxp.com/catsxp_portable/win_x64/portable_x64_beta_159_6_12_1_3.zip"
+          "https://b2.catsxp.com/catsxp_portable/win_x64/portable_x64_beta_159_6_12_1_4.zip"
         ],
         "signatureUrl": null
       },
@@ -208,26 +208,26 @@
     },
     {
       "target": "firefox",
-      "version": "162.0b1",
+      "version": "162.0b2",
       "channel": "beta",
       "cpuBuild": "x64",
       "provider": "mozilla",
       "artifact": {
-        "fileName": "Firefox Setup 162.0b1.exe",
+        "fileName": "Firefox Setup 162.0b2.exe",
         "format": "sevenzip",
         "size": null,
         "integrity": {
           "algorithm": "sha256",
-          "value": "b24dd4fd1511e43619eee005429a75520040a0c4ae334c5d4893e12ecf4087a5"
+          "value": "c5e966cb6c74866b6f5014be06005e6d6d48cdadde4763ac1d1063ed457bac34"
         },
         "urls": [
-          "https://download-installer.cdn.mozilla.net/pub/firefox/releases/162.0b1/win64/zh-CN/Firefox%20Setup%20162.0b1.exe"
+          "https://download-installer.cdn.mozilla.net/pub/firefox/releases/162.0b2/win64/zh-CN/Firefox%20Setup%20162.0b2.exe"
         ],
         "signatureUrl": null
       },
       "placement": "app",
       "innerArchive": null,
-      "source": "https://download-installer.cdn.mozilla.net/pub/firefox/releases/162.0b1/SHA256SUMS",
+      "source": "https://download-installer.cdn.mozilla.net/pub/firefox/releases/162.0b2/SHA256SUMS",
       "publishedAt": null
     },
     {
@@ -544,20 +544,20 @@
     },
     {
       "target": "vivaldi",
-      "version": "8.2.4133.94",
+      "version": "8.3.4191.45",
       "channel": "stable",
       "cpuBuild": "x64",
       "provider": "vivaldi",
       "artifact": {
-        "fileName": "Vivaldi.8.2.4133.94.x64.exe",
+        "fileName": "Vivaldi.8.3.4191.45.x64.exe",
         "format": "sevenzip",
-        "size": 156217256,
+        "size": 160154352,
         "integrity": {
           "algorithm": "sha256",
-          "value": "6f2eee78fd43c9cb5d04150487aa786625c3361c96c43e6032f753909850a893"
+          "value": "cbe5ea26a0e2c1d5cdc17ccc0bc754c036ea6606dc4eeb4536cba697faba8ba7"
         },
         "urls": [
-          "https://downloads.vivaldi.com/stable/Vivaldi.8.2.4133.94.x64.exe"
+          "https://downloads.vivaldi.com/stable/Vivaldi.8.3.4191.45.x64.exe"
         ],
         "signatureUrl": null
       },
