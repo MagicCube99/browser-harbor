@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": 1795743615,
+  "generatedAt": 1795753041,
   "expiresAt": 253402300799,
   "releases": [
     {
@@ -544,20 +544,20 @@
     },
     {
       "target": "vivaldi",
-      "version": "8.3.4191.44",
+      "version": "8.3.4191.35",
       "channel": "stable",
       "cpuBuild": "x64",
       "provider": "vivaldi",
       "artifact": {
-        "fileName": "Vivaldi.8.3.4191.44.x64.exe",
+        "fileName": "Vivaldi.8.3.4191.35.x64.exe",
         "format": "sevenzip",
-        "size": 160143272,
+        "size": 160153512,
         "integrity": {
           "algorithm": "sha256",
-          "value": "57e5be108058a121a62a3f0f8194f86b790ccc458ee4be3c7043d7bb07e6b596"
+          "value": "d9cd421314ff8fd0f5a8b2a7dbb6818ac1dfe26882426253b26b89f09a66afdc"
         },
         "urls": [
-          "https://downloads.vivaldi.com/stable/Vivaldi.8.3.4191.44.x64.exe"
+          "https://downloads.vivaldi.com/stable/Vivaldi.8.3.4191.35.x64.exe"
         ],
         "signatureUrl": null
       },
@@ -592,30 +592,30 @@
     }
   ],
   "chromePlus": {
-    "version": "1.20.1",
+    "version": "1.20.2",
     "artifact": {
-      "fileName": "Chrome++_v1.20.1_x86_x64_arm64.7z",
+      "fileName": "Chrome++_v1.20.2_x86_x64_arm64.7z",
       "format": "sevenzip",
-      "size": 199059,
+      "size": 358535,
       "integrity": {
         "algorithm": "sha256",
-        "value": "9bcdc635469b7a4b6b66c7797bfdce97e255fe87e051af007107e73c0456979b"
+        "value": "f5121199dddbff0f89b60e720c30827c2dda14a76280141e3ef851f65e20ab1c"
       },
       "urls": [
-        "https://github.com/Bush2021/chrome_plus/releases/download/1.20.1/Chrome%2B%2B_v1.20.1_x86_x64_arm64.7z"
+        "https://github.com/Bush2021/chrome_plus/releases/download/1.20.2/Chrome%2B%2B_v1.20.2_x86_x64_arm64.7z"
       ],
       "signatureUrl": null
     },
     "setdllArtifact": {
       "fileName": "setdll.7z",
       "format": "sevenzip",
-      "size": 289737,
+      "size": 448842,
       "integrity": {
         "algorithm": "sha256",
-        "value": "ca56b622fdb2886dc66a15937937ab90aeced32b40bbef10c55a09bc12534fe1"
+        "value": "1061eefd1fe420abf4df6b57ef2c3d02538aa5c727ae17edd8a62341925213f6"
       },
       "urls": [
-        "https://github.com/Bush2021/chrome_plus/releases/download/1.20.1/setdll.7z"
+        "https://github.com/Bush2021/chrome_plus/releases/download/1.20.2/setdll.7z"
       ],
       "signatureUrl": null
     }
