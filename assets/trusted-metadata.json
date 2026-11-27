@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": 1795787802,
+  "generatedAt": 1795819497,
   "expiresAt": 253402300799,
   "releases": [
     {
@@ -208,26 +208,26 @@
     },
     {
       "target": "firefox",
-      "version": "162.0b2",
+      "version": "162.0b3",
       "channel": "beta",
       "cpuBuild": "x64",
       "provider": "mozilla",
       "artifact": {
-        "fileName": "Firefox Setup 162.0b2.exe",
+        "fileName": "Firefox Setup 162.0b3.exe",
         "format": "sevenzip",
         "size": null,
         "integrity": {
           "algorithm": "sha256",
-          "value": "c5e966cb6c74866b6f5014be06005e6d6d48cdadde4763ac1d1063ed457bac34"
+          "value": "85e4c1c2e7c92c11d14eb1b53bb9ed8428bb9df3a5c345b31e64c7dd8742c3f8"
         },
         "urls": [
-          "https://download-installer.cdn.mozilla.net/pub/firefox/releases/162.0b2/win64/zh-CN/Firefox%20Setup%20162.0b2.exe"
+          "https://download-installer.cdn.mozilla.net/pub/firefox/releases/162.0b3/win64/zh-CN/Firefox%20Setup%20162.0b3.exe"
         ],
         "signatureUrl": null
       },
       "placement": "app",
       "innerArchive": null,
-      "source": "https://download-installer.cdn.mozilla.net/pub/firefox/releases/162.0b2/SHA256SUMS",
+      "source": "https://download-installer.cdn.mozilla.net/pub/firefox/releases/162.0b3/SHA256SUMS",
       "publishedAt": null
     },
     {
@@ -520,44 +520,44 @@
     },
     {
       "target": "ungoogled_chromium",
-      "version": "158.0.8127.36",
+      "version": "158.0.8127.88",
       "channel": "stable",
       "cpuBuild": "x64",
       "provider": "git_hub_release",
       "artifact": {
-        "fileName": "ungoogled-chromium_158.0.8127.36-1.1_windows_x64.zip",
+        "fileName": "ungoogled-chromium_158.0.8127.88-1.1_windows_x64.zip",
         "format": "zip",
-        "size": 204306715,
+        "size": 204309857,
         "integrity": {
           "algorithm": "sha256",
-          "value": "bc78b9590881f8ca99aca29288d1b347ffdd689ca8a57384bb0bc113ef687b6b"
+          "value": "655e039901f3efe9e8b6308397ab9f528ae86617bce844125626d24b82494633"
         },
         "urls": [
-          "https://github.com/ungoogled-software/ungoogled-chromium-windows/releases/download/158.0.8127.36-1.1/ungoogled-chromium_158.0.8127.36-1.1_windows_x64.zip"
+          "https://github.com/ungoogled-software/ungoogled-chromium-windows/releases/download/158.0.8127.88-1.1/ungoogled-chromium_158.0.8127.88-1.1_windows_x64.zip"
         ],
         "signatureUrl": null
       },
       "placement": "native_package",
       "innerArchive": null,
-      "source": "https://github.com/ungoogled-software/ungoogled-chromium-windows/releases/tag/158.0.8127.36-1.1",
-      "publishedAt": "2026-11-22T18:39:18Z"
+      "source": "https://github.com/ungoogled-software/ungoogled-chromium-windows/releases/tag/158.0.8127.88-1.1",
+      "publishedAt": "2026-11-27T16:21:58Z"
     },
     {
       "target": "vivaldi",
-      "version": "8.3.4191.45",
+      "version": "8.1.4087.61",
       "channel": "stable",
       "cpuBuild": "x64",
       "provider": "vivaldi",
       "artifact": {
-        "fileName": "Vivaldi.8.3.4191.45.x64.exe",
+        "fileName": "Vivaldi.8.1.4087.61.x64.exe",
         "format": "sevenzip",
-        "size": 160154352,
+        "size": 146559912,
         "integrity": {
           "algorithm": "sha256",
-          "value": "cbe5ea26a0e2c1d5cdc17ccc0bc754c036ea6606dc4eeb4536cba697faba8ba7"
+          "value": "5f897427cb9caee96751b8b4a08eefb83898008fb5d9ad7e5d1323a1b4b55179"
         },
         "urls": [
-          "https://downloads.vivaldi.com/stable/Vivaldi.8.3.4191.45.x64.exe"
+          "https://downloads.vivaldi.com/stable/Vivaldi.8.1.4087.61.x64.exe"
         ],
         "signatureUrl": null
       },
