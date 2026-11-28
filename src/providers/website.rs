@@ -17,6 +17,7 @@ use crate::{
             ReleaseDescriptor,
         },
         target::TargetId,
+        version::{VersionRelation, compare_versions},
     },
     services::http::HttpClient,
 };
@@ -24,6 +25,7 @@ use crate::{
 const CATSXP_HOME: &str = "https://www.catsxp.com/";
 const SKYKAKAPO_HOME: &str = "https://tete009.pages.dev/en-US/software";
 const TURBO_UPDATE: &str = "https://tbrowser.cn/update/update.js";
+const TURBO_CHANGELOG: &str = "https://tbrowser.cn/zh/guide/changelog.html";
 const VIVALDI_VERSIONS: &str = "https://vivaldi.com/wp-content/vivaldi-versions.js";
 const LIBREWOLF_WINDOWS: &str = "https://librewolf.net/installation/windows/";
 const LIBREWOLF_RELEASES: &str =
@@ -101,8 +103,32 @@ pub async fn resolve_turbo(
     cpu_build: CpuBuild,
 ) -> Result<ReleaseDescriptor, ProviderError> {
     validate_stable_x64(channel, cpu_build)?;
-    let script = http.get_text(TURBO_UPDATE).await?;
-    let parsed = parse_turbo(&script)?;
+    let (script, changelog) =
+        tokio::join!(http.get_text(TURBO_UPDATE), http.get_text(TURBO_CHANGELOG));
+    let changelog = changelog.ok();
+    let (parsed, source) = match script {
+        Ok(script) => {
+            let official = parse_turbo(&script)?;
+            let official_url = official.url.clone();
+            let selected = prefer_newer_turbo(
+                official,
+                changelog.as_deref().and_then(parse_turbo_changelog),
+            );
+            let source = if selected.url == official_url {
+                TURBO_UPDATE
+            } else {
+                TURBO_CHANGELOG
+            };
+            (selected, source)
+        }
+        Err(error) => (
+            changelog
+                .as_deref()
+                .and_then(parse_turbo_changelog)
+                .ok_or(error)?,
+            TURBO_CHANGELOG,
+        ),
+    };
     Ok(ReleaseDescriptor {
         target: TargetId::Turbo,
         version: parsed.version,
@@ -119,7 +145,7 @@ pub async fn resolve_turbo(
         },
         placement: TargetId::Turbo.spec().placement,
         inner_archive: None,
-        source: TURBO_UPDATE.to_owned(),
+        source: source.to_owned(),
         published_at: None,
     })
 }
@@ -437,6 +463,48 @@ fn parse_turbo(script: &str) -> Result<WebsiteArtifact, ProviderError> {
     })
 }
 
+/// Turbo's `update.js` feed can trail the published changelog. Both pages are
+/// first-party, so the newer portable package wins when the changelog is ahead.
+fn prefer_newer_turbo(
+    official: WebsiteArtifact,
+    changelog: Option<WebsiteArtifact>,
+) -> WebsiteArtifact {
+    match changelog {
+        Some(candidate)
+            if compare_versions(&official.version, &candidate.version)
+                == VersionRelation::UpstreamNewer =>
+        {
+            candidate
+        }
+        _ => official,
+    }
+}
+
+fn parse_turbo_changelog(html: &str) -> Option<WebsiteArtifact> {
+    let pattern = Regex::new(
+        r#"https://dl\.tbrowser\.cn/download/Turbo_([0-9][0-9A-Za-z._-]*)_portable\.7z"#,
+    )
+    .ok()?;
+    let mut latest: Option<WebsiteArtifact> = None;
+    for capture in pattern.captures_iter(html) {
+        let url = capture.get(0)?.as_str().to_owned();
+        let version = capture.get(1)?.as_str().to_owned();
+        let is_newer = latest.as_ref().is_none_or(|current| {
+            compare_versions(&current.version, &version) == VersionRelation::UpstreamNewer
+        });
+        if is_newer {
+            latest = Some(WebsiteArtifact {
+                file_name: file_name_from_url(&url).ok()?,
+                url: url.clone(),
+                sha256: String::new(),
+                urls: vec![url],
+                version,
+            });
+        }
+    }
+    latest
+}
+
 fn parse_librewolf(html: &str) -> Result<WebsiteArtifact, ProviderError> {
     let pattern = Regex::new(
         r#"https://dl\.librewolf\.net/librewolf/([^/"]+)/librewolf-[^"]+-windows-x86_64-portable\.zip"#,
@@ -506,7 +574,10 @@ fn validate_stable_x64(channel: ReleaseChannel, cpu_build: CpuBuild) -> Result<(
 mod tests {
     use base64::{Engine, engine::general_purpose::STANDARD};
 
-    use super::{parse_catsxp, parse_librewolf, parse_skykakapo, parse_turbo, parse_vivaldi};
+    use super::{
+        parse_catsxp, parse_librewolf, parse_skykakapo, parse_turbo, parse_turbo_changelog,
+        parse_vivaldi, prefer_newer_turbo,
+    };
 
     fn encode_catsxp(url: &str) -> String {
         let mut bytes = url
@@ -578,6 +649,55 @@ mod tests {
         let parsed = parse_turbo(script).unwrap();
         assert_eq!(parsed.version, "154.0.8037.104");
         assert!(parsed.file_name.ends_with(".7z"));
+    }
+
+    #[test]
+    fn turbo_changelog_selects_the_newest_portable_package() {
+        let html = r#"<h2 id="156.0.8078.86">156.0.8078.86 <a href="https://dl.tbrowser.cn/download/Turbo_156.0.8078.86_portable.7z">绿色版</a></h2>
+<h2 id="158.0.8127.89">158.0.8127.89 <a href="https://dl.tbrowser.cn/download/Turbo_158.0.8127.89_portable.7z">绿色版</a></h2>"#;
+        let parsed = parse_turbo_changelog(html).unwrap();
+        assert_eq!(parsed.version, "158.0.8127.89");
+        assert_eq!(
+            parsed.url,
+            "https://dl.tbrowser.cn/download/Turbo_158.0.8127.89_portable.7z"
+        );
+    }
+
+    #[test]
+    fn turbo_changelog_ignores_unofficial_hosts_and_setup_packages() {
+        let html = r#"<a href="https://evil.invalid/download/Turbo_999.0.0.1_portable.7z">x</a>
+<a href="https://dl.tbrowser.cn/download/TurboSetup_158.0.8127.89.exe">Windows下载</a>
+<a href="https://dl.tbrowser.cn/download/Turbo_156.0.8078.86_portable.7z">绿色版</a>"#;
+        let parsed = parse_turbo_changelog(html).unwrap();
+        assert_eq!(parsed.version, "156.0.8078.86");
+        assert_eq!(
+            parsed.url,
+            "https://dl.tbrowser.cn/download/Turbo_156.0.8078.86_portable.7z"
+        );
+        assert!(parse_turbo_changelog("no portable links").is_none());
+    }
+
+    #[test]
+    fn turbo_prefers_the_changelog_only_when_it_is_newer() {
+        let script = r#"_callback({ ver: '156.0.8078.86', portable_url: 'https://dl.tbrowser.cn/download/Turbo_156.0.8078.86_portable.7z' })"#;
+        let newer = parse_turbo_changelog(
+            r#"<a href="https://dl.tbrowser.cn/download/Turbo_158.0.8127.89_portable.7z">绿色版</a>"#,
+        );
+        let older = parse_turbo_changelog(
+            r#"<a href="https://dl.tbrowser.cn/download/Turbo_154.0.8037.104_portable.7z">绿色版</a>"#,
+        );
+        assert_eq!(
+            prefer_newer_turbo(parse_turbo(script).unwrap(), newer).version,
+            "158.0.8127.89"
+        );
+        assert_eq!(
+            prefer_newer_turbo(parse_turbo(script).unwrap(), older).version,
+            "156.0.8078.86"
+        );
+        assert_eq!(
+            prefer_newer_turbo(parse_turbo(script).unwrap(), None).version,
+            "156.0.8078.86"
+        );
     }
 
     #[test]
